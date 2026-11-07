@@ -11,6 +11,16 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+FROM tooling AS verification
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-cache
+COPY app ./app
+COPY tests ./tests
+COPY alembic.ini ./
+COPY migrations ./migrations
+USER 10001:10001
+
 FROM tooling AS runtime
 
 COPY pyproject.toml uv.lock ./
@@ -18,6 +28,8 @@ RUN uv sync --locked --no-dev --no-cache
 
 COPY app ./app
 COPY tests ./tests
+COPY alembic.ini ./
+COPY migrations ./migrations
 
 USER 10001:10001
 

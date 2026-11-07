@@ -1,23 +1,36 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color: #172b3a;
-  background: #f2f5f7;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f5f7fa;
+  --color-foreground: #172b3a;
+  --color-card: #ffffff;
+  --color-card-foreground: #172b3a;
+  --color-primary: #075b73;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #e5eef2;
+  --color-secondary-foreground: #143f50;
+  --color-muted: #edf1f5;
+  --color-muted-foreground: #4d6171;
+  --color-accent: #dceef1;
+  --color-accent-foreground: #143f50;
+  --color-border: #ccd6df;
+  --color-input: #8395a5;
+  --color-ring: #087a9c;
+  --color-destructive: #ac2336;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; padding: 2rem 1rem; }
-main { max-width: 44rem; margin: 2rem auto; }
-h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); }
-h2 { font-size: 1.2rem; }
-p { line-height: 1.6; }
-.eyebrow { font-weight: 600; }
-.health { background: white; border: 2px solid #718595; border-radius: 0.5rem; padding: 1rem; margin: 1.5rem 0; }
-.health--success { border-color: #237344; }
-.health--error { border-color: #ad2933; }
-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-button { font: inherit; font-weight: 600; border: 0; border-radius: 0.3rem; padding: 0.8rem 1.2rem; background: #175b85; color: white; cursor: pointer; }
-button:hover { background: #104262; }
-button:focus-visible { outline: 3px solid #172b3a; outline-offset: 4px; }
-.note { font-size: 0.9rem; }
+@layer base {
+  body { margin: 0; min-width: 320px; background: var(--color-background); color: var(--color-foreground); font-family: system-ui, sans-serif; }
+  :focus-visible { outline: 2px solid var(--color-ring); outline-offset: 3px; }
+}
+
+/* Compatibility for the existing isolated health component, not shared controls. */
+.health-panel { padding: 1.5rem; border: 1px solid var(--color-border); border-radius: .75rem; background: var(--color-card); }
+.health-panel h2 { font-size: 1.25rem; font-weight: 600; }
+.health-panel h3 { font-weight: 600; }
+.health-panel p { margin-block: .75rem; }
+.health-panel .eyebrow, .health-panel .note { font-size: .875rem; color: var(--color-muted-foreground); }
+.health-panel .health { margin-block: 1rem; padding: 1rem; border-radius: .5rem; background: var(--color-muted); }
+.health-panel .health--error { border: 1px solid var(--color-destructive); }
+.health-panel pre { overflow-x: auto; }
+.health-panel button { min-height: 2.5rem; padding: .5rem 1rem; border-radius: .375rem; background: var(--color-primary); color: var(--color-primary-foreground); font-weight: 500; }

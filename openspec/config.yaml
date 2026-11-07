@@ -9,7 +9,9 @@ context: |
   Q00 is approved on the user's confirmation that the teacher approved all ten
   Energia Sur CUs; no teacher approval date or channel is recorded. U06 evidence
   is in docs/use-cases/decisions.md. Stage 05 is closed documentarily; CU09 is
-  selected for stage 06. Its change proposal/design require review before Apply.
+  selected for stage 06. U07 approves the CU09 proposal and recommended D0-D5 and
+  authorizes Apply; U07-T approves the implementation package in its contract.md.
+  Do not repeat superseded approval gates.
   Use Explore -> Propose -> Review -> Apply -> Verify -> Archive as documented in
   docs/openspec-workflow.md. Review is explicit human approval, not a CLI command.
   Propose ends at review; Apply requires a subsequent explicit implementation request.
@@ -17,8 +19,10 @@ context: |
   authorization. Configuration guidance is advisory, not a permission enforcement.
   The approved direction includes PostgreSQL in Docker, React/TypeScript with
   Vite/npm, FastAPI/Uvicorn with uv, and a later backend LangChain/OpenAI assistant.
-  Do not infer approval for a database driver, ORM, migrations, auth mechanism,
-  hosting, added test/lint frameworks, or persistent chatbot memory.
+  CU09 explicitly approves SQLAlchemy/psycopg/Alembic, opaque server sessions and
+  ReportLab; U07-T approves Playwright/pypdf/Ruff/mypy and compatible ESLint tooling.
+  Preserve installed stack pins; do not bypass incompatible tool peer requirements.
+  Hosting and persistent chatbot memory remain unresolved.
   Development MCP integrations are separate from application chatbot capabilities.
   Preserve source provenance, timestamps and uncertainty; never infer live outages
   or successful automatic refreshes from technical scaffold or mock evidence.

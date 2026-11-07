@@ -1,5 +1,9 @@
 # Proposal
 
+Status: **APPROVED under U07; Apply authorized on 2026-11-07** by the user's current
+instruction. Recommended D0-D5 options are accepted; details with no clear
+recommendation remain scoped gates in [design](design.md#u07-approval-and-remaining-detail-gates).
+
 ## Why
 
 CU09 is the user's selected first stage 06 development: neighbors need a private
@@ -23,9 +27,9 @@ implements only technical health checks, not accounts, domiciles or diary behavi
 
 Authority: [U05/U06 register](../../../docs/use-cases/decisions.md),
 [CU09 fiche](../../../docs/use-cases/cu09.md), and [accepted workflow](../../../docs/openspec-workflow.md).
-Auth/provisioning, persistence, minimal domicile input and PDF decisions in
-[design](design.md) require explicit approval. This request authorizes proposal
-artifacts only, not implementation, dependencies, Apply, Sync or Archive.
+The original proposal-only request is superseded by U07. Implementation is now
+authorized against the accepted options in [design](design.md); outstanding details
+block only affected tasks. No Sync, Archive, commit or push is authorized.
 
 ## Capabilities
 
@@ -49,6 +53,7 @@ documentation. No implementation or runtime change is made in this proposal.
 Excluded: meters, readings/bills, complete CU04 editing/deletion, household sharing,
 domicile reassignment, destructive migration, self-service account recovery, public
 feeds, chatbot, hosting/deployment and actual complaint submission. Account provisioning
-is a necessary design decision, not an already-approved signup feature. Existing
-Docker lint/backend-type gates remain unresolved. Independent auth/data-isolation
+is a necessary design decision, not an already-approved signup feature.
+At proposal time, Docker lint/backend-type gates were unresolved; Apply later
+resolved them with Ruff/mypy and Oxlint 1.92.0. Independent auth/data-isolation
 review and real browser/backend/database/PDF acceptance are required before future closure.

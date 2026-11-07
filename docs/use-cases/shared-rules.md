@@ -17,8 +17,10 @@ preserve server-side authorization and ownership; never expose another person's
 records or provider keys. This is not approval of an auth mechanism, sharing model
 or other CUs' detailed per-address matrix. **U05 + U06, CU09:** only the account with
 the registered domicile may save/view/correct/close/export its cuts
-([Q18](decisions.md#q18)); [Q03](decisions.md#q03) auth technology remains pending. Negative
-scenarios document expected constraints, not evidence that isolation already exists.
+([Q18](decisions.md#q18)); U07/U07-T approve CU09's session/auth technology in its
+[contract](../../openspec/changes/record-cu09-interruption-diary/contract.md).
+Broader Q03 decisions remain pending. Negative scenarios define constraints;
+actual isolation evidence is recorded separately in CU09's engineering record.
 
 ## SR03 - Provenance and uncertainty
 
@@ -54,4 +56,5 @@ chat and at least two MCP tools/servers including one external. Development MCP
 evidence is distinct from chatbot integration and must not expose privileged tools
 to the app. [Q00](decisions.md#q00) is approved on the user's U06 confirmation of
 teacher approval of all ten Energía Sur CUs, without recording a teacher date/channel. The approved stack
-does not settle auth, ORM, migrations, hosting or persistent assistant memory.
+now includes CU09's approved auth, ORM and migrations under U07/U07-T; hosting,
+persistent assistant memory and other CUs' unresolved decisions remain pending.

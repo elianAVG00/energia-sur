@@ -1,12 +1,36 @@
 [project]
 name = "energia-sur-backend"
 version = "0.1.0"
-description = "Local development HTTP liveness service for energia-sur"
+description = "Private interruption diary and development HTTP liveness for energia-sur"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "fastapi==0.162.0",
     "uvicorn==0.54.0",
+    "sqlalchemy==2.1.8",
+    "psycopg[binary]==3.3.8",
+    "alembic==1.20.1",
+    "reportlab==5.1.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff==0.17.4",
+    "mypy==2.4.1",
+    "pypdf==7.0.0",
+    "types-reportlab==5.1.0.20261104",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["app"]
 
 [tool.uv]
 package = false

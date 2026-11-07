@@ -3,8 +3,93 @@
 Web application for checking electricity outages, reporting interruptions, and
 managing electricity consumption in southern Greater Buenos Aires. The selected
 stack is React + TypeScript and Python + FastAPI, developed with OpenCode, Codex,
-and OpenSpec. The current implementation is a technical development scaffold,
-not an implementation of those business features.
+and OpenSpec. CU09 now has a private interruption diary and the minimum CU04
+domicile-registration slice. The change remains open until all required checks
+and independent-review findings are resolved; other business CUs are not implemented.
+
+## CU09 - private interruption diary
+
+Implemented paths: credentialed local login/logout, own-account domicile registration
+and selection, cut creation/list/correction/closure, period-clipped overlap-safe
+summaries, and authenticated Unicode PDF downloads. Buenos Aires times are recorded
+to the minute; inputs before 1970-01-01 00:00 are rejected with 422. Ongoing rows say
+**En curso**; reports never implicitly close a cut.
+This implements only CU04's domicile prerequisite, not meters/full address management.
+
+The accepted [contract](openspec/changes/record-cu09-interruption-diary/contract.md)
+documents fields, errors, version conflicts, cookies and CSRF. U09 clarifies that
+login requires a trusted explicit Origin without pre-auth CSRF; authenticated
+unsafe requests require both Origin and a valid session-bound CSRF token. Accounts are provisioned
+locally, not through a public signup or an account-switch bypass. No credentials,
+addresses or provider keys belong in the frontend bundle/browser storage.
+
+### CU09 setup and checks (PowerShell, repository root)
+
+PostgreSQL already runs on the internal Compose network. Supply a **backend-only**
+application connection in your process environment as `CU09_DATABASE_URL`, using
+the `postgresql+psycopg://` driver, a deliberately provisioned role/database and
+intended credentials. Never paste its completed value into docs or chat. Then use:
+
+```powershell
+docker compose -f compose.yaml -f compose.cu09.yaml config --quiet
+docker compose -f compose.yaml -f compose.cu09.yaml build
+docker compose -f compose.yaml -f compose.cu09.yaml run --rm --no-deps backend alembic upgrade head
+docker compose -f compose.yaml -f compose.cu09.yaml up -d --no-deps --wait backend frontend
+docker compose -f compose.yaml -f compose.cu09.yaml exec backend python -m app.provision --username your-local-account
+```
+
+The provisioning command prompts privately for a password. The migration is additive;
+destructive downgrade is intentionally refused. Never remove `pgdata` or assume
+changing `.env` rotates an existing database password. Keep the overlay for CU09
+recreation; the base-only scaffold has no application database configuration.
+Development cookies are HttpOnly/SameSite=Lax on loopback HTTP; HTTPS requires the
+Secure cookie setting. `CU09_APP_ORIGINS` is an explicit comma-separated allowlist,
+not `*`. Hosting/external exposure is not authorized by these development instructions.
+
+Reproduce synthetic-only acceptance without disclosing or overwriting local credentials:
+
+```powershell
+docker build --target verification -t energia-sur-backend-checks:cu09 backend
+docker build --target verification -t energia-sur-frontend-checks:cu09 frontend
+pwsh -NoProfile -File scripts/Test-Cu09Acceptance.ps1
+docker run --rm energia-sur-backend-checks:cu09 ruff check --no-cache app tests migrations
+docker run --rm energia-sur-backend-checks:cu09 mypy --cache-dir /tmp/mypy-cache app
+docker run --rm energia-sur-frontend-checks:cu09 npm run lint
+```
+
+The acceptance script deliberately creates uniquely named **synthetic** databases,
+a nonprivileged role and two accounts, migrates them, runs PostgreSQL/ASGI tests,
+recreates only frontend/backend, drives real Chromium, downloads/reads PDFs, reruns
+migration with data, and checks record identities/values after backend restart.
+It retains synthetic databases, the stopped QA container and artifacts under the
+user-local OpenCode temporary directory for inspection: no database/table/volume
+cleanup is performed. Existing PostgreSQL container/data are not replaced; the
+cluster does receive additive synthetic databases. The running app afterward uses
+the synthetic acceptance database, not a configured real-data account.
+
+Frontend build runs strict TypeScript (including E2E/config), Node tests and pinned
+Oxlint 1.92.0. Stable typescript-eslint 8.72.1 still requires TypeScript <6.1,
+whereas this repo pins 7.0.2; U08 approved Oxlint as the TS-version-independent
+alternative instead of force-installing or downgrading. Detailed actual outcomes,
+date-floor decision and independent review:
+[CU09 engineering evidence](docs/ai-engineering/record-cu09-interruption-diary.md).
+
+## Shared frontend foundation - implemented, ready for review
+
+The user approved the direction in U09 and explicitly authorized Apply in U10. The separate
+[establish-frontend-foundation proposal](openspec/changes/establish-frontend-foundation/proposal.md),
+[design](openspec/changes/establish-frontend-foundation/design.md),
+[specifications](openspec/changes/establish-frontend-foundation/specs/frontend-shell/spec.md)
+and [tasks](openspec/changes/establish-frontend-foundation/tasks.md) are ready for review.
+Implemented: Tailwind/local shadcn/ui components, memory-only Zustand session and
+domicile selection, React Hook Form/Zod forms and centralized Axios with cookie/CSRF
+interceptors, cancellation and safe PDF handling. CU09 adopts these layers without
+changing backend contracts. One root-layout chat mount is visibly unavailable;
+LangChain, messaging and streaming remain CU03 work, not implemented chat behavior.
+See the [reuse guide](docs/frontend-foundation.md) for module boundaries, adding the
+next CU, reset/security rules and documented checks. Actual verification and the
+independent source review are in the [engineering record](docs/ai-engineering/establish-frontend-foundation.md).
+Both changes remain unarchived for human review; no commit/push/deployment performed.
 
 ## Local Docker environment
 
@@ -12,8 +97,8 @@ The Docker development environment uses React + TypeScript with Vite, Node 24.22
 npm 11.19.1; Python 3.13.18 with FastAPI, Uvicorn and uv; and PostgreSQL 18.6 from
 the first Compose startup. Frontend/backend use loopback ports 5173/8000 with an
 `/api/health` proxy. PostgreSQL has no published host port and persists in `pgdata`.
-Startup does not require an OpenAI key. Backend/database integration and the
-LangChain/OpenAI assistant are later changes, not part of this scaffold.
+Startup does not require an OpenAI key. Base-only Compose remains the health scaffold;
+CU09's overlay adds the backend/database connection. LangChain/OpenAI is still later scope.
 
 The runtime images and uv are pinned by verified immutable digests for
 `linux/amd64`. npm and uv use versioned lockfiles; the normal builds run `npm ci`
@@ -44,7 +129,9 @@ Open `http://127.0.0.1:5173`; direct API health is
 `http://127.0.0.1:8000/health`, returning HTTP 200 and `{"status":"ok"}`.
 The browser uses relative `/api/health` through Vite; `backend` and `db` are
 container-network names, not host/browser DNS names. The database has no published
-host port. Database/provider credentials are not passed to frontend or backend.
+host port. Base-only Compose passes no database credentials to the application;
+the CU09 overlay passes its connection only to backend, never frontend.
+No provider key is required or passed by either configuration.
 The health response describes HTTP liveness, not PostgreSQL or provider readiness.
 
 Source-only bind mounts keep host dependency directories out of containers.
@@ -58,7 +145,7 @@ assuming hot reload was verified for your filesystem.
 With local configuration supplied and images built, run from the root:
 
 ```powershell
-docker compose exec -T backend python -m unittest discover -s tests -v
+docker compose exec -T backend python -m unittest discover -s tests -p test_health.py -v
 docker compose exec -T frontend npm run typecheck
 docker compose exec -T frontend npm test
 docker compose exec -T frontend npm run build
@@ -67,11 +154,14 @@ pwsh -File scripts/Test-HealthProxy.ps1
 pwsh -File scripts/Test-DatabasePersistence.ps1
 ```
 
-Backend tests exercise the actual ASGI route/model/lifespan using Python's
-standard library. Frontend tests use Node's built-in runner for the fetch helper
-and state transitions, with injected synthetic responses. They do not render
-React or prove browser acceptance. No third-party test or lint runner has been
-selected: lint and backend static-type tooling remain separate approval decisions.
+The original backend health tests exercise ASGI/model/lifespan with the standard
+library. Full CU09 backend tests additionally require the verification image and
+an isolated migrated `TEST_DATABASE_URL`, as supplied by its acceptance script;
+without it, PostgreSQL tests explicitly skip and cannot be counted as acceptance.
+Node helper tests are not rendered React acceptance; CU09's Playwright script supplies
+the real browser path. Ruff/mypy, Oxlint and browser/PDF tooling are approved for CU09;
+the frontend lint gate passes with Oxlint 1.92.0. The runtime backend image
+intentionally excludes development-only test/PDF-inspection tools.
 
 `Test-Lockfiles.ps1` changes only disposable container copies and asserts locked
 installs reject drift. `Test-HealthProxy.ps1` checks real direct/proxied HTTP,
@@ -89,19 +179,22 @@ It retains the marker and volume and installs no database driver in FastAPI.
 2. Run `docker compose stop backend`, then click **Volver a comprobar** in the
    same screen. Verify previous success disappears and a visible error appears
    within five seconds. Record the failed request and screen state.
-3. Restore immediately with `docker compose up -d --no-deps --wait backend`;
-   retry in the browser and verify recovery. Do not stop or remove `db` here.
+3. Restore the same container with `docker compose start backend` and wait for
+   health, then retry in the browser. This preserves CU09's existing overlay
+   environment; do not recreate a CU09 backend with base-only Compose. Do not
+   stop or remove `db` here.
 
 A terminal-only proxy success/failure does not complete this browser acceptance.
 Record human browser evidence in the AI Engineering record before checking the
 two browser tasks complete. This session's exact evidence and remaining blockers
 are in that record, not implied by the instructions above.
 
-Current Apply evidence: both images build, all three services run healthy, four
+Historical Docker-scaffold Apply evidence: both images build, all three services run healthy, four
 backend tests and 25 frontend tests pass, and real proxy success/failure/recovery
 and PostgreSQL persistence pass. The user subsequently confirmed the real manual
-browser success/error/recovery acceptance during focused Verify. Lint/backend
-static-type tooling and its checks remain pending; the change stays open.
+browser success/error/recovery acceptance during focused Verify. CU09 now supplies
+passing backend Ruff/mypy checks, Oxlint, and expanded tests. The old Docker change
+stays open pending its own remaining gates and reconciliation.
 
 ### Database configuration and non-destructive shutdown
 
@@ -147,8 +240,8 @@ Before live checks:
 
 - [Operational state](docs/STATE.md)
 - [Accepted stage 05 catalog and decision baseline](docs/use-cases/README.md)
-- [CU09 first-development proposal and pending design review](openspec/changes/record-cu09-interruption-diary/proposal.md)
-- [CU09 planning evidence and review gates](docs/ai-engineering/record-cu09-interruption-diary.md)
+- [CU09 approved first-development proposal and Apply contract](openspec/changes/record-cu09-interruption-diary/proposal.md)
+- [CU09 implementation, verification evidence and remaining gates](docs/ai-engineering/record-cu09-interruption-diary.md)
 - [Approved MCP design and tasks](openspec/changes/configure-readonly-development-mcp/design.md)
 - [MCP setup, authentication checkpoint, and redacted checks](docs/ai-engineering/configure-readonly-development-mcp.md)
 - [Docker environment decisions, planning checks, and pending implementation evidence](docs/ai-engineering/docker-development-environment.md)

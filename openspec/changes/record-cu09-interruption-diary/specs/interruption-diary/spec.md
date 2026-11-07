@@ -18,6 +18,30 @@ records or PDF or modify its records through any of those actions.
 - **WHEN** A and B each attempt save, consult, correct, close and export for D
 - **THEN** A is authorized subject to date validation and B is forbidden for all five actions without data exposure or mutation
 
+### Requirement: Explicit login Origin and authenticated mutation CSRF boundary
+
+The backend SHALL require an explicitly allowed trusted Origin for login. Missing,
+`null`, malformed or foreign origins SHALL be rejected with 403 without issuing
+a session cookie. Login SHALL NOT require a pre-authentication CSRF token.
+Every authenticated operation that modifies state SHALL require both an allowed
+Origin and a valid session-bound CSRF token; missing/invalid tokens SHALL yield
+403 without modifying records or revoking the session. These rules reflect U09.
+
+#### Scenario: Login rejects an untrusted or absent Origin
+- **GIVEN** valid synthetic credentials and no authenticated session
+- **WHEN** login is submitted with absent, null, malformed or foreign Origin
+- **THEN** the backend returns 403, issues no session cookie and leaves the caller unauthenticated
+
+#### Scenario: Trusted login establishes the authenticated CSRF boundary
+- **GIVEN** valid synthetic credentials and an explicitly allowed Origin
+- **WHEN** login is submitted without a CSRF token
+- **THEN** login succeeds and returns the session-bound token for authenticated unsafe requests
+
+#### Scenario: Every authenticated mutation rejects missing or invalid CSRF
+- **GIVEN** an authenticated account and its domicile and ongoing cut
+- **WHEN** logout, domicile creation, cut creation, correction or closure is submitted with missing or invalid CSRF
+- **THEN** each request returns 403 and leaves the session, domiciles, cuts and versions unchanged
+
 ### Requirement: Store closed and ongoing interruption records
 
 The system SHALL associate a saved cut with an authorized registered domicile,
@@ -36,15 +60,21 @@ An absent end SHALL denote an ongoing cut; a supplied valid end SHALL denote clo
 
 ### Requirement: Buenos Aires minute-resolution temporal validation
 
-Cut times SHALL use Buenos Aires local time and be recorded to the minute. Future
+Cut times SHALL use Buenos Aires local time and be recorded to the minute. Cut and
+report-period times before 1970-01-01 00:00 Buenos Aires SHALL be rejected. Future
 cut start/end dates SHALL be rejected. A supplied end SHALL be strictly after start.
-These rules SHALL apply to creation, correction and closure; invalid mutations
-SHALL leave existing records unchanged.
+These rules SHALL apply to creation, correction, closure and reporting; invalid
+mutations SHALL leave existing records unchanged.
 
 #### Scenario: CU09-S10 Reject future start or end and nonpositive interval
 - **GIVEN** fixed validation time 2026-11-07 12:00 Buenos Aires and an own registered domicile
 - **WHEN** a mutation uses start 12:01 that day, end 12:01, or end equal to/before a 10:00 start
 - **THEN** each invalid mutation is rejected and any existing valid record remains unchanged
+
+#### Scenario: Pre-1970 dates are rejected at the approved floor
+- **GIVEN** an own registered domicile and a cut or report period starting 1969-12-31 23:59 Buenos Aires
+- **WHEN** the owner saves, corrects, closes, summarizes or exports at that time
+- **THEN** the request is rejected with a sanitized 422, no record changes, and 1970-01-01 00:00 remains accepted
 
 ### Requirement: Owner correction and explicit closure
 

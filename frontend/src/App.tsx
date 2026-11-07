@@ -1,65 +1,63 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { fetchHealth, HealthError } from './health.ts';
-import { healthReducer } from './healthState.ts';
+import { useEffect, useState } from 'react';
+import { diaryApi, DiaryError, errorMessage } from './diaryApi.ts';
+import { useRequestScope } from './useRequestScope.ts';
+import { sessionStore, useSessionStore } from './stores/session.ts';
+import { AppLayout } from './layouts/AppLayout.tsx';
+import { Alert } from './components/ui/alert.tsx';
+import { Button } from './components/ui/button.tsx';
+import { LoginForm } from './features/diary/forms.tsx';
+import { Workspace } from './features/diary/Workspace.tsx';
 
 export default function App() {
-  const [state, dispatch] = useReducer(healthReducer, { status: 'loading' });
-  const activeRequest = useRef<AbortController | null>(null);
-
-  const checkHealth = useCallback(() => {
-    activeRequest.current?.abort();
-    const controller = new AbortController();
-    activeRequest.current = controller;
-    dispatch({ type: 'loading' });
-
-    void fetchHealth({ signal: controller.signal }).then(
-      (response) => {
-        if (activeRequest.current === controller && !controller.signal.aborted) {
-          dispatch({ type: 'success', response });
-        }
-      },
-      (error: unknown) => {
-        if (activeRequest.current === controller && !controller.signal.aborted) {
-          dispatch({
-            type: 'error',
-            message: error instanceof HealthError ? error.message : 'No se pudo comprobar la API.',
-          });
-        }
-      },
-    );
-  }, []);
+  const scope = useRequestScope();
+  const session = useSessionStore(state => state.session);
+  const generation = useSessionStore(state => state.generation);
+  const expired = useSessionStore(state => state.expired);
+  const [pending, setPending] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    checkHealth();
-    return () => {
-      activeRequest.current?.abort();
-      activeRequest.current = null;
-    };
-  }, [checkHealth]);
+    const request = scope.begin('session');
+    const expectedGeneration = sessionStore.getState().generation;
+    void diaryApi.session(request.signal).then(result => {
+      if (request.isCurrent()) sessionStore.getState().setSession(result, expectedGeneration);
+    }).catch((reason: unknown) => {
+      if (request.isCurrent() && sessionStore.getState().generation === expectedGeneration && !(reason instanceof DiaryError && reason.status === 401)) setError(errorMessage(reason));
+    }).finally(() => { if (request.isCurrent()) setPending(false); });
+  }, [scope]);
 
-  return (
-    <main>
-      <p className="eyebrow">Energia Sur · Desarrollo local</p>
-      <h1>Conexión con la API</h1>
-      <p>Esta pantalla comprueba únicamente que el servicio HTTP responde.</p>
-      <section className={`health health--${state.status}`} aria-live="polite" aria-atomic="true">
-        {state.status === 'loading' && <p role="status">Comprobando la API…</p>}
-        {state.status === 'success' && (
-          <>
-            <h2>API disponible</h2>
-            <p>Respuesta verificada de la última comprobación:</p>
-            <pre>{JSON.stringify(state.response, null, 2)}</pre>
-          </>
-        )}
-        {state.status === 'error' && (
-          <div role="alert">
-            <h2>No se pudo verificar la conexión</h2>
-            <p>{state.message}</p>
-          </div>
-        )}
-      </section>
-      <button type="button" onClick={checkHealth}>Volver a comprobar</button>
-      <p className="note">Tiempo límite: 5 segundos. No verifica la base de datos ni servicios externos.</p>
-    </main>
-  );
+  async function login(values: { username: string; password: string }) {
+    const request = scope.begin('session');
+    const expectedGeneration = sessionStore.getState().generation;
+    setPending(true); setError('');
+    try {
+      const result = await diaryApi.login(values.username, values.password, request.signal);
+      if (request.isCurrent()) sessionStore.getState().setSession(result, expectedGeneration);
+    } catch (reason: unknown) {
+      if (request.isCurrent() && sessionStore.getState().generation === expectedGeneration) setError(errorMessage(reason));
+    } finally { if (request.isCurrent()) setPending(false); }
+  }
+  async function logout() {
+    if (!session) return;
+    const csrf = session.csrf_token;
+    scope.invalidate();
+    sessionStore.getState().clearSession(generation);
+    const clearedGeneration = sessionStore.getState().generation;
+    setPending(true); setError('');
+    const request = scope.begin('session');
+    try { await diaryApi.logout(csrf, request.signal); }
+    catch (reason: unknown) {
+      if (request.isCurrent() && sessionStore.getState().generation === clearedGeneration) setError(`No se confirmó el cierre de sesión: ${errorMessage(reason)}`);
+    } finally { if (request.isCurrent()) setPending(false); }
+  }
+
+  return <AppLayout>
+    {error && <Alert>{error}</Alert>}
+    {expired && !session && <Alert>La sesión venció. Ingresá nuevamente.</Alert>}
+    {session ? <>
+      <div className="flex flex-wrap items-center justify-between gap-3"><p>Cuenta: {session.account.username}</p><Button type="button" variant="outline" disabled={pending} onClick={() => void logout()}>Cerrar sesión</Button></div>
+      <Workspace key={`${generation}:${session.account.id}`} session={session} generation={generation} />
+    </> : <LoginForm key={generation} pending={pending} login={login} />}
+    {pending && <p role="status">Comprobando sesión…</p>}
+  </AppLayout>;
 }

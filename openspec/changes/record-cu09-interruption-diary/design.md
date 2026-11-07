@@ -1,17 +1,57 @@
 # Design
 
-Status: **PROPOSED FOR HUMAN REVIEW - NOT APPROVED FOR APPLY**. D0-D5 below are
-concrete recommendations and alternatives for acceptance/revision, not installed
-dependencies or silent resolutions of project TBDs. See [proposal](proposal.md)
+Status: **PROPOSAL AND RECOMMENDED D0-D5 OPTIONS APPROVED; APPLY AUTHORIZED (U07)**.
+The user's current instruction approves the proposal and recommended design options
+and explicitly requests Apply, backend/frontend implementation, QA and independent
+review. Recorded 2026-11-07. No commit, push, Sync or Archive is authorized.
+See [proposal](proposal.md)
 for motivation and the two [delta capabilities](specs/interruption-diary/spec.md).
+
+## U07 approval and remaining detail gates
+
+Approval evidence: current user message beginning “Apruebo la propuesta de CU09 —
+Diario de interrupciones y las opciones recomendadas para D0–D5”. This supersedes
+the earlier proposal-only authorization. The user also directs that decisions
+without a clear recommendation be reported against affected tasks while independent
+authorized tasks continue. The original recommendations below are retained as design
+rationale, not a claim that approval is still missing for the selected options.
+
+| Decision | Approved recommendation | Detail not explicitly recommended / affected tasks |
+| --- | --- | --- |
+| D0 | Register/list/select own domicile, required display_address, stable server identity, no meter/full CU04 | Exact text limits/input contract: 1.1, 3.1 |
+| D1 | Opaque same-origin server sessions, controlled local provisioning, HttpOnly cookie/CSRF, 401/404/422 errors | Password hashing/settings, expiry/cookie/CSRF particulars: 1.2, 2.3 |
+| D2 | SQLAlchemy + psycopg + Alembic, additive PostgreSQL integration, backend-only credentials | Exact versions, reviewed migrations/configuration: 1.3, 2.1/2.2 |
+| D3 | ReportLab, authenticated on-demand PDF without stored report files | Exact version/font/pagination contract: 1.4, 7.1/7.2 |
+| D4 | Buenos Aires named zone, minute input/reject fractions, 1970-01-01 local floor, captured/floored backend clock, positive query range, future query end allowed, atomic corrections, no reopening/reassignment | Optimistic versus last-writer-wins had no recommendation: 1.1, 4.2 (both later resolved) |
+| D5 | Proposed route family, typed transport, focused React UI and backend authoritative rules, existing stdlib/Node tests | Exact fields/limits and additional lint/type/browser tools: 1.5, 6.1/6.2, 8.1/8.2 |
+
+These residual details are not authority to invent security policy or select new
+test dependencies. Pure approved date/report calculations may proceed independently
+of blocked auth/transport/persistence decisions. Whole tasks remain unchecked until
+their full acceptance evidence is available.
+
+**Subsequent explicit approval U07-T:** the user chose “Aprobar paquete técnico
+(Recommended)” in the question about missing details. The accepted refinements,
+limits, session/CSRF/hash parameters, optimistic 409 contract, pinned compatible
+dependencies, fonts, Playwright/pypdf and lint/type choices are recorded in
+[contract.md](contract.md). The residual-detail table above is historical to the
+start of this Apply, not an outstanding request to approve that package again.
+
+**Later decisions (2026-11-07):** after observing that stable typescript-eslint
+still excludes TypeScript 7.0.2, the user approved pinned Oxlint 1.92.0 as the
+frontend lint gate. The user also approved a 1970-01-01 00:00 Buenos Aires minimum
+for cut and report-period times, rejecting earlier values with sanitized 422. That
+floor removes pre-standard second-level offsets without inventing rounding or
+narrowing the modern range; it supersedes the earlier unbounded-historical question.
 
 ## Context
 
 The app has a storage-free FastAPI `/health` and React health UI only. Backend
 dependencies are FastAPI/Uvicorn; frontend uses React/TypeScript/Vite/npm. PostgreSQL
 18.6 in Compose is approved, but backend connection, driver, ORM, migrations, auth
-and PDF dependencies do not exist in the manifests. Existing Docker lint/backend
-type gates are still unresolved. Preserve the technical environment and its volume.
+and PDF dependencies do not exist in the manifests. At design time, Docker lint/
+backend type gates were unresolved; the later Apply resolved backend typing and
+frontend lint as recorded above. Preserve the technical environment and its volume.
 
 The user accepts stage 05 and confirms teacher approval of all ten Energía Sur CUs
 (Q00, on user confirmation only; no teacher date/channel recorded). U06 selects
@@ -30,6 +70,15 @@ cut by deleting its end, complaint submission, deployment, chatbot or public fee
 Exclusions do not erase those other catalog CUs or decide their remaining questions.
 
 ## Decisions
+
+### U09 - Security clarification accepted after independent review
+
+The user explicitly approved aligning the contract with the implemented route
+table: login requires an explicit trusted allowed Origin, not an anonymous CSRF
+token. All authenticated unsafe operations continue to require Origin plus a
+valid session-bound CSRF token. This resolves review finding M1 without weakening
+the authenticated mutation boundary or changing routes. Backend regressions cover
+untrusted/missing login origins and missing/invalid tokens across every mutation.
 
 ### Confirmed constraints, not open design choices
 
@@ -184,9 +233,10 @@ preserved across the deltas, not counted twice as independently working tests.
 | interruption-diary: retained overlap union/units | CU09-S04/S14 | CU09-R4/R5/R7 / Q17/Q19/Q20, U05 + U06 |
 | interruption-diary: PDF fields/order/ongoing text | CU09-S06/S15 | CU09-R2/R6 / Q23, U05 + U06 |
 
-Authentication/error contracts, exact domicile payload, temporal normalization,
-persistence and PDF technology remain D0-D5 approval items, not silently accepted
-library or schema choices in the deltas. No full CU04, sharing, deletion or reopening.
+At proposal time, authentication/error contracts, exact domicile payload, temporal
+normalization, persistence and PDF technology remained D0-D5 approval items. U07-T
+later approved them in [contract.md](contract.md); this trace section records the
+proposal mapping, not an outstanding request. No full CU04, sharing, deletion or reopening.
 
 ## Risks / Trade-offs
 

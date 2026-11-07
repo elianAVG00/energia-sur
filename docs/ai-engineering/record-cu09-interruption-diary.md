@@ -1,11 +1,231 @@
-# CU09 interruption diary - stage 06 proposal record
+# CU09 interruption diary - stage 06 engineering record
 
-Status: **PROPOSAL/DESIGN FOR HUMAN REVIEW; APPLY BLOCKED**. Recorded 2026-11-07.
+Status: **IMPLEMENTED PATHS VERIFIED; U09 SECURITY CLARIFICATION RECHECKED; READY FOR REVIEW, NOT ARCHIVED**.
+Updated 2026-11-07. U07 accepts the recommended proposal/design and requests Apply;
+U07-T explicitly approves the technical package in the [contract](../../openspec/changes/record-cu09-interruption-diary/contract.md).
 Links: [proposal](../../openspec/changes/record-cu09-interruption-diary/proposal.md),
 [design](../../openspec/changes/record-cu09-interruption-diary/design.md),
 [tasks](../../openspec/changes/record-cu09-interruption-diary/tasks.md),
 [domicile delta](../../openspec/changes/record-cu09-interruption-diary/specs/account-domiciles/spec.md),
 [diary delta](../../openspec/changes/record-cu09-interruption-diary/specs/interruption-diary/spec.md).
+
+## Apply checkpoint and actual implementation
+
+### Foundation adoption regression checkpoint
+
+U10 authorized the separate shared-frontend implementation. CU09 now uses its
+Tailwind/local shadcn shell, memory-only Zustand session/selection, RHF/Zod forms
+and centralized cookie/CSRF-safe Axios adapter; backend behavior/contracts remain
+unchanged. Actual final rerun PASS: 66 backend tests (14 PostgreSQL, zero skips,
+10.397s), 50 frontend tests/types/build/lint, exactly one Chromium workflow7.7s,
+actual PDF text/content and migration/restart persistence. New assertions cover
+one unavailable chat mount/no chat requests and narrow viewport containment.
+See [foundation evidence](establish-frontend-foundation.md) for commands, review,
+corrections and limitations. Latest log `Temp/opencode/foundation-acceptance.log`;
+retained DBs `cu09_app_6fde6167e31f` / `cu09_test_6fde6167e31f`, QA container
+`energia-sur-cu09-qa-6fde6167e31f`. No repeat browser run, DB deletion or Archive.
+Earlier registry-config review limitation is resolved: primary inspected the copied
+config for credential-related entries and found none, logging no values. Out-of-band
+stored-row/NUL low residuals remain explicit for final CU09 review, not silently waived.
+
+### U09 - Approved clarification verified (current checkpoint)
+
+The user explicitly approved Origin-only login and Origin plus session-bound CSRF
+on authenticated unsafe operations. Updated `contract.md` detail wording/route
+table, design and security delta scenarios. This aligns the approved policy with
+the existing backend rather than changing endpoint behavior; it resolves M1 below.
+The remaining older M1-blocker prose is historical to the preceding review.
+
+Added real PostgreSQL/ASGI tests for absent/null/malformed/foreign login Origin,
+no session issuance on rejection, trusted login without pre-auth CSRF, and missing,
+wrong and non-ASCII CSRF on every authenticated write (logout, domicile creation,
+cut creation/correction/closure). Each rejection checks unchanged records/versions,
+domiciles and live session. No production backend or frontend code needed changing.
+This is a bounded accepted-contract alignment/regression update in the existing
+change, not a new feature or a silent security-policy decision.
+
+| Check | Mandatory? | Actual result / evidence |
+| --- | --- | --- |
+| Locked backend verification build | Yes | PASS: `docker build --target verification -t energia-sur-backend-checks:cu09 backend`. |
+| Backend tests and live acceptance | Yes | PASS: `pwsh -NoProfile -File scripts/Test-Cu09Acceptance.ps1`, exit 0; 66 backend tests, 14 real PostgreSQL/ASGI, zero skips, 9.720s. |
+| Quick real-browser CU09/PDF | Yes | PASS: exactly one Chromium workflow, 4.9s; actual PDF downloads/text, two accounts/ownership/409, migration/restart identity/value checks. No additional browser run. |
+| Backend lint | Yes | PASS: `docker run --rm energia-sur-backend-checks:cu09 ruff check --no-cache app tests migrations`. |
+| Independent M1 recheck | Yes | PASS: separate read-only reviewer session `ses_e48c2222cffebM8WOEV9Jfbiux` confirms contract/table/spec/code alignment and all-route regression coverage, no focused findings. Runtime executed by primary only. |
+| OpenSpec/documentary validation | Yes | PASS: strict noninteractive validation 4/4 active changes; `git diff --check` exit 0; 100 relevant relative Markdown targets resolve; STATE 40 lines. |
+| Broader unrelated frontend/backend gates | No new runtime code | Earlier mypy/Oxlint/Node/TS/build/lock-drift results retained below; the update only adds backend regressions and documents existing behavior. |
+
+Latest actual log: user-local `Temp/opencode/cu09-security-u09.log`; retained QA
+container `energia-sur-cu09-qa-a0290c0f7601`; synthetic databases
+`cu09_app_a0290c0f7601` / `cu09_test_a0290c0f7601`. Original DB container remains;
+no data/volume deletion. Current app uses this synthetic acceptance database.
+
+The earlier full independent audit remains recorded below; U09 focused recheck
+resolves its Medium M1. Low out-of-band-row/NUL hypotheses and registry-config
+review limitation remain explicit final review items. Task 8.3 stays open for their
+disposition. User requests review before Archive/commit/push; none performed.
+The separate frontend foundation is planning-only and must not inherit these
+runtime passes as proof of its future CU09 adaptation.
+
+### Post-restart review and latest verification
+
+The user approved the changes, then requested the lost independent review be
+rerun after restarting OpenCode. A fresh foreground read-only reviewer completed
+in session `ses_e4a277d40ffeKFk0IOVunZlbV5`, including a follow-up audit of every
+owner-bound operation (login/session/logout, domiciles, list/create/correct/close,
+summary and PDF), ownership helpers, CSRF/Origin, errors, provisioning and migration.
+No critical/high security or data-isolation defect was found. This is separate
+source review, not independently executed tests.
+
+**BLOCKED M1 (Medium):** contract detail-package wording requires a CSRF token
+on every unsafe request including login, but its route table and implementation
+require only an allowed Origin on login. Authenticated mutations use both checks.
+No bypass was found, but the approved security contract is internally inconsistent.
+Human decision is required: explicitly approve Origin-only login plus CSRF on
+authenticated mutations, or approve/design pre-authentication CSRF tokens. Neither
+the earlier general approval nor this source review silently changes that policy.
+Task 8.3 and implementation closure remain open.
+
+Reviewer documentary findings were corrected in README, Q20/Q23, catalog counts,
+proposal/design wording, and the operational/task snapshots. Additional tests now
+cover aware-offset exact-floor acceptance, exact-floor correction/PDF, near-floor
+closure and non-echoed validation detail. Latest full script execution PASS, exit 0:
+64 backend tests including 12 real PostgreSQL/ASGI tests, zero skips, **9.403s**;
+real Chromium workflow **6.8s**; downloaded PDF inspection, migration rerun with
+data, restart field/identity persistence, and original db container preservation.
+Ruff and Oxlint were rerun and PASS (Oxlint zero warnings/errors, 14 files/96 rules).
+Latest log: user-local `Temp/opencode/cu09-acceptance-review.log`; retained synthetic
+databases `cu09_app_7242b1a690fc` / `cu09_test_7242b1a690fc`, QA container
+`energia-sur-cu09-qa-7242b1a690fc`. Earlier timings below identify preceding runs.
+
+One cached backend image export failed because Docker lacked a parent snapshot.
+A `--no-cache` rebuild succeeded without deleting images, data, or volumes.
+
+Low residuals recorded, not silently waived: pre-1970 rows inserted outside the
+accepted API can cause list 500/report 422; NUL text could yield 503 (review
+hypothesis, not runtime-confirmed); the reviewer could not inspect registry
+configuration for credentials. No legacy production data, new DB constraint,
+data cleanup, migration change, or permission expansion is claimed. These need
+explicit disposition before closure. Prior user approval is recorded, but no
+Sync/Archive/commit/push/deployment is authorized or performed.
+
+Apply entry: clean `main`, ahead 1, HEAD `f76bc0f06b24666ff7852010142baf218dc8eed4`
+(`docs: close stage 05`). All implementation changes remain uncommitted. No reset,
+commit, push, Sync, Archive, deployment or data/volume deletion was performed.
+Q00 remains satisfied solely by the user's teacher-approval confirmation; no teacher
+date/channel is recorded. Stage 05 remains documentarily closed, not reopened here.
+
+Implemented: owned domicile registration/list/selection without meters; controlled
+local account provisioning and credentialed login/logout; scrypt, opaque eight-hour
+sessions, HttpOnly/SameSite cookies, CSRF/Origin boundary; owned cut creation/list,
+atomic correction/closure with optimistic 409; shared backend period clipping,
+ongoing caps and overlap union; Unicode on-demand authenticated PDFs; React UI,
+typed DTO validation/cancellation and error/conflict recovery. `/health` is unchanged
+storage-free liveness. Full CU04, chatbot, hosting and other CUs remain excluded.
+
+Actual tools/agents: primary OpenCode reads/searches/patches/PowerShell/Docker/OpenSpec;
+Apply, FastAPI endpoint and quality-gate procedures; Context7 public library docs
+(including React form reset and Playwright role/label selection on resumption).
+Backend domain delegate delivered calculations/tests. Backend/frontend integration
+delegates encountered `subscription_sharing_usage_limit_exceeded`; primary continued,
+not counted as successful QA/review. Later separate read-only QA and reviewer agents
+did inspect source. Their permissions prohibit runtime execution and secret/external
+file access; primary executed all runtime checks. No permission changes were made.
+
+### Verification evidence - Apply, primary runner, repository root
+
+All commands below actually ran on 2026-11-07. Successful commands exited 0.
+Host-local logs/artifacts are intentionally outside shared files and contain only
+synthetic acceptance data; never print QA container environments or credential inputs.
+
+| Check / criterion | Mandatory? | Command or method | Result / evidence / limitation |
+| --- | --- | --- | --- |
+| Locked verification images | Yes | `docker build --target verification -t energia-sur-backend-checks:cu09 backend`; corresponding frontend build | PASS: uv locked install and npm ci; runtime pins preserved. Latest frontend build log: user-local `Temp/opencode/cu09-frontend-oxlint-build.log`. |
+| Domain/API/security/PDF/health tests | Yes | `pwsh -NoProfile -File scripts/Test-Cu09Acceptance.ps1` invokes actual migrated PostgreSQL/ASGI tests | PASS: 64 tests, including all 12 PostgreSQL tests; zero skips, 9.403s on the post-review rerun with expanded floor/offset/correction/PDF assertions. Synthetic nonprivileged role and distinct app/test databases. |
+| Real rendered UI/API/database acceptance | Yes | Same script; real Chromium via Playwright 1.65.0, one comprehensive workflow | PASS: 1 test, 6.8s on the latest rerun. Register/select, create overlapping/open cuts, summary, correction/closure, actual second writer/409/discard/retry, same-version editor reset, future rejection, two populated accounts and reciprocal domicile lists, foreign-ID denials/unchanged owner records, empty/excluded summaries, domicile draft reset, logout. No response mocks. |
+| Actual downloaded PDF | Yes | Same script extracts browser-downloaded `closed.pdf`/`ongoing.pdf` with pypdf | PASS: Unicode, optional text/complaint, complete period, both retained rows in descending order, closed statuses, two ongoing end/status cells, exact 3h/13h totals. |
+| Migration/persistence | Yes | Same script reruns Alembic head with existing synthetic diary, restarts backend, authenticates and rereads | PASS: two domiciles and three cuts retain IDs, every date/text/status/version field; existing original db container ID unchanged. Cluster volume receives additive synthetic databases, not a claim of byte-for-byte unchanged volume. |
+| Backend lint | Yes | `docker run --rm energia-sur-backend-checks:cu09 ruff check --no-cache app tests migrations` | PASS, Ruff 0.17.4. |
+| Backend strict types | Yes | `docker run --rm energia-sur-backend-checks:cu09 mypy --cache-dir /tmp/mypy-cache app` | PASS, mypy 2.4.1, 10 app modules. |
+| Frontend helper tests | Yes | `docker run --rm energia-sur-frontend-checks:cu09 npm test` | PASS: 32 tests, zero skips. Injected-fetch tests are not browser acceptance. |
+| Frontend strict types/build | Yes | `docker run --rm energia-sur-frontend-checks:cu09 npm run build`; also verification image RUN | PASS: tsc includes source, tests, E2E and configs; Vite production build. |
+| Lock drift rejection | Yes | `pwsh -NoProfile -File scripts/Test-Lockfiles.ps1` with nonsecret placeholder POSTGRES_PASSWORD only for Compose interpolation | PASS: uv/npm reject manifest drift without changing locks. First attempt BLOCKED by missing Compose variable; no db started/recreated by this check. |
+| PDF visual inspection | Yes | Primary opened synthetic `closed.pdf` and generated three-page `long.pdf` with read/PDF renderer | PASS: readable Spanish accents, wrapped long address/text, preserved columns/rows and repeated headers, no observed overlap/clipping. Row continuation can repeat a header within a page; cosmetic only. No universal glyph-coverage claim. |
+| Independent auth/isolation review | Yes | Separate read-only reviewer inspected every owner-bound route, sessions/CSRF/errors, frontend, migrations and direct dependencies | Review completed in `ses_e4a277d40ffeKFk0IOVunZlbV5`: no critical/high isolation defect, but M1 security-contract inconsistency BLOCKS closure; see post-restart checkpoint above. Not reviewer-executed runtime tests. |
+| Frontend lint | Yes | `docker run --rm energia-sur-frontend-checks:cu09 npm run lint` (Oxlint 1.92.0, also in verification-image build) | PASS: 0 warnings and 0 errors on 14 files with 96 rules; TypeScript 7.0.2 preserved. Stable typescript-eslint 8.72.1 still excludes TS 7, so U08 approved this pinned alternative. |
+| Historical date floor | Yes | Domain/API regressions plus Python offset probe in the backend image | PASS: 1970-01-01 00:00 Buenos Aires is inclusive and round-trips exactly; 1969-12-31 23:59 and equivalent instants return sanitized 422 on save/correct/close/summary/PDF; hourly probe 1970-2026 found zero fractional offsets. |
+| Full CU04/chatbot/deployment | No | Scope comparison with accepted proposal | NOT APPLICABLE to this bounded change; no claim of implementing the other CUs. |
+
+Latest successful pipeline evidence: user-local `Temp/opencode/cu09-acceptance-review.log`;
+the preceding run is `Temp/opencode/cu09-acceptance-floor.log`, plus the earlier
+`cu09-acceptance-run.log` and `cu09-acceptance-final.log`; latest retained QA
+container `energia-sur-cu09-qa-7a8d1ccebe8f`; synthetic databases
+`cu09_app_7a8d1ccebe8f` / `cu09_test_7a8d1ccebe8f`; PDF/state artifacts under
+`Temp/opencode/cu09-acceptance/`. Previous synthetic resources are retained too.
+The running app uses that synthetic acceptance database, not real user data.
+
+### Observed problems and correction evidence
+
+- Frontend lock generation initially hit bind-mount EACCES; generated the lock in
+  container temporary storage from the reviewed manifest, then copied it back.
+  Backend Docker allowlist initially omitted new modules/migrations; corrected it.
+- Ruff cache lacked nonroot write permission; used `--no-cache`, then corrected
+  actual import-order findings. Ruff and strict mypy pass; gates were not suppressed.
+- Native browser fetch was called with the client as receiver. Wrapped the default
+  fetch adapter and added a regression; Vite initially served cached old code on
+  the Windows mount. Restarting frontend confirmed the wrapper and original browser
+  flow passed in 4.3s. This is resolved, not a current connectivity blocker.
+- Reviewer found extreme-date overflow, lax numeric date coercion, stale 409 editor
+  snapshots and cross-domicile drafts. Guarded timezone conversions, raw ISO
+  validators, explicit discard/reload and domicile-scoped form identity address them;
+  API invalid-mutation snapshots and rendered two-writer regressions were added.
+- Reviewer then found same-version discard retaining local state. Form keys now
+  always include reset revision, and opening another editor clears obsolete conflict
+  state. Rendered reopening checks the persisted text replaces the draft.
+- Expanded browser conflict check failed before and after that key correction.
+  Artifact showed the reloaded form actually contained the expected text. Minimal
+  Chromium reproducer proved wrapped-label getByLabel exact count 0 versus accessible
+  textbox role count 1 when textarea initial content is present. Replaced only that
+  selector, retaining the exact value assertion; full workflow now passes.
+- First pipeline reaching restart failed its domicile count because PowerShell
+  wrapped Invoke-RestMethod's JSON array as a nested one-item array. Assign first,
+  normalize at count use; rerun passed full identity/value comparisons. A further
+  expanded empty/excluded-summary and populated-account browser run also passed.
+- QA initially identified missing persisted invalid/foreign mutation snapshots,
+  report nonclosure, fixed-clock PDFs, both populated accounts, download row/status
+  assertions, migration-with-data and post-restart values. Added and ran those
+  checks. QA then asked for explicit persisted-field assertions after successful
+  open/closed corrections; those assertions were added and the full pipeline reran
+  green (64 tests, 9.068s; browser 4.9s) after the date-floor boundary test joined
+  the same suite. Final QA/reviewer reconciliation confirmed the tested 2026
+  scenarios/AD paths and the corrected findings, with no remaining critical/high
+  isolation defect. That reconciliation remains source review, not independently
+  executed runtime evidence.
+
+### Resolved historical-date defect (U08 floor)
+
+The earlier probes showed that Buenos Aires 1890 serialized with a truncated
+`-03:53` offset and a 1920 interval crossing a historical offset change produced
+fractional elapsed minutes and 422. U08 resolved the policy explicitly: supplied cut
+and report-period times before **1970-01-01 00:00 Buenos Aires** now return a
+sanitized 422, while that exact boundary is accepted. From 1970 onward offsets are
+whole minutes, verified hourly through 2026, so no approximate transport, silent
+narrowing of modern dates, or invented rounding is used. The fractional-minute guard
+remains as defense in depth.
+
+### Resolved frontend lint gate (U08 Oxlint)
+
+U08 approved pinned Oxlint 1.92.0 after confirming the latest stable typescript-eslint
+8.72.1 still caps TypeScript at `<6.1.0`. The verification image now runs `npm run
+lint`; the gate reports zero warnings/errors and the approved TypeScript 7.0.2 is
+unchanged.
+The former date/lint blockers are resolved. No completion/Archive until M1 and the
+recorded residual dispositions are resolved and independently rechecked.
+
+## Proposal-phase history (before U07; not current authorization)
+
+The sections below preserve actual proposal-stage evidence and failures. Their
+pending-approval/zero-code statements describe that earlier phase only; the Apply
+checkpoint and accepted contract above supersede them for current work.
 
 ## Goal, authority and existing state
 
@@ -80,7 +300,7 @@ checks, not implementation acceptance. Successful CLI/assertion commands exit 0.
 | Initial checkout/root/context | Yes | Git status/HEAD, OpenSpec list/context, local instruction reads | PASS: initialized local root, baseline above; unrelated local work preserved. |
 | Structural baseline | Yes | `openspec validate --all --strict` before creating CU09 change | PASS: 2/2 old changes, zero main specs, no prior failure; MCP skip_specs INFO. |
 | New planning artifact discovery | Yes | `openspec status --change record-cu09-interruption-diary --json` and four artifact `instructions` calls | PASS: all 4 artifact types done, 2 spec files; current context/Q00/selection and 2 rules injected per artifact (8 rules). Tasks 0/24. Done means existence, not accepted design or implemented tasks. |
-| Final structural validation | Yes | `openspec validate --all --strict` | PASS, exit 0 after one correction: MCP, Docker and CU09 changes, 3/3, zero main specs. CU09 contains 2 delta specs/10 requirements/17 scenarios. MCP skip_specs INFO unchanged; no existing change failed. Not catalog prose or working-CU validation. |
+| Final structural validation | Yes | `openspec validate --all --strict` | PASS, exit 0 after one correction: MCP, Docker and CU09 changes, 3/3, zero main specs. CU09 contains 2 delta specs/10 requirements/18 scenarios including the supplementary pre-1970 floor case. MCP skip_specs INFO unchanged; no existing change failed. Not catalog prose or working-CU validation. |
 | Documentary IDs/traces/states | Yes | PowerShell index/fiche/scenario/register/trace checks plus content review | PASS, exit 0: 10 IDs/fiches, 44 globally unique traced Given/When/Then catalog scenarios; all 15 CU09 IDs mapped once in deltas, plus AD-S01/AD-S02; 24 questions (6 approved/6 partial/12 open). Q00 approved/stage 05 closed/CU09 selected, unrelated TBDs retained. |
 | Links/anchors | Yes | Resolve relative Markdown targets and heading anchors in current stage docs/new artifacts/root index | PASS, exit 0: 260 destinations/160 anchors across 25 Markdown files; no recursive audit of unrelated historical targets. |
 | Whitespace/scope/preservation | Yes | `git diff --check`, `git diff --cached --check`, full new-file scan, allowed paths and eleven-file hash comparison | PASS, exit 0: 27 checkout paths (3 tracked, zero staged, 24 untracked); STATE 36 lines/5 actions. Eleven preserved hashes match, main/HEAD unchanged. No source/manifests/old-change/main-spec/AGENTS edits. Informational LF-to-CRLF warnings only. |
