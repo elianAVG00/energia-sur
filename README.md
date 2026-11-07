@@ -6,6 +6,20 @@ stack is React + TypeScript and Python + FastAPI, developed with OpenCode, Codex
 and OpenSpec. Frontend and backend are placeholders; application installation,
 startup, and test commands have not been established yet.
 
+## Approved local environment (planning only)
+
+The Docker development plan uses React + TypeScript with Vite, Node 24.22.2 and
+npm 11.19.1; Python 3.13.18 with FastAPI, Uvicorn and uv; and PostgreSQL 18.6 from
+the first Compose startup. Frontend/backend use loopback ports 5173/8000 with an
+`/api/health` proxy. PostgreSQL has no published host port and persists in `pgdata`.
+Startup will not require an OpenAI key. Backend/database integration and the
+LangChain/OpenAI assistant are later changes, not part of this scaffold.
+
+Only planning artifacts exist: images, lockfiles, Dockerfiles, Compose and the
+real build/acceptance tests remain pending Apply. See the
+[design](openspec/changes/docker-development-environment/design.md) and
+[implementation checklist](openspec/changes/docker-development-environment/tasks.md).
+
 ## Development MCP integrations
 
 Project `opencode.jsonc` configures remote GitHub MCP (repository read-only
@@ -33,3 +47,4 @@ Before live checks:
 - [Operational state](docs/STATE.md)
 - [Approved MCP design and tasks](openspec/changes/configure-readonly-development-mcp/design.md)
 - [MCP setup, authentication checkpoint, and redacted checks](docs/ai-engineering/configure-readonly-development-mcp.md)
+- [Docker environment decisions, planning checks, and pending implementation evidence](docs/ai-engineering/docker-development-environment.md)
