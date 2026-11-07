@@ -1,0 +1,36 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "github": {
+        "type": "remote",
+        "url": "https://api.githubcopilot.com/mcp/x/repos/readonly",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {env:ENERGIA_SUR_GITHUB_PAT}"
+        },
+        "codemode": false
+      },
+      "context7": {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp/oauth",
+        "codemode": false
+      }
+    }
+  },
+  "permissions": [
+    { "action": "github_*", "resource": "*", "effect": "deny" },
+    { "action": "context7_*", "resource": "*", "effect": "deny" },
+    { "action": "opencode_list_mcp_resources", "resource": "*", "effect": "deny" },
+    { "action": "opencode_read_mcp_resource", "resource": "*", "effect": "deny" }
+  ],
+  "agents": {
+    "build": {
+      "permissions": [
+        { "action": "github_get_file_contents", "resource": "*", "effect": "ask" },
+        { "action": "context7_resolve-library-id", "resource": "*", "effect": "ask" },
+        { "action": "context7_query-docs", "resource": "*", "effect": "ask" }
+      ]
+    }
+  }
+}
