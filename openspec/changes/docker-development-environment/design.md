@@ -191,6 +191,23 @@ work; deletion, commits, pushes, deployment, sync, and archive need authorizatio
 
 ## Documentation Sources
 
+### Apply resolution (2026-11-07)
+
+Official image tags, Linux/amd64 manifests and immutable index digests were
+verified and recorded in the [AI Engineering record](../../../docs/ai-engineering/docker-development-environment.md).
+Selected initial exact package versions are React/React DOM 19.3.1, TypeScript
+7.0.2, Vite 8.3.6, React types 19.3.0, Node types 24.19.2, FastAPI 0.162.0,
+Uvicorn 0.54.0 and uv 0.13.7. The approved Python/Node/npm/PostgreSQL versions
+were available and were not replaced. Real locked installation, builds and
+standard-runtime tests passed; external test/lint tools remain unselected.
+Python uses standard-library unittest/ASGI calls and frontend uses Node's built-in
+test runner for focused helpers/state without adding a third-party test runner.
+Browser acceptance was subsequently confirmed by the human user during focused
+Verify; lint/backend static typing remain verification gaps. No new tool is
+approved by that confirmation; see the current decision proposals in the record.
+
+### Planning references
+
 Context7 documentation reads on 2026-11-07, not image/build verification:
 - `/astral-sh/uv`: https://github.com/astral-sh/uv/blob/main/docs/guides/integration/docker.md
   (locked sync and immutable uv image pinning).

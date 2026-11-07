@@ -1,46 +1,45 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-07T04:19:26-03:00.
+Updated: 2026-11-07T04:55:27-03:00.
 
 ## Latest checkpoint
-- Stage 04: Docker environment design approved; planning artifacts prepared, no Apply, commit, push, sync, or archive.
-- This run began on clean `main`, three commits ahead of `origin/main`; prior work and MCP artifacts preserved.
-- Latest planning gate PASS: strict OpenSpec validation, tracked/staged/untracked whitespace, 24 local links, 46-line/five-action STATE, and 22 unchecked tasks; see [evidence](ai-engineering/docker-development-environment.md).
+- Focused Verify: human browser success/error/recovery confirmed; change OPEN and closure BLOCKED by tooling/check decisions. No archive, commit, push or sync.
+- This Verify began on `main`, ahead 4, preserving the existing Apply diff and technical files; only documentation/tasks updated.
+- Prior runtime checks PASS reused after hash/code identity checks. Focused strict OpenSpec, tracked/staged/untracked whitespace, local links/scope and STATE/task consistency PASS; see [evidence](ai-engineering/docker-development-environment.md).
+- Progress: 18/22 tasks evidenced; 1.4, 2.4, 7.1 and 7.2 remain unchecked because mandatory lint/backend static-type gates are unresolved.
 
-## Confirmed decisions and implementation state
-- Frontend: React + TypeScript, Vite, Node 24.22.2, npm 11.19.1 approved by user on 2026-11-07.
-- Backend: Python 3.13.18, FastAPI, Uvicorn, uv with `pyproject.toml` and `uv.lock` approved.
-- Database engine DECIDED: PostgreSQL 18.6, service `db` included from first Compose startup; not an unresolved motor choice.
-- Database persistence: named `pgdata` at `/var/lib/postgresql`; internal `db:5432`, no published host port.
-- Frontend/backend host ports: `127.0.0.1:5173` and `127.0.0.1:8000`; `/api/health` proxies to backend `GET /health` (200 JSON `{"status":"ok"}`).
-- LangChain + OpenAI API in backend is confirmed direction for a separate change; initial environment must start without `OPENAI_API_KEY`.
-- `frontend/` and `backend/` still contain only `.gitkeep`; no application manifests, locks, entry points, Dockerfiles, Compose, tests or CI workflows exist.
-- Approved versions are targets, not verified registry tags/digests or successful builds. Those checks, locks and real builds remain Apply tasks.
-- Acceptance A: actual React/API success, then visible error clearing success when backend stops and another check is requested.
-- Acceptance B: `psql` query and committed unique synthetic datum surviving `db` recreation with the same volume; no application/database connection required.
+## Approved stack and current implementation
+- Frontend: React + TypeScript, Vite, Node 24.22.2, npm 11.19.1; backend: Python 3.13.18, FastAPI, Uvicorn, uv with real `pyproject.toml`/`uv.lock`.
+- Database engine DECIDED: PostgreSQL 18.6 as `db` from first startup; named `pgdata` at `/var/lib/postgresql`, internal `db:5432`, no published host port.
+- Official Python/Node/PostgreSQL image and upstream uv 0.13.7 tags/index digests were verified for linux/amd64 before pinning; no approved runtime substitution.
+- Exact libraries: React/DOM 19.3.1, TypeScript 7.0.2, Vite 8.3.6, FastAPI 0.162.0, Uvicorn 0.54.0; generated npm/uv locks and locked builds PASS.
+- Both application services run non-root. Build contexts exclude host environments/secrets. Source-only development mounts preserve container-installed dependencies.
+- Compose services frontend/backend/db healthy; only host mappings are `127.0.0.1:5173` and `127.0.0.1:8000`.
+- `/api/health` proxies to `GET /health` (200 JSON `{"status":"ok"}`); backend liveness remains available with db stopped and makes no database/provider readiness claim.
+- Startup verified with `OPENAI_API_KEY` unset. LangChain + OpenAI backend assistant remains confirmed direction for another change, not installed here.
+- Synthetic acceptance credentials supplied only in the child process environment; no actual credentials or `.env` file read/created. Test volume contains synthetic technical data only.
 
-## OpenSpec and evidence
-- Schema `spec-driven`, installed CLI 1.16.1; no main specs yet.
-- New change: [docker-development-environment tasks](../openspec/changes/docker-development-environment/tasks.md); all implementation tasks intentionally unchecked.
-- Approved decisions/rationale: [Docker design](../openspec/changes/docker-development-environment/design.md); behavior: [spec](../openspec/changes/docker-development-environment/specs/development-environment/spec.md).
-- Process/check evidence: [Docker record](ai-engineering/docker-development-environment.md). Structural validation does not prove runtime acceptance.
-- GitHub MCP + Context7 setup COMPLETED per [8/8 checklist](../openspec/changes/configure-readonly-development-mcp/tasks.md); no archive. Earlier positive live calls and independent policy review are prior evidence, not rerun here.
-- Earlier MCP validation PASS on CLI 1.16.1; broader runtime permission/path/symlink and token-scope assurance remains unproven. See [MCP record](ai-engineering/configure-readonly-development-mcp.md).
-- Existing five agent profiles and generated integrations preserved. Profiles restrict shell/external reads/delegation; static permission evidence does not establish runtime isolation.
-- Custom Skills [fastapi-endpoint](../.agents/skills/fastapi-endpoint/SKILL.md) and [quality-gate](../.agents/skills/quality-gate/SKILL.md) exist; quality-gate and openspec-propose loaded for this planning run.
+## Evidence and OpenSpec
+- [Active tasks](../openspec/changes/docker-development-environment/tasks.md), [design](../openspec/changes/docker-development-environment/design.md), [spec](../openspec/changes/docker-development-environment/specs/development-environment/spec.md), [AI Engineering record](ai-engineering/docker-development-environment.md).
+- Backend: 4 standard-library ASGI/model/lifespan tests PASS; frontend: 25 built-in Node helper/state tests, strict TypeScript and production build PASS. These do not render React.
+- Acceptance A PASS: human user confirmed real browser success -> backend-down error -> restored success, combined with reused actual HTTP/proxy evidence. No agent-run browser or screenshot/trace is claimed.
+- Acceptance B PASS: SELECT 1 and marker `4811ca06-7c8a-403a-bf63-2f1cbf58d924` survived db container recreation with the same `energia-sur_pgdata`. Normal stop/start also retained it; volume never deleted.
+- Rootless uv-cache failure resolved after second correction (writable runtime cache plus no build cache); corrected npm negative fixture after verifying availability. Detailed attempts retained in evidence.
+- Independent Apply reviewer: no confirmed static defects, reused unchanged-code review. Verify docs self-reviewed; human browser evidence and primary Apply execution are attributed separately.
+- Schema spec-driven, CLI 1.16.1. Initial and final strict validation PASS; no main specs synced or change archived.
+- GitHub MCP + Context7 setup remains COMPLETED per [8/8 checklist](../openspec/changes/configure-readonly-development-mcp/tasks.md); broader permission/path/token assurance not rerun or proven.
+- Skills/agent definitions and existing MCP artifacts preserved. Actual backend/frontend delegates edited assigned source only; primary ran commands and a separate reviewer audited statically.
 
-## Pending work and blockers
-- No blocker to approved planning. Implementation and real acceptance remain unexecuted; a separate Apply request is required.
-- Apply must verify image tags/digests/platforms, select exact uv/library releases, generate locks and build. Stop for user review if approved versions are unavailable.
-- Test/lint frameworks and runnable application checks remain to be agreed where needed; new tooling must not silently fill a TBD.
-- FastAPI/PostgreSQL integration, driver, ORM, migrations and business tables are excluded and require later changes/decisions.
-- Application auth/authorization, hosting and persistent assistant memory remain unresolved; unrelated TBDs do not block a storage-free technical API.
-- Teacher approval of topic and ten use cases is still undocumented; business implementation remains BLOCKED, authorized environment/spec preparation may proceed.
-- No secrets or actual credentials were inspected. `.env` configuration is future local setup, not supplied or created here.
+## Blockers and separate decisions
+- Both runtime acceptances satisfied; Verify cannot close until required lint/backend static-type tools are approved, configured and their checks pass.
+- Additional test/lint frameworks and backend static typing require separate approval where needed. None installed to fill the TBD; lint/backend-type and compound final gates remain BLOCKED.
+- FastAPI/PostgreSQL connection, driver, ORM, migrations and business tables remain excluded and require later changes. Application auth/hosting and persistent assistant memory are unresolved.
+- Teacher approval of topic/ten use cases is undocumented and still gates business implementation, not the authorized technical environment.
+- Existing PostgreSQL initialization password is synthetic: changing `.env` does not rotate persisted credentials. Provision intended credentials explicitly before real data/database integration.
 
 ## Next actions
-1. Review the Docker planning/doc diff and actual final gate results linked above.
-2. Request Apply separately for the approved technical environment, keeping implementation scope bounded by its tasks/spec.
-3. In Apply, verify images/tool versions and resolve required exact dependency and verification-tool choices before installation.
-4. Complete and record both independent real acceptance tests before claiming environment implementation success.
-5. Document teacher approval and plan later business/database/assistant changes; obtain separate authorization for commit, push, sync or archive.
+1. Review the focused Verify evidence and 18/22 task accounting; keep the change open.
+2. Decide exact versions/configuration of proposed Ruff, ESLint/typescript-eslint and mypy (or explicitly approved alternatives), without silently installing them.
+3. Run the approved lint/backend-type checks and reconcile 1.4/2.4 and compound final gates 7.1/7.2 only when complete.
+4. Preserve `energia-sur_pgdata`; use documented non-destructive stop/start and configure development credentials deliberately.
+5. Document teacher approval and plan later database/business/assistant changes; obtain separate authorization before commit, push, sync or archive.

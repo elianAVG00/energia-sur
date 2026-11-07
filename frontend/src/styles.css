@@ -1,0 +1,23 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #172b3a;
+  background: #f2f5f7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 2rem 1rem; }
+main { max-width: 44rem; margin: 2rem auto; }
+h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); }
+h2 { font-size: 1.2rem; }
+p { line-height: 1.6; }
+.eyebrow { font-weight: 600; }
+.health { background: white; border: 2px solid #718595; border-radius: 0.5rem; padding: 1rem; margin: 1.5rem 0; }
+.health--success { border-color: #237344; }
+.health--error { border-color: #ad2933; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+button { font: inherit; font-weight: 600; border: 0; border-radius: 0.3rem; padding: 0.8rem 1.2rem; background: #175b85; color: white; cursor: pointer; }
+button:hover { background: #104262; }
+button:focus-visible { outline: 3px solid #172b3a; outline-offset: 4px; }
+.note { font-size: 0.9rem; }
