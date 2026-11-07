@@ -1,32 +1,38 @@
 schema: spec-driven
 
-# Project context (optional)
-# Add only constraints that should guide OpenSpec artifacts and workflows.
-# Include constraints an agent cannot infer by reading the code.
-# Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
+context: |
+  Write project documentation and OpenSpec artifacts in English; preserve CU IDs.
+  AGENTS.md governs operations. docs/use-cases/README.md indexes the planned ten-CU
+  accepted documentary baseline, not implemented behavior. openspec/specs/ is reserved for
+  current specifications; do not promote catalog drafts there without authorization.
+  Distinguish proposal scope, confirmed decisions, inferences and unresolved TBDs.
+  Q00 is approved on the user's confirmation that the teacher approved all ten
+  Energia Sur CUs; no teacher approval date or channel is recorded. U06 evidence
+  is in docs/use-cases/decisions.md. Stage 05 is closed documentarily; CU09 is
+  selected for stage 06. Its change proposal/design require review before Apply.
+  Use Explore -> Propose -> Review -> Apply -> Verify -> Archive as documented in
+  docs/openspec-workflow.md. Review is explicit human approval, not a CLI command.
+  Propose ends at review; Apply requires a subsequent explicit implementation request.
+  Verify needs actual evidence. Archive requires successful applicable gates and
+  authorization. Configuration guidance is advisory, not a permission enforcement.
+  The approved direction includes PostgreSQL in Docker, React/TypeScript with
+  Vite/npm, FastAPI/Uvicorn with uv, and a later backend LangChain/OpenAI assistant.
+  Do not infer approval for a database driver, ORM, migrations, auth mechanism,
+  hosting, added test/lint frameworks, or persistent chatbot memory.
+  Development MCP integrations are separate from application chatbot capabilities.
+  Preserve source provenance, timestamps and uncertainty; never infer live outages
+  or successful automatic refreshes from technical scaffold or mock evidence.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
-
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+rules:
+  proposal:
+    - State CU IDs, scope, exclusions, source evidence and approval dependencies; do not expand the ten-CU proposal silently.
+    - Distinguish planned behavior from the technical scaffold and unresolved questions in docs/use-cases/decisions.md.
+  specs:
+    - Trace requirements and Given/When/Then scenarios to approved sources or explicit decisions; do not turn TBDs into requirements.
+    - Preserve shared rules and CU identifiers without treating documentary catalog scenarios as already working behavior.
+  design:
+    - Separate confirmed decisions, inferences and TBDs; request approval before resolving architecture or stack choices.
+    - Resolve affected ownership, interval, period-compatibility and estimation questions before implementing the corresponding CU scenarios.
+  tasks:
+    - Separate implementation, structural validation, functional acceptance and independent review where required; record PASS, FAIL, BLOCKED or NOT APPLICABLE with evidence.
+    - Include applicable approval gates and preserve incomplete checks; checked tasks alone do not prove end-to-end acceptance.

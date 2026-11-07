@@ -146,6 +146,9 @@ Before live checks:
 ## Engineering context and evidence
 
 - [Operational state](docs/STATE.md)
+- [Accepted stage 05 catalog and decision baseline](docs/use-cases/README.md)
+- [CU09 first-development proposal and pending design review](openspec/changes/record-cu09-interruption-diary/proposal.md)
+- [CU09 planning evidence and review gates](docs/ai-engineering/record-cu09-interruption-diary.md)
 - [Approved MCP design and tasks](openspec/changes/configure-readonly-development-mcp/design.md)
 - [MCP setup, authentication checkpoint, and redacted checks](docs/ai-engineering/configure-readonly-development-mcp.md)
 - [Docker environment decisions, planning checks, and pending implementation evidence](docs/ai-engineering/docker-development-environment.md)
