@@ -282,6 +282,6 @@ CLOSED as documentary preparation**, not archived and not a claim of working CUs
   design review. Those future gates do not reopen accepted stage 05 or Q00.
 
 Outcome: accepted documentary closure and authorized transition to CU09 proposal
-review, with [proposal](../../openspec/changes/record-cu09-interruption-diary/proposal.md),
-[design](../../openspec/changes/record-cu09-interruption-diary/design.md) and remaining
+review, with [proposal](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/proposal.md),
+[design](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/design.md) and remaining
 decisions explicitly separated from implementation permission.

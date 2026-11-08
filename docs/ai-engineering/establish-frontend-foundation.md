@@ -1,8 +1,30 @@
 # Establish frontend foundation - implementation and verification evidence
 
-Status: **IMPLEMENTED AND VERIFIED; READY FOR HUMAN REVIEW; UNARCHIVED** (2026-11-07).
+Status: **VERIFIED AND ARCHIVED 2026-11-08; MAIN SPECS SYNCHRONIZED**.
 
 ## Apply checkpoint
+
+### Final closure verification - 2026-11-08
+
+**Archive result:** synchronized `frontend-shell` and `frontend-session-transport`
+to `openspec/specs/`, checked Purpose/requirements/scenarios against their deltas,
+and moved this change to [archive/2026-11-08-establish-frontend-foundation](../../openspec/changes/archive/2026-11-08-establish-frontend-foundation/).
+CU09 was separately synchronized and archived. Post-move strict validation passed
+6/6 current items and 2/2 archived changes; 307 relative targets resolved and both
+diff checks passed. No closure commit or push performed.
+
+The user approved closure, main-spec sync and archive subject to final repository
+checks, explicitly excluding another change, commit and push. Entry checkout was
+clean `main` at human commit `ce88194`, ahead two; no existing work was reset.
+Primary compared current source/manifest/test/config bytes against the retained
+verification images: backend 20 files SHA256
+`e785e8aa54f3dee5cf26ef446448dd05a54a57a682ce75734a2e527a0627c78b`; frontend
+41 files SHA256 `f30d340d479a1c46b0e5f419b16879a6c543ee2fe9e05fdf2c26e56addb01ce9`.
+Thus previously recorded tests remain applicable. Retained logs confirm 66 backend,
+50 frontend, one Chromium workflow7.7s and downloaded PDF checks. Strict OpenSpec
+4/4 and unstaged/staged diff checks passed before sync. Static independent reviewer
+evidence remains separate from primary-run runtime evidence. No application code,
+dependency or security policy was changed during this closure check.
 
 After artifact presentation, the user explicitly requested "Aplicá
 establish-frontend-foundation". The preceding canceled attempt made no edits.
@@ -115,11 +137,11 @@ end at review, followed by a subsequent Apply request. Direction approval is not
 misreported as execution of new artifacts. No foundation source, manifest, lock,
 chat runtime or backend change was made.
 
-Artifacts: [proposal](../../openspec/changes/establish-frontend-foundation/proposal.md),
-[design](../../openspec/changes/establish-frontend-foundation/design.md),
-[shell spec](../../openspec/changes/establish-frontend-foundation/specs/frontend-shell/spec.md),
-[transport spec](../../openspec/changes/establish-frontend-foundation/specs/frontend-session-transport/spec.md),
-[tasks](../../openspec/changes/establish-frontend-foundation/tasks.md).
+Artifacts: [proposal](../../openspec/changes/archive/2026-11-08-establish-frontend-foundation/proposal.md),
+[design](../../openspec/changes/archive/2026-11-08-establish-frontend-foundation/design.md),
+[shell spec](../../openspec/changes/archive/2026-11-08-establish-frontend-foundation/specs/frontend-shell/spec.md),
+[transport spec](../../openspec/changes/archive/2026-11-08-establish-frontend-foundation/specs/frontend-session-transport/spec.md),
+[tasks](../../openspec/changes/archive/2026-11-08-establish-frontend-foundation/tasks.md).
 
 ## Actual investigation and tools
 

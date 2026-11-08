@@ -1,14 +1,14 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-07 (U10 foundation implemented and verified; ready for review).
+Updated: 2026-11-08 (CU09 and frontend foundation archived after verified sync).
 
-## Latest checkpoint - CU09 and frontend foundation ready for review, unarchived
+## Latest checkpoint - CU09 and frontend foundation archived
 - Apply entry checkout: clean `main`, ahead 1 of `origin/main`, HEAD `f76bc0f06b24666ff7852010142baf218dc8eed4` (`docs: close stage 05`). Existing human commit preserved; no commit/push authorized here.
 - **Stage 05 CLOSED documentarily:** user explicitly accepts [catalog](use-cases/README.md), [shared rules](use-cases/shared-rules.md), [register](use-cases/decisions.md) and [workflow](openspec-workflow.md), including their remaining TBDs. See [U06](use-cases/decisions.md#u06---baseline-acceptance-and-cu09-proposal-authorization) and [closure record](ai-engineering/stage-05-sdd.md#accepted-baseline-checkpoint---u06).
 - **Q00 APPROVED:** user confirms the teacher approved all ten Energía Sur CUs. No teacher approval date/channel recorded. This satisfies the academic prerequisite, not design/Apply authorization.
-- **CU09 SELECTED first for stage 06:** [proposal](../openspec/changes/record-cu09-interruption-diary/proposal.md), [design](../openspec/changes/record-cu09-interruption-diary/design.md), [delta specs](../openspec/changes/record-cu09-interruption-diary/specs/interruption-diary/spec.md), [tasks](../openspec/changes/record-cu09-interruption-diary/tasks.md), [engineering evidence](ai-engineering/record-cu09-interruption-diary.md).
-- U07 approves proposal/D0-D5 and Apply; U07-T explicitly approves the [technical package](../openspec/changes/record-cu09-interruption-diary/contract.md), not a waiver of blocked checks. No Sync/Archive/commit/push/deployment authorized or performed.
-- U09 clarifies trusted-Origin login and CSRF on authenticated writes; U10 authorizes foundation Apply. Implemented and verified: [proposal](../openspec/changes/establish-frontend-foundation/proposal.md), [design](../openspec/changes/establish-frontend-foundation/design.md), [tasks](../openspec/changes/establish-frontend-foundation/tasks.md), [evidence](ai-engineering/establish-frontend-foundation.md), [reuse guide](frontend-foundation.md). No Archive/commit/push/deployment.
+- **CU09 SELECTED first for stage 06:** [proposal](../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/proposal.md), [design](../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/design.md), [delta specs](../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/specs/interruption-diary/spec.md), [tasks](../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/tasks.md), [engineering evidence](ai-engineering/record-cu09-interruption-diary.md).
+- U07/U07-T approve the [technical package](../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/contract.md); U09 clarifies trusted-Origin login and CSRF on authenticated writes. User approved closure and archive on 2026-11-08.
+- U10 authorized foundation Apply; both changes are archived after sync: [CU09 archive](../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/), [foundation archive](../openspec/changes/archive/2026-11-08-establish-frontend-foundation/), [evidence](ai-engineering/establish-frontend-foundation.md), [reuse guide](frontend-foundation.md). No commit/push/deployment.
 
 ## Approved stack and existing implementation
 - React/TS/Vite/npm pins preserved; Python/FastAPI/Uvicorn/uv/PostgreSQL retained. CU09 adds approved SQLAlchemy/psycopg/Alembic, ReportLab, Playwright/pypdf and Ruff/mypy with locked versions.
@@ -28,14 +28,14 @@ Updated: 2026-11-07 (U10 foundation implemented and verified; ready for review).
 
 ## Blockers and unresolved decisions
 - U08 resolved prior blockers: inclusive 1970-01-01 00:00 Buenos Aires input floor and Oxlint 1.92.0, preserving TypeScript 7.0.2. Implemented and verified; no rounding or forced dependency install.
-- M1 resolved by U09 and focused independent recheck `ses_e48c2222cffebM8WOEV9Jfbiux`: contract/table/code aligned, no remaining focused findings. Earlier full source audit covered every owner-bound route. CU09 remains unarchived and ready for human review; low residual dispositions/8.3 stay open, not a repeated M1 decision.
+- M1 resolved by U09 and focused independent recheck `ses_e48c2222cffebM8WOEV9Jfbiux`; earlier full source audit covered every owner-bound route. CU09 24/24 tasks and foundation 18/18, archived; 4 main specs synchronized.
 - Low CU09 residuals: out-of-band pre-1970 DB rows can fail reads; NUL text may yield 503. Registry-config limitation resolved by primary security inspection: frontend/.npmrc has no credential-related entries (no values logged). Review is static; runtime evidence is primary-run.
 - Latest app uses synthetic acceptance DB; retained databases/containers/artifacts are listed in engineering evidence. Original db container/volume preserved; cluster has additive synthetic databases. No cleanup authorized.
 - Unrelated catalog TBDs, hosting and persistent chatbot memory remain unresolved. No other CU claimed complete.
 
 ## Next actions
-1. Human review of both unarchived changes and their actual evidence; foundation implementation/acceptance gates pass.
+1. Select the next CU with the user; CU03 is recommended to address the mandatory integrated chatbot, pending its existing Q04/Q06 and design decisions.
 2. Reuse the documented foundation for future accepted CUs; CU03 must implement the chat runtime/streaming separately.
-3. Review CU09's completed security clarification and disposition recorded low residuals before closure; no repeated date/lint/M1 approval needed.
+3. Track CU09's low out-of-band-row and NUL-input risks for future triage; do not claim they are fixed.
 4. Preserve retained synthetic resources and unrelated local work; no unauthorized cleanup.
-5. Close only after all required criteria/gates pass; Sync/Archive/commit/push still require authorization.
+5. Do not open another change, commit or push without authorization.

@@ -216,8 +216,8 @@ mock-only or health-only evidence is insufficient. See [tasks](tasks.md).
 
 ## Traceability
 
-Authority: [U05/U06 register](../../../docs/use-cases/decisions.md) and
-[CU09 fiche](../../../docs/use-cases/cu09.md); all original CU09 scenario IDs are
+Authority: [U05/U06 register](../../../../docs/use-cases/decisions.md) and
+[CU09 fiche](../../../../docs/use-cases/cu09.md); all original CU09 scenario IDs are
 preserved across the deltas, not counted twice as independently working tests.
 
 | Proposed capability / requirement | Scenario IDs | Catalog rules / decision source |

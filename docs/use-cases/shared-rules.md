@@ -18,7 +18,7 @@ records or provider keys. This is not approval of an auth mechanism, sharing mod
 or other CUs' detailed per-address matrix. **U05 + U06, CU09:** only the account with
 the registered domicile may save/view/correct/close/export its cuts
 ([Q18](decisions.md#q18)); U07/U07-T approve CU09's session/auth technology in its
-[contract](../../openspec/changes/record-cu09-interruption-diary/contract.md).
+[contract](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/contract.md).
 Broader Q03 decisions remain pending. Negative scenarios define constraints;
 actual isolation evidence is recorded separately in CU09's engineering record.
 

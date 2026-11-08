@@ -24,7 +24,7 @@ backend business calculations or the future chat integration.
 - Document reuse and verify static/unit/security checks plus a single quick real
   browser pass through CU09 including downloaded PDF.
 
-User authority: U09 in [decision register](../../../docs/use-cases/decisions.md).
+User authority: U09 in [decision register](../../../../docs/use-cases/decisions.md).
 The technology direction was approved before planning. U10 subsequently requested
 Apply after artifact presentation. The implementation and actual verification are
 recorded in the engineering record; this proposal itself is not execution evidence.

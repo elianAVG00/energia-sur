@@ -4,7 +4,7 @@ Status: **ACCEPTED DOCUMENTARY BASELINE - stage 05 CLOSED under U06**. Catalog,
 shared rules, register and workflow are accepted with their explicit TBDs. This is
 not by itself implementation acceptance. U07/U07-T subsequently accept CU09's design
 and authorize Apply; U08 resolves the historical-date and frontend lint blockers.
-Its implemented paths pass full acceptance; closure awaits final review/authorization.
+Its implemented paths pass full acceptance; CU09 was archived on 2026-11-08.
 See the [engineering record](../ai-engineering/record-cu09-interruption-diary.md).
 The target of at least seven working
 CUs does not remove the other three from the proposed ten-CU scope.
@@ -50,7 +50,7 @@ not a source for this product. Q00 is approved on the user's U06 teacher-approva
 | CU06 | [Record an electricity bill](cu06.md) | Account holder | P / accepted documentary baseline; implementation planned |
 | CU07 | [Compare recorded consumption with a bill](cu07.md) | Account holder | P + U05 / approved matching and kWh difference; residual TBDs |
 | CU08 | [View consumption trends and estimates](cu08.md) | Account holder | P + U05 / approved base and grouping; projection formula TBD |
-| CU09 | [Record and query an interruption diary](cu09.md) | Account holder | P + U05-U08 / first stage 06 Apply; implemented and verified, closure pending final authorization |
+| CU09 | [Record and query an interruption diary](cu09.md) | Account holder | P + U05-U10 / implemented, verified and archived; bounded CU04 prerequisite only |
 | CU10 | [Supervise automatic source refresh](cu10.md) | Administrator | P / accepted documentary baseline; implementation planned |
 
 Each fiche contains source/status, actor, preconditions, main flow, alternatives,
@@ -69,8 +69,8 @@ separate from unrelated catalog questions.
 
 Use the [question register](decisions.md) to record explicit answers, rationale,
 approver and evidence before promoting affected rules. CU09 is now selected and its
-[proposal](../../openspec/changes/record-cu09-interruption-diary/proposal.md) and
-[design](../../openspec/changes/record-cu09-interruption-diary/design.md) were accepted under U07/U07-T using
+[proposal](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/proposal.md) and
+[design](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/design.md) were accepted under U07/U07-T using
 the [workflow](../openspec-workflow.md). Keep `openspec/specs/` for current behavior;
 do not copy these drafts there. [Stage 05 evidence](../ai-engineering/stage-05-sdd.md)
 separates CLI structure checks from documentation checks and future acceptance.

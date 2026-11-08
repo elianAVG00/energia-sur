@@ -3,9 +3,9 @@
 Web application for checking electricity outages, reporting interruptions, and
 managing electricity consumption in southern Greater Buenos Aires. The selected
 stack is React + TypeScript and Python + FastAPI, developed with OpenCode, Codex,
-and OpenSpec. CU09 now has a private interruption diary and the minimum CU04
-domicile-registration slice. The change remains open until all required checks
-and independent-review findings are resolved; other business CUs are not implemented.
+and OpenSpec. CU09 has a private interruption diary and the minimum CU04
+domicile-registration slice. CU09 and the shared frontend foundation were verified
+and archived on 2026-11-08; other business CUs are not implemented.
 
 ## CU09 - private interruption diary
 
@@ -16,7 +16,7 @@ to the minute; inputs before 1970-01-01 00:00 are rejected with 422. Ongoing row
 **En curso**; reports never implicitly close a cut.
 This implements only CU04's domicile prerequisite, not meters/full address management.
 
-The accepted [contract](openspec/changes/record-cu09-interruption-diary/contract.md)
+The accepted [contract](openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/contract.md)
 documents fields, errors, version conflicts, cookies and CSRF. U09 clarifies that
 login requires a trusted explicit Origin without pre-auth CSRF; authenticated
 unsafe requests require both Origin and a valid session-bound CSRF token. Accounts are provisioned
@@ -74,13 +74,13 @@ alternative instead of force-installing or downgrading. Detailed actual outcomes
 date-floor decision and independent review:
 [CU09 engineering evidence](docs/ai-engineering/record-cu09-interruption-diary.md).
 
-## Shared frontend foundation - implemented, ready for review
+## Shared frontend foundation - implemented and archived
 
 The user approved the direction in U09 and explicitly authorized Apply in U10. The separate
-[establish-frontend-foundation proposal](openspec/changes/establish-frontend-foundation/proposal.md),
-[design](openspec/changes/establish-frontend-foundation/design.md),
-[specifications](openspec/changes/establish-frontend-foundation/specs/frontend-shell/spec.md)
-and [tasks](openspec/changes/establish-frontend-foundation/tasks.md) are ready for review.
+[establish-frontend-foundation proposal](openspec/changes/archive/2026-11-08-establish-frontend-foundation/proposal.md),
+[design](openspec/changes/archive/2026-11-08-establish-frontend-foundation/design.md),
+[specifications](openspec/changes/archive/2026-11-08-establish-frontend-foundation/specs/frontend-shell/spec.md)
+and [tasks](openspec/changes/archive/2026-11-08-establish-frontend-foundation/tasks.md) are archived after verification.
 Implemented: Tailwind/local shadcn/ui components, memory-only Zustand session and
 domicile selection, React Hook Form/Zod forms and centralized Axios with cookie/CSRF
 interceptors, cancellation and safe PDF handling. CU09 adopts these layers without
@@ -89,7 +89,7 @@ LangChain, messaging and streaming remain CU03 work, not implemented chat behavi
 See the [reuse guide](docs/frontend-foundation.md) for module boundaries, adding the
 next CU, reset/security rules and documented checks. Actual verification and the
 independent source review are in the [engineering record](docs/ai-engineering/establish-frontend-foundation.md).
-Both changes remain unarchived for human review; no commit/push/deployment performed.
+Both changes were archived with main specs synchronized; no closure commit, push or deployment performed.
 
 ## Local Docker environment
 
@@ -240,7 +240,7 @@ Before live checks:
 
 - [Operational state](docs/STATE.md)
 - [Accepted stage 05 catalog and decision baseline](docs/use-cases/README.md)
-- [CU09 approved first-development proposal and Apply contract](openspec/changes/record-cu09-interruption-diary/proposal.md)
+- [CU09 approved first-development proposal and Apply contract](openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/proposal.md)
 - [CU09 implementation, verification evidence and remaining gates](docs/ai-engineering/record-cu09-interruption-diary.md)
 - [Approved MCP design and tasks](openspec/changes/configure-readonly-development-mcp/design.md)
 - [MCP setup, authentication checkpoint, and redacted checks](docs/ai-engineering/configure-readonly-development-mcp.md)

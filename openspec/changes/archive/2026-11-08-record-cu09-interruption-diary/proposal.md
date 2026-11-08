@@ -25,8 +25,8 @@ implements only technical health checks, not accounts, domiciles or diary behavi
 - Preserve all existing catalog scenario IDs; convert approved rules into draft
   implementation delta contracts without promoting them into current main specs.
 
-Authority: [U05/U06 register](../../../docs/use-cases/decisions.md),
-[CU09 fiche](../../../docs/use-cases/cu09.md), and [accepted workflow](../../../docs/openspec-workflow.md).
+Authority: [U05/U06 register](../../../../docs/use-cases/decisions.md),
+[CU09 fiche](../../../../docs/use-cases/cu09.md), and [accepted workflow](../../../../docs/openspec-workflow.md).
 The original proposal-only request is superseded by U07. Implementation is now
 authorized against the accepted options in [design](design.md); outstanding details
 block only affected tasks. No Sync, Archive, commit or push is authorized.

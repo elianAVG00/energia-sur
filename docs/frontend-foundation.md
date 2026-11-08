@@ -16,8 +16,8 @@ this foundation is not a second app, backend framework, router or query cache.
 | Cancellation/calendar presentation | `frontend/src/diaryState.ts`, `useRequestScope.ts` | Existing request lanes and Buenos Aires display helpers; not authoritative duration calculations. |
 
 All paths in the table are repository-relative; abbreviated `src/` paths are under
-`frontend/`. See the active [design](../openspec/changes/establish-frontend-foundation/design.md)
-and [tasks](../openspec/changes/establish-frontend-foundation/tasks.md) for scope and evidence.
+`frontend/`. See the archived [design](../openspec/changes/archive/2026-11-08-establish-frontend-foundation/design.md)
+and [tasks](../openspec/changes/archive/2026-11-08-establish-frontend-foundation/tasks.md) for scope and evidence.
 
 ## Adding another CU
 

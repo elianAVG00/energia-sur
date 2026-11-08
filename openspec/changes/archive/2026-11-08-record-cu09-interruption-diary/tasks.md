@@ -50,22 +50,25 @@ Artifact existence is not implementation evidence; partial tasks remain unchecke
 
 - [x] 8.1 Exercise real browser -> FastAPI -> PostgreSQL persistence and downloaded/opened PDF using two synthetic accounts; verify all CU09 scenarios plus AD-S01/AD-S02 with retained acceptance evidence, not health-only or mock-only claims.
 - [x] 8.2 Run approved backend/frontend tests, lint, types, build, locked-install and relevant scaffold regressions; record commands/results as PASS/FAIL/BLOCKED/NOT APPLICABLE without weakening inherited requirements.
-- [ ] 8.3 Obtain independent auth/data-isolation/security review and correct/recheck findings; verify a separate review artifact covering every owner-bound operation and no remaining mandatory failure/blocker.
+- [x] 8.3 Obtain independent auth/data-isolation/security review and correct/recheck findings; verify a separate review artifact covering every owner-bound operation and no remaining mandatory failure/blocker.
 - [x] 8.4 Run strict OpenSpec and documentary validation, reconcile tasks, update STATE/README/engineering evidence; verify acceptance links and distinguish implemented CU09 from excluded CU04 scope.
 
 ## Workflow follow-up
 
-Evidence: [Apply engineering record](../../../docs/ai-engineering/record-cu09-interruption-diary.md).
+Evidence: [Apply engineering record](../../../../docs/ai-engineering/record-cu09-interruption-diary.md).
 U07/U07-T/U08 approve the package, inclusive 1970 floor and Oxlint. U09 explicitly
 resolves M1: trusted-Origin login without pre-auth CSRF, Origin plus valid CSRF for
 authenticated writes. Contract, route table and delta spec are aligned. Latest
 acceptance passes 66 backend tests (14 PostgreSQL), exactly one quick Chromium pass
 and PDFs. Full independent source audit `ses_e4a277d40ffeKFk0IOVunZlbV5` plus focused
 U09 recheck `ses_e48c2222cffebM8WOEV9Jfbiux` found no remaining M1 issue.
-Task 8.3 remains open solely for final human review/disposition of recorded low
-residuals, not date/lint/M1 approval. No final closure/Archive is claimed. Foundation
-adoption is separately planned under `establish-frontend-foundation` and is not
-claimed by the existing CU09 verification evidence.
+On 2026-11-08 the user approved closure subject to final checks, requesting that
+the documented low observations be classified as nonblocking. The independent
+review classified the out-of-band pre-1970-row issue as a low residual outside
+accepted API writes; NUL-input 503 remains an unverified low hypothesis. Neither
+is claimed fixed, nor accepted as a change to the 422 contract. Registry-config
+concern was resolved by redacted inspection. Evidence is in the engineering record;
+foundation adoption and its later real-browser acceptance are recorded separately.
 
 - U07 authorizes Apply now; only complete/evidenced tasks may be checked, and no implementation closure is implied by approval.
 - Sync/Archive, commit and push require their own applicable authorization and gates;

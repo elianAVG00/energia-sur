@@ -51,7 +51,7 @@ demonstrates a working business CU.
 
 The [U06 evidence](use-cases/decisions.md#u06---baseline-acceptance-and-cu09-proposal-authorization)
 supersedes those old blockers and authorizes only proposal artifacts under
-`openspec/changes/record-cu09-interruption-diary/`, with related documentation and
+`openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/`, with related documentation and
 context updates. Auth/persistence/PDF design choices must be explicitly reviewed.
 Existing changes, main specs, runtime source, manifests/locks, AGENTS and tooling
 configuration remain untouched. No Apply, Sync, Archive, installation, commit or

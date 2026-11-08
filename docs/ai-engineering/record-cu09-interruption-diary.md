@@ -1,15 +1,48 @@
 # CU09 interruption diary - stage 06 engineering record
 
-Status: **IMPLEMENTED PATHS VERIFIED; U09 SECURITY CLARIFICATION RECHECKED; READY FOR REVIEW, NOT ARCHIVED**.
+Status: **VERIFIED AND ARCHIVED 2026-11-08; MAIN SPECS SYNCHRONIZED**.
 Updated 2026-11-07. U07 accepts the recommended proposal/design and requests Apply;
-U07-T explicitly approves the technical package in the [contract](../../openspec/changes/record-cu09-interruption-diary/contract.md).
-Links: [proposal](../../openspec/changes/record-cu09-interruption-diary/proposal.md),
-[design](../../openspec/changes/record-cu09-interruption-diary/design.md),
-[tasks](../../openspec/changes/record-cu09-interruption-diary/tasks.md),
-[domicile delta](../../openspec/changes/record-cu09-interruption-diary/specs/account-domiciles/spec.md),
-[diary delta](../../openspec/changes/record-cu09-interruption-diary/specs/interruption-diary/spec.md).
+U07-T explicitly approves the technical package in the [contract](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/contract.md).
+Links: [proposal](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/proposal.md),
+[design](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/design.md),
+[tasks](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/tasks.md),
+[domicile delta](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/specs/account-domiciles/spec.md),
+[diary delta](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/specs/interruption-diary/spec.md).
 
 ## Apply checkpoint and actual implementation
+
+### Closure decision and final verification - 2026-11-08
+
+**Archive result:** synchronized `account-domiciles` and `interruption-diary` to
+`openspec/specs/`, verified exact Purpose/requirement/scenario content, then moved
+this change to [archive/2026-11-08-record-cu09-interruption-diary](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/).
+The separately approved foundation was synchronized and archived too. No commit
+or push was performed by this closure operation. Post-move strict OpenSpec
+validation passed 6/6 current items and archived validation passed 2/2 changes;
+307 relative documentation/spec targets resolved and both diff checks passed.
+
+The user explicitly approved closure and synchronization/archive of this change
+and the frontend foundation subject to final repository checks. No commit, push,
+new change or data cleanup was authorized. Independent reviewer
+`ses_e4a277d40ffeKFk0IOVunZlbV5` classified out-of-band pre-1970 rows as a low,
+nonblocking robustness risk for this accepted API scope: such rows can make listing
+return 500 or reports 422. The NUL-input 503 concern is a low, unverified hypothesis,
+not a confirmed failure or a change to the 422 contract. Neither is claimed fixed;
+retain both for future triage rather than silently changing requirements. The copied
+registry-config concern was resolved by a secret-free primary inspection.
+
+The full independent review covered every owner-bound operation; the U09 focused
+recheck `ses_e48c2222cffebM8WOEV9Jfbiux` resolved M1. The primary verified current
+code against the retained verification images byte-for-byte: backend 20 files
+SHA256 `e785e8aa54f3dee5cf26ef446448dd05a54a57a682ce75734a2e527a0627c78b`;
+frontend 41 files SHA256 `f30d340d479a1c46b0e5f419b16879a6c543ee2fe9e05fdf2c26e56addb01ce9`.
+The retained logs confirm 66 backend tests, 50 frontend tests, one 7.7s real-browser
+workflow and actual PDF inspection. U09 regressions cover absent/untrusted login
+Origin and missing/invalid CSRF for every protected mutation. Strict OpenSpec4/4
+and unstaged/staged `git diff --check` passed before synchronization. The current
+checkout was clean at entry on `main`, HEAD `ce88194`, ahead of origin by two commits;
+those human commits are preserved. Task 8.3 is reconciled based on the review,
+clarification, regression evidence and explicit nonblocking classification above.
 
 ### Foundation adoption regression checkpoint
 

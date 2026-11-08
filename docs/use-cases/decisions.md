@@ -3,7 +3,7 @@
 Status: **stage 05 documentary baseline accepted and closed under U06**; CU09 is
 selected for the first stage 06 development. U07 approves its proposal/recommended
 D0-D5 and authorizes Apply; U07-T approves the missing technical package in its
-[contract](../../openspec/changes/record-cu09-interruption-diary/contract.md).
+[contract](../../openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/contract.md).
 U08 resolves the historical-date floor and frontend lint alternative. Unrelated
 scope/stack decisions are not implicitly approved. Verification and any
 newly observed design edge remain separate from the user's approval.
