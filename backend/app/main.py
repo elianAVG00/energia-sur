@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import StaleDataError
 
+from app import management
 from app.api import router
 from app.db import DatabaseUnavailable, dispose_engines
 
@@ -31,6 +32,26 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
+
+
+@app.exception_handler(management.MissingResource)
+async def missing_management(request: Request, error: Exception) -> JSONResponse:
+    return JSONResponse({"detail": "El recurso no está disponible."}, status_code=404,
+                        headers={"Cache-Control": "no-store"})
+
+
+@app.exception_handler(management.VersionConflict)
+async def management_conflict(request: Request, error: Exception) -> JSONResponse:
+    return JSONResponse({"detail": "El registro fue modificado; actualizá antes de reintentar.",
+                         "code": "VERSION_CONFLICT"}, status_code=409,
+                        headers={"Cache-Control": "no-store"})
+
+
+@app.exception_handler(management.DuplicateMeter)
+async def duplicate_meter(request: Request, error: Exception) -> JSONResponse:
+    return JSONResponse({"detail": "Ya existe un medidor con ese número.",
+                         "code": "DUPLICATE_METER"}, status_code=409,
+                        headers={"Cache-Control": "no-store"})
 
 
 @app.exception_handler(RequestValidationError)

@@ -84,7 +84,7 @@ test('status-aware errors never replay mutations and expire only current authent
       assert.ok(error instanceof DiaryError);
       assert.equal(error.status, status);
       assert.ok(error.message.includes('Safe server detail'));
-      if (status === 409) assert.match(error.message, /Descartar borrador/);
+      if (status === 409) assert.doesNotMatch(error.message, /Descartar borrador/);
       return true;
     });
     assert.equal(calls, 1);

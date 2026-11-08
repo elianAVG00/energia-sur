@@ -92,6 +92,18 @@ The previous canceled attempt only performed read-only inspection; implementatio
 starts on this subsequent request. Preserve U09's already verified CU09 security
 clarification without reopening it as a pending policy decision.
 
+## U11 - CU04-scoped decisions and proposal authorization
+
+Recorded from the user's 2026-11-08 instruction beginning "Rol: Modo PROPOSE estricto". The user approves the CU04-only Q03/Q08/Q09 rules below, additive migration after `0001_cu09`, optimistic concurrency, composite ownership FK and frontend composition, and authorizes the `manage-cu04-domiciles-meters` proposal and this documentation update. This is not acceptance of the complete artifacts, Apply, test execution, migration, sync, archive, commit or push. Alias validation and exact Unicode comparison are proposed refinements for human review. No approval extends these rules to other CUs.
+
+## U12 - CU04 contract refinements and conditional Apply
+
+Recorded from the user's current instruction beginning “Continuá el cambio OpenSpec `manage-cu04-domiciles-meters`”. The user approves for CU04: meter number required, 1–120 after trimming ASCII spaces, printable ASCII only, no controls or NUL; preserve leading zeroes, signs and internal spaces; ASCII lowercase uniqueness per account, including across domiciles, enforced consistently by backend and PostgreSQL under concurrency. Alias is optional null or trimmed text up to 120 characters, blank becomes null, controls/NUL rejected, Spanish accents allowed; it is not part of uniqueness. The six routes in the CU04 design are approved while existing domicile GET/POST stay unchanged. CU04 409 codes are `DUPLICATE_METER` and `VERSION_CONFLICT`, not message-based classification.
+
+The user distinguishes physical meter number from customer number; a customer number often has 7–10 digits and can appear on the bill, but that is not a validation constraint. No `customer_number` persistence is approved. Its possible CU06 need is a future question and does not block CU04.
+
+The user authorizes Apply of this change only after documentary validation, traceability and independent review pass without blockers or unresolved functional decisions. No sync, archive, commit or push is authorized.
+
 ## Confirmed facts versus inferences
 
 - **C:** React/TypeScript, Vite/npm, FastAPI/Uvicorn/uv and PostgreSQL in Docker
@@ -139,9 +151,8 @@ and CU02-S02's location-error behavior.
 domicile may save, view, correct, close or export its cuts (Q18).
 U07/U07-T approve opaque server sessions, controlled provisioning and the contract's
 cookie/CSRF/hash details for CU09 and its minimum CU04 slice.
-**Pending:** broader CUs' roles/ownership behavior remains unspecified. CU09 still
-requires real isolation tests and independent review before closure, not renewed
-approval of the chosen session mechanism.
+**U11, CU04:** a domicile belongs to one account and a meter to one domicile; ownership is checked via that domicile's account. Only its owner manages either using the existing opaque session; writes require trusted Origin and CSRF. Foreign or nonexistent resources return 404. No roles or Edesur ownership verification are introduced.
+**Pending:** other CUs' roles/ownership behavior remains unspecified. Actual CU04 isolation tests and independent review remain required before closure.
 
 ### Q04
 **TBD - CU01/CU02/CU03/CU10:** Which official endpoints, terms, coverage and refresh
@@ -166,16 +177,14 @@ The no-invention constraint remains in force without selecting that UX.
 **PARTIAL - CU04:** U07/U07-T approve the CU09 prerequisite's stable domicile ID,
 account binding and trimmed 1-300-character display_address, register/list/select,
 without a meter or legal-address verification.
-**Pending:** full CU04 meter identities/cardinality, address deduplication/editing
-and association corrections still block CU04-S01/S02 beyond that bounded slice.
+**U11, CU04:** a domicile has zero to many meters, each with a stable ID, number and optional alias. Number is 1–120 characters after trim, case-insensitive for uniqueness, and excludes NUL; uniqueness is per account. Duplicate domiciles remain allowed with a UI warning. Existing meter-free CU09 use is preserved.
+**U12:** approved ASCII-only number normalization, alias validation and per-account concurrent uniqueness are specified above. No approval is implied for other CUs or physical-meter identity verification.
 
 ### Q09
 **PARTIAL - CU04-CU09. Approved for CU09 by U06:** the owner account can correct
 open and closed cuts using the same date validation, and close ongoing cuts.
-**Pending:** domicile/meter reassignment/deletion, retention and linked-file policy;
-reopening a closed cut by removing its end is not expressly specified. Blocks
-CU04-S02 and those lifecycle variants, not the approved CU09 correction scenarios.
-No deletion feature is added. See design D4 for residual technical edge decisions.
+**U11, CU04:** correct address, meter number and alias without changing IDs; do not delete, transfer or physically replace domiciles/meters. CU09 cuts retain their domicile ID; future PDFs display the current address.
+**Pending:** reassignment/deletion, replacement, retention and linked-file policy outside this CU04 scope; reopening a closed cut by removing its end remains unspecified. The CU04 decision does not settle future CU05/CU06 histories or approve deletion.
 
 ### Q10
 **TBD - CU05/CU07/CU08:** How are equal/decreasing, duplicate/out-of-order readings,

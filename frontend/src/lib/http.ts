@@ -67,21 +67,26 @@ export function apiPath(path: string): string {
   return `/api${path}`;
 }
 
-async function errorDetail(response: AxiosResponse<unknown>, context: Context): Promise<string> {
+async function errorDetail(response: AxiosResponse<unknown>, context: Context): Promise<{ detail: string; code: DiaryError['code'] }> {
+  const fallback = { detail: statusMessage(response.status), code: null };
   const contentType: unknown = response.headers['content-type'];
   let body: unknown = response.data;
-  if (typeof contentType !== 'string' || !/^application\/json(?:\s*;|$)/i.test(contentType)) return statusMessage(response.status);
+  if (typeof contentType !== 'string' || !/^application\/json(?:\s*;|$)/i.test(contentType)) return fallback;
   if (body instanceof Blob) {
-    if (body.size > 8192) return statusMessage(response.status);
+    if (body.size > 8192) return fallback;
     try { body = JSON.parse(await readErrorBlob(body, context)); }
     catch (error: unknown) {
       if (error instanceof DiaryError) throw error;
-      return statusMessage(response.status);
+      return fallback;
     }
   }
   if (typeof body === 'object' && body !== null && 'detail' in body &&
-      typeof body.detail === 'string' && body.detail.trim() && body.detail.length <= 2048) return body.detail;
-  return statusMessage(response.status);
+      typeof body.detail === 'string' && body.detail.trim() && body.detail.length <= 2048) {
+    const code = response.status === 409 && 'code' in body &&
+      (body.code === 'DUPLICATE_METER' || body.code === 'VERSION_CONFLICT') ? body.code : null;
+    return { detail: body.detail, code };
+  }
+  return fallback;
 }
 
 export function createHttpClient(options: { store?: SessionStore; adapter?: AxiosAdapter; deadlineSignal?: () => AbortSignal } = {}) {
@@ -120,15 +125,14 @@ export function createHttpClient(options: { store?: SessionStore; adapter?: Axio
     }
     if (context.combined.aborted) throw cancellation(context);
     if (response.status < 200 || response.status >= 300) {
-      let detail = await errorDetail(response, context);
+      const { detail, code } = await errorDetail(response, context);
       // Error-body decoding can be asynchronous (PDF JSON blobs).
       if (context.generation !== store.getState().generation) {
         throw new DiaryError('aborted', 'La solicitud fue cancelada.');
       }
       if (context.combined.aborted) throw cancellation(context);
       if (response.status === 401 && store.getState().session) store.getState().clearSession(context.generation, true);
-      if (response.status === 409) detail += ' Usá «Descartar borrador y recargar» para abrir la versión actual; tus cambios no se sobrescribieron.';
-      throw new DiaryError('http', detail, response.status);
+      throw new DiaryError('http', detail, response.status, code);
     }
     return response;
   });

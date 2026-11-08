@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Label } from '../../components/ui/label.tsx';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table.tsx';
 import { CloseForm, CutForm, DomicileForm, PeriodForm } from './forms.tsx';
+import { DomicileManagement } from '../domiciles/DomicileManagement.tsx';
 
 export function Workspace({ session, generation }: { session: Session; generation: number }) {
   const scope = useRequestScope();
@@ -20,6 +21,7 @@ export function Workspace({ session, generation }: { session: Session; generatio
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const clearFeedback = useCallback(() => { setNotice(''); setError(''); }, []);
+  const updateDomicile = useCallback((row: Domicile) => setDomiciles(current => current.map(existing => existing.id === row.id ? row : existing)), []);
   const active = useCallback(() => sessionStore.getState().generation === generation, [generation]);
   const failed = useCallback((reason: unknown) => {
     if (!active()) return;
@@ -57,7 +59,7 @@ export function Workspace({ session, generation }: { session: Session; generatio
     {notice && <Alert role="status">{notice}</Alert>}
     {!loaded && <p role="status">Cargando domicilios…</p>}
     <Card><CardHeader><CardTitle>Domicilios</CardTitle></CardHeader><CardContent>
-      <DomicileForm key={selected} busy={busy || !loaded} save={createDomicile} />
+      <DomicileForm key={selected} busy={busy || !loaded} save={createDomicile} addresses={domiciles} />
       {loaded && domiciles.length === 0 && <p>Registrá un domicilio para empezar. No se necesita medidor.</p>}
       {domiciles.length > 0 && <div className="space-y-2"><Label htmlFor="selected-domicile">Domicilio seleccionado</Label>
         <select id="selected-domicile" className="min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 py-2 text-base focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50" value={selected} disabled={busy} onChange={event => {
@@ -65,6 +67,7 @@ export function Workspace({ session, generation }: { session: Session; generatio
         }}><option value="" disabled>Elegí un domicilio</option>{domiciles.map(d => <option key={d.id} value={d.id}>{d.display_address}</option>)}</select>
       </div>}
     </CardContent></Card>
+    {selected && <DomicileManagement key={`${generation}:${selected}`} selected={selected} generation={generation} rows={domiciles} updateRow={updateDomicile} />}
     {selected && <DiaryWorkspace key={selected} session={session} generation={generation} selected={selected} onActivity={clearFeedback} />}
   </section>;
 }
@@ -89,7 +92,12 @@ function DiaryWorkspace({ session, generation, selected, onActivity }: { session
   const failed = useCallback((reason: unknown) => {
     if (!active()) return;
     if (reason instanceof DiaryError && reason.status === 401) sessionStore.getState().clearSession(generation, true);
-    else { setError(errorMessage(reason)); if (reason instanceof DiaryError && reason.status === 409) setConflict(true); }
+    else {
+      if (reason instanceof DiaryError && reason.status === 409) {
+        setConflict(true);
+        setError(errorMessage(reason));
+      } else setError(errorMessage(reason));
+    }
   }, [active, generation]);
 
   const refresh = useCallback(async () => {

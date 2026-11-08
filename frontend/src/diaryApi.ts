@@ -72,9 +72,20 @@ export class DiaryClient {
   private readonly transport: HttpClient;
   constructor(transport: HttpClient = http) { this.transport = transport; }
 
+  private async request(path: string, signal: AbortSignal, request: Parameters<HttpClient['request']>[2] = {}) {
+    try {
+      return await this.transport.request(path, signal, request);
+    } catch (error: unknown) {
+      if (error instanceof DiaryError && error.status === 409) {
+        throw new DiaryError(error.kind, `${error.message} Usá «Descartar borrador y recargar» para abrir la versión actual; tus cambios no se sobrescribieron.`, error.status, error.code);
+      }
+      throw error;
+    }
+  }
+
   private async json<T>(path: string, signal: AbortSignal, validate: (value: unknown) => value is T,
     expected: number, request: Parameters<HttpClient['request']>[2] = {}): Promise<T> {
-    const response = await this.transport.request(path, signal, request);
+    const response = await this.request(path, signal, request);
     const contentType: unknown = response.headers['content-type'];
     if (response.status !== expected || typeof contentType !== 'string' || !/^application\/json(?:\s*;|$)/i.test(contentType)) throw invalidResponse();
     const body: unknown = response.data;
@@ -94,7 +105,7 @@ export class DiaryClient {
     });
   }
   async logout(csrf: string, signal: AbortSignal): Promise<void> {
-    const response = await this.transport.request('/logout', signal, { method: 'POST', logoutToken: csrf });
+    const response = await this.request('/logout', signal, { method: 'POST', logoutToken: csrf });
     if (response.status !== 204) throw invalidResponse();
   }
   domiciles(signal: AbortSignal): Promise<Domicile[]> { return this.json('/domiciles', signal, isDomiciles, 200); }
@@ -133,7 +144,7 @@ export class DiaryClient {
     return `/domiciles/${encodeURIComponent(id)}/${resource}?${query.toString()}`;
   }
   async pdf(id: string, period: Period, signal: AbortSignal): Promise<Blob> {
-    const response = await this.transport.request(this.reportPath(id, 'report.pdf', period), signal, { responseType: 'blob' });
+    const response = await this.request(this.reportPath(id, 'report.pdf', period), signal, { responseType: 'blob' });
     const contentType: unknown = response.headers['content-type'];
     if (response.status !== 200 || typeof contentType !== 'string' || !/^application\/pdf(?:\s*;|$)/i.test(contentType)) throw invalidResponse();
     const blob: unknown = response.data;

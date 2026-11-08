@@ -1,6 +1,7 @@
 """Typed, extra-field rejecting transport schemas for the accepted CU09 contract."""
 
 import re
+import unicodedata
 from datetime import datetime
 from typing import Literal
 
@@ -43,6 +44,54 @@ class DomicileInput(Schema):
 class DomicileOut(Schema):
     id: str
     display_address: str
+
+
+class DomicileCorrection(DomicileInput):
+    version: int = Field(strict=True, gt=0)
+
+
+class DomicileManagement(DomicileOut):
+    version: int
+
+
+class MeterInput(Schema):
+    meter_number: str
+    alias: str | None = None
+
+    @field_validator("meter_number")
+    @classmethod
+    def valid_number(cls, value: str) -> str:
+        if any(not 0x20 <= ord(char) <= 0x7e for char in value):
+            raise ValueError("Meter number must contain printable ASCII only.")
+        value = value.strip(" ")
+        if not 1 <= len(value) <= 120:
+            raise ValueError("Meter number must contain 1 to 120 characters.")
+        return value
+
+    @field_validator("alias")
+    @classmethod
+    def valid_alias(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if any(unicodedata.category(char) == "Cc" for char in value):
+            raise ValueError("Alias must not contain control characters.")
+        value = value.strip()
+        if len(value) > 120:
+            raise ValueError("Alias must contain at most 120 characters.")
+        return value or None
+
+
+class MeterCorrection(MeterInput):
+    alias: str | None
+    version: int = Field(strict=True, gt=0)
+
+
+class MeterOut(Schema):
+    id: str
+    domicile_id: str
+    meter_number: str
+    alias: str | None
+    version: int
 
 
 def local_datetime(value: datetime) -> datetime:

@@ -1,8 +1,23 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { loginSchema, domicileSchema, cutSchema, closedCutSchema, closeSchema, periodSchema } from '../src/features/diary/schemas.ts';
+import { duplicateAddress, meterSchema } from '../src/features/domiciles/schemas.ts';
 
 const draft = { start_at: '2026-11-01T10:00', end_at: '', observations: '', complaint_number: '' };
+
+test('meter form preserves identifiers and passes server-owned validation to the backend', () => {
+  assert.deepEqual(meterSchema.parse({ meter_number: '  001-Ab  ', alias: '' }), { meter_number: '  001-Ab  ', alias: null });
+  assert.deepEqual(meterSchema.parse({ meter_number: '001', alias: ' Medidor eléctrico ' }), { meter_number: '001', alias: ' Medidor eléctrico ' });
+  assert.equal(meterSchema.safeParse({ meter_number: ' ', alias: '' }).success, false);
+});
+
+test('duplicate address warning compares trimmed own rows and excludes the edited row', () => {
+  const rows = [{ id: 'one', display_address: 'Example 1' }, { id: 'two', display_address: 'Example 2' }];
+  assert.equal(duplicateAddress(' Example 1 ', rows), true);
+  assert.equal(duplicateAddress('Example 1', rows, 'one'), false);
+  assert.equal(duplicateAddress('example 1', rows), false);
+  assert.equal(duplicateAddress(' ', rows), false);
+});
 
 test('login requires transient credentials and preserves exact password text', () => {
   assert.equal(loginSchema.safeParse({ username: '', password: 'synthetic' }).success, false);

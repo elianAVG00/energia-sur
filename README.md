@@ -5,7 +5,13 @@ managing electricity consumption in southern Greater Buenos Aires. The selected
 stack is React + TypeScript and Python + FastAPI, developed with OpenCode, Codex,
 and OpenSpec. CU09 has a private interruption diary and the minimum CU04
 domicile-registration slice. CU09 and the shared frontend foundation were verified
-and archived on 2026-11-08; other business CUs are not implemented.
+and archived on 2026-11-08. CU04 was subsequently implemented and verified;
+other business CUs are not implemented.
+
+CU04 domicile and meter management is implemented, verified and archived;
+Git staging, commits and pushes are managed by the user:
+[proposal](openspec/changes/archive/2026-11-08-manage-cu04-domiciles-meters/proposal.md),
+[engineering record](docs/ai-engineering/manage-cu04-domiciles-meters.md).
 
 ## CU09 - private interruption diary
 

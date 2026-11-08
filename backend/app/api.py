@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import diary
+from app import diary, management
 from app.db import get_engine
-from app.models import Account, Domicile, Interruption, WebSession
+from app.models import Account, Domicile, Interruption, Meter, WebSession
 from app.pdf import render_pdf
 from app.schemas import (
     AccountOut,
@@ -20,9 +20,14 @@ from app.schemas import (
     Correction,
     CutInput,
     CutOut,
+    DomicileCorrection,
     DomicileInput,
+    DomicileManagement,
     DomicileOut,
     Login,
+    MeterCorrection,
+    MeterInput,
+    MeterOut,
     SessionOut,
     SummaryOut,
     parse_datetime,
@@ -210,6 +215,56 @@ def create_domicile(payload: DomicileInput, actor: Writer, db: DB) -> DomicileOu
     db.add(domicile)
     db.commit()
     return domicile_out(domicile)
+
+
+def management_out(row: Domicile) -> DomicileManagement:
+    return DomicileManagement(id=row.id, display_address=row.display_address, version=row.version)
+
+
+def meter_out(row: Meter) -> MeterOut:
+    return MeterOut(id=row.id, domicile_id=row.domicile_id, meter_number=row.meter_number,
+                    alias=row.alias, version=row.version)
+
+
+@router.get("/domiciles/{domicile_id}/management", response_model=DomicileManagement)
+def get_management(domicile_id: str, actor: Auth, db: DB) -> DomicileManagement:
+    return management_out(management.domicile(db, actor.account.id, domicile_id))
+
+
+@router.patch("/domiciles/{domicile_id}", response_model=DomicileManagement)
+def patch_domicile(
+    domicile_id: str, payload: DomicileCorrection, actor: Writer, db: DB,
+) -> DomicileManagement:
+    return management_out(management.correct_domicile(
+        db, actor.account.id, domicile_id, payload.display_address, payload.version,
+    ))
+
+
+@router.get("/domiciles/{domicile_id}/meters", response_model=list[MeterOut])
+def list_meters(domicile_id: str, actor: Auth, db: DB) -> list[MeterOut]:
+    return [meter_out(row) for row in management.meters(db, actor.account.id, domicile_id)]
+
+
+@router.post("/domiciles/{domicile_id}/meters", status_code=201, response_model=MeterOut)
+def add_meter(domicile_id: str, payload: MeterInput, actor: Writer, db: DB) -> MeterOut:
+    return meter_out(management.create_meter(
+        db, actor.account.id, domicile_id, payload.meter_number, payload.alias,
+    ))
+
+
+@router.get("/domiciles/{domicile_id}/meters/{meter_id}", response_model=MeterOut)
+def get_meter(domicile_id: str, meter_id: str, actor: Auth, db: DB) -> MeterOut:
+    return meter_out(management.meter(db, actor.account.id, domicile_id, meter_id))
+
+
+@router.patch("/domiciles/{domicile_id}/meters/{meter_id}", response_model=MeterOut)
+def patch_meter(
+    domicile_id: str, meter_id: str, payload: MeterCorrection, actor: Writer, db: DB,
+) -> MeterOut:
+    return meter_out(management.correct_meter(
+        db, actor.account.id, domicile_id, meter_id, payload.meter_number,
+        payload.alias, payload.version,
+    ))
 
 
 def stored_cuts(db: Session, domicile_id: str) -> list[Interruption]:

@@ -11,6 +11,7 @@ import { Textarea } from '../../components/ui/textarea.tsx';
 import { Label } from '../../components/ui/label.tsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.tsx';
 import { loginSchema, domicileSchema, cutSchema, closedCutSchema, closeSchema, periodSchema } from './schemas.ts';
+import { duplicateAddress } from '../domiciles/schemas.ts';
 
 function Field({ id, label, error, children }: { id: string; label: string; error: string | undefined; children: ReactNode }) {
   return <div className="space-y-2"><Label htmlFor={id}>{label}</Label>{children}{error && <p id={`${id}-error`} role="alert" className="text-sm text-destructive">{error}</p>}</div>;
@@ -37,11 +38,13 @@ export function LoginForm({ pending, login }: { pending: boolean; login: (values
   </CardContent></Card>;
 }
 
-export function DomicileForm({ busy, save }: { busy: boolean; save: (address: string) => Promise<boolean> }) {
+export function DomicileForm({ busy, save, addresses }: { busy: boolean; save: (address: string) => Promise<boolean>; addresses: { id: string; display_address: string }[] }) {
   const id = useId();
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof domicileSchema>, unknown, z.output<typeof domicileSchema>>({ resolver: zodResolver(domicileSchema), defaultValues: { display_address: '' } });
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<z.input<typeof domicileSchema>, unknown, z.output<typeof domicileSchema>>({ resolver: zodResolver(domicileSchema), defaultValues: { display_address: '' } });
+  const address = watch('display_address').trim();
   return <form noValidate className="space-y-4" onSubmit={handleSubmit(async values => { if (await save(values.display_address)) reset(); })}>
     <Field id={id} label="Domicilio nuevo" error={errors.display_address?.message}><Input {...register('display_address')} {...feedback(id, errors.display_address?.message)} required maxLength={300} disabled={busy || isSubmitting} /></Field>
+    {duplicateAddress(address, addresses) && <p role="status">Ya existe un domicilio con esta dirección. Podés registrarlo igualmente.</p>}
     <Button disabled={busy || isSubmitting}>Registrar domicilio</Button>
   </form>;
 }

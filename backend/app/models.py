@@ -3,7 +3,19 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -33,9 +45,41 @@ class WebSession(Base):
 
 class Domicile(Base):
     __tablename__ = "es_domiciles"
+    __table_args__ = (
+        UniqueConstraint("id", "account_id", name="uq_domicile_id_account"),
+        CheckConstraint("version > 0", name="ck_domicile_version"),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
     account_id: Mapped[str] = mapped_column(ForeignKey("es_accounts.id"), index=True)
     display_address: Mapped[str] = mapped_column(String(300))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+
+
+class Meter(Base):
+    __tablename__ = "es_meters"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["domicile_id", "account_id"], ["es_domiciles.id", "es_domiciles.account_id"],
+            name="fk_meter_domicile_owner",
+        ),
+        CheckConstraint("version > 0", name="ck_meter_version"),
+        CheckConstraint(
+            "meter_number <> '' AND meter_number = btrim(meter_number, ' ') "
+            "AND meter_number COLLATE \"C\" !~ '[^ -~]'",
+            name="ck_meter_number_ascii",
+        ),
+        Index(
+            "uq_meter_account_normalized", "account_id",
+            text("(translate(btrim(meter_number, ' '), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+                 "'abcdefghijklmnopqrstuvwxyz') COLLATE \"C\")"), unique=True,
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    domicile_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    account_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    meter_number: Mapped[str] = mapped_column(String(120), nullable=False)
+    alias: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
 
 
 class Interruption(Base):
