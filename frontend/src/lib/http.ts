@@ -3,6 +3,7 @@ import type { AxiosAdapter, AxiosResponse, GenericAbortSignal } from 'axios';
 import { sessionStore } from '../stores/session.ts';
 import type { SessionStore } from '../stores/session.ts';
 import { DiaryError, statusMessage } from './httpError.ts';
+import type { BillOverlap, BillWarning } from './httpError.ts';
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 interface RequestOptions {
@@ -68,8 +69,19 @@ export function apiPath(path: string): string {
   return `/api${path}`;
 }
 
-async function errorDetail(response: AxiosResponse<unknown>, context: Context): Promise<{ detail: string; code: DiaryError['code'] }> {
-  const fallback = { detail: statusMessage(response.status), code: null };
+function billWarning(body: unknown): BillWarning | null {
+  if (typeof body !== 'object' || body === null || !('overlap_token' in body) || !('overlaps' in body) || typeof body.overlap_token !== 'string' || !body.overlap_token || !Array.isArray(body.overlaps)) return null;
+  const overlaps = body.overlaps;
+  if (!overlaps.every((row: unknown): row is BillOverlap => typeof row === 'object' && row !== null &&
+    'id' in row && typeof row.id === 'string' && row.id.length > 0 &&
+    'period_start' in row && typeof row.period_start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.period_start) &&
+    'period_end' in row && typeof row.period_end === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.period_end) &&
+    'version' in row && typeof row.version === 'number' && Number.isSafeInteger(row.version) && row.version > 0)) return null;
+  return { overlap_token: body.overlap_token, overlaps };
+}
+
+async function errorDetail(response: AxiosResponse<unknown>, context: Context): Promise<{ detail: string; code: DiaryError['code']; warning: BillWarning | null }> {
+  const fallback = { detail: statusMessage(response.status), code: null, warning: null };
   const contentType: unknown = response.headers['content-type'];
   let body: unknown = response.data;
   if (typeof contentType !== 'string' || !/^application\/json(?:\s*;|$)/i.test(contentType)) return fallback;
@@ -84,9 +96,10 @@ async function errorDetail(response: AxiosResponse<unknown>, context: Context): 
   if (typeof body === 'object' && body !== null && 'detail' in body &&
       typeof body.detail === 'string' && body.detail.trim() && body.detail.length <= 2048) {
     const code = response.status === 409 && 'code' in body &&
-      (body.code === 'DUPLICATE_METER' || body.code === 'DUPLICATE_READING' ||
+       (body.code === 'DUPLICATE_METER' || body.code === 'DUPLICATE_READING' || body.code === 'DUPLICATE_BILL' || body.code === 'OVERLAP_CONFIRMATION_REQUIRED' ||
        body.code === 'IDEMPOTENCY_KEY_REUSED' || body.code === 'VERSION_CONFLICT') ? body.code : null;
-    return { detail: body.detail, code };
+    const warning = code === 'OVERLAP_CONFIRMATION_REQUIRED' ? billWarning(body) : null;
+    return { detail: body.detail, code, warning };
   }
   return fallback;
 }
@@ -127,14 +140,14 @@ export function createHttpClient(options: { store?: SessionStore; adapter?: Axio
     }
     if (context.combined.aborted) throw cancellation(context);
     if (response.status < 200 || response.status >= 300) {
-      const { detail, code } = await errorDetail(response, context);
+      const { detail, code, warning } = await errorDetail(response, context);
       // Error-body decoding can be asynchronous (PDF JSON blobs).
       if (context.generation !== store.getState().generation) {
         throw new DiaryError('aborted', 'La solicitud fue cancelada.');
       }
       if (context.combined.aborted) throw cancellation(context);
       if (response.status === 401 && store.getState().session) store.getState().clearSession(context.generation, true);
-      throw new DiaryError('http', detail, response.status, code);
+      throw new DiaryError('http', detail, response.status, code, warning);
     }
     return response;
   });
@@ -148,7 +161,7 @@ export function createHttpClient(options: { store?: SessionStore; adapter?: Axio
           throw new DiaryError('invalid-response', 'El destino de la solicitud no está permitido.');
         }
         if (request.idempotencyKey !== undefined &&
-            (request.method !== 'POST' || !/^\/meters\/[^/?]+\/readings$/.test(path) ||
+            (request.method !== 'POST' || !/^\/meters\/[^/?]+\/(?:readings|bills)$/.test(path) ||
              !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.idempotencyKey))) {
           throw new DiaryError('invalid-response', 'La clave de la solicitud no está permitida.');
         }

@@ -1,14 +1,19 @@
+export interface BillOverlap { id: string; period_start: string; period_end: string; version: number }
+export interface BillWarning { overlaps: BillOverlap[]; overlap_token: string }
+
 export class DiaryError extends Error {
   readonly status: number | null;
   readonly kind: 'http' | 'network' | 'invalid-response' | 'aborted' | 'timeout';
-  readonly code: 'DUPLICATE_METER' | 'DUPLICATE_READING' | 'IDEMPOTENCY_KEY_REUSED' | 'VERSION_CONFLICT' | null;
+  readonly code: 'DUPLICATE_METER' | 'DUPLICATE_READING' | 'DUPLICATE_BILL' | 'OVERLAP_CONFIRMATION_REQUIRED' | 'IDEMPOTENCY_KEY_REUSED' | 'VERSION_CONFLICT' | null;
+  readonly billWarning: BillWarning | null;
 
-  constructor(kind: DiaryError['kind'], message: string, status: number | null = null, code: DiaryError['code'] = null) {
+  constructor(kind: DiaryError['kind'], message: string, status: number | null = null, code: DiaryError['code'] = null, billWarning: BillWarning | null = null) {
     super(message);
     this.name = 'DiaryError';
     this.kind = kind;
     this.status = status;
     this.code = code;
+    this.billWarning = billWarning;
   }
 }
 

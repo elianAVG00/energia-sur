@@ -156,6 +156,7 @@ dependencies = [
     { name = "opencv-python-headless" },
     { name = "pillow" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "pypdf" },
     { name = "reportlab" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
@@ -164,7 +165,6 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
-    { name = "pypdf" },
     { name = "ruff" },
     { name = "types-reportlab" },
 ]
@@ -176,6 +176,7 @@ requires-dist = [
     { name = "opencv-python-headless", specifier = "==4.12.0.88" },
     { name = "pillow", specifier = "==13.0.0" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.8" },
+    { name = "pypdf", specifier = "==7.0.0" },
     { name = "reportlab", specifier = "==5.1.0" },
     { name = "sqlalchemy", specifier = "==2.1.8" },
     { name = "uvicorn", specifier = "==0.54.0" },
@@ -184,7 +185,6 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = "==2.4.1" },
-    { name = "pypdf", specifier = "==7.0.0" },
     { name = "ruff", specifier = "==0.17.4" },
     { name = "types-reportlab", specifier = "==5.1.0.20261104" },
 ]

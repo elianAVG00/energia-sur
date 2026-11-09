@@ -225,7 +225,7 @@ without a meter or legal-address verification.
 **PARTIAL - CU04-CU09. Approved for CU09 by U06:** the owner account can correct
 open and closed cuts using the same date validation, and close ongoing cuts.
 **U11, CU04:** correct address, meter number and alias without changing IDs; do not delete, transfer or physically replace domiciles/meters. CU09 cuts retain their domicile ID; future PDFs display the current address.
-**U13, CU05:** reading correction is allowed, reading deletion is not; photo edit is allowed and its detailed lifecycle remains TBD. **Pending:** reassignment/deletion, physical meter replacement, retention and other linked-file policies; reopening a closed cut by removing its end remains unspecified. CU06 is not settled.
+**U13, CU05:** reading correction is allowed, reading deletion is not; photo edit is allowed and its detailed lifecycle remains TBD. **CU06:** the user approved bill correction without bill deletion or domicile/meter reassignment; see Q12. **Pending:** broader reassignment/deletion, physical meter replacement, retention and other linked-file policies; reopening a closed cut by removing its end remains unspecified.
 
 ### Q10
 **PARTIAL - CU05, U13 and D05–D07:** nonnegative integer kWh, nonfuture date, warning without blocking decreases, UTC seconds displayed in Buenos Aires, and uniqueness per meter/exact instant. **TBD:** timestamp input and future-instant interpretation, warning comparator, equal/out-of-order readings, rollover and CU07/CU08 implications. No physical replacement or downstream boundary-selection policy is implied.
@@ -234,10 +234,23 @@ open and closed cuts using the same date validation, and close ongoing cuts.
 **PARTIAL - CU05, U13 and D01–D04/D08–D10/D13:** optional single photo, JPG/PNG/WebP up to 5 MB; private volume and PostgreSQL metadata; opt-in local Docker Tesseract and manual crop, in-memory preconfirmation processing, explicit confirmation and manual fallback. **TBD:** confidence oracle, byte convention, decoded limits, crash recovery and detailed errors. No external photo transfer is approved.
 
 ### Q12
-**TBD - CU06:** What bill formats/limits/storage, required period fields and duplicate
-policy apply? Blocks CU06-S03 and the bill-period input definition used by CU07;
-Q13's exact-date compatibility rule is approved. No extraction or
-invoice authenticity check is assumed.
+**PARTIAL - CU06, user PLAN instruction:** start and end dates are required and start
+must not follow end; billed kWh is nonnegative with up to three decimal places; one
+PDF/JPG/PNG file up to 5 MB is required; ARS amount is optional with up to two decimal
+places. Reject identical meter/period duplicates; warn about overlaps but allow explicit
+confirmation. Permit correction of period, kWh, amount and file with stable bill ID;
+no domicile/meter change or deletion. Access is private and account-isolated. No OCR,
+automatic extraction, tariff calculation or CU07 comparison. These functional decisions
+are approved by the user's conversation, not inferred from other CU approvals.
+
+**Proposed for Review, user PROPOSE instruction:** inclusive endpoints, 5,000,000-byte
+limit, nonnegative ARS amount, private storage and safe validation, duplicate/overlap
+concurrency and optimistic versioning. The [CU06 design](../../openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/design.md)
+sets out exact protocols and numeric limits. The user subsequently approved Review and
+Apply, selected `pypdf` for bounded PDF validation and explicitly accepted its documented
+limitations. Runtime verification and the single independent implementation review passed;
+the change was archived on 2026-11-09 and the [main specification](../../openspec/specs/electricity-bills/spec.md)
+is synchronized. Q13's exact boundary-date rule is preserved.
 
 ### Q13
 **APPROVED - CU07, U05:** compare only with valid readings of the same meter whose

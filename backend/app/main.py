@@ -15,6 +15,8 @@ from starlette.concurrency import run_in_threadpool
 
 from app import management
 from app.api import router
+from app.bill_api import router as bill_router
+from app.bill_reconcile import reconcile_bills
 from app.db import DatabaseUnavailable, dispose_engines
 from app.photo_store import reconcile_photos
 from app.reading_api import DuplicateReading
@@ -40,6 +42,11 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             # Log only the failure class: no paths, keys or user data.
             _LOGGER.warning("Photo reconciliation failed; no files were removed (%s).",
                             type(error).__name__)
+        try:
+            await run_in_threadpool(reconcile_bills)
+        except Exception as error:
+            _LOGGER.warning("Bill reconciliation failed; no files were removed (%s).",
+                            type(error).__name__)
         yield
     finally:
         dispose_engines()
@@ -48,6 +55,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
 app.include_router(reading_router)
+app.include_router(bill_router)
 
 
 @app.exception_handler(DuplicateReading)

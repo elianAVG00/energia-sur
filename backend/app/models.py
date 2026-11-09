@@ -1,6 +1,6 @@
 """Additive account-owned CU09 persistence, without implicit table creation."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -8,6 +8,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
@@ -145,4 +146,50 @@ class ReadingCreation(Base):
     idempotency_key: Mapped[str] = mapped_column(String(36), primary_key=True)
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     reading_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    response: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+
+class ElectricityBill(Base):
+    """A private bill associated with one stable meter."""
+
+    __tablename__ = "es_electricity_bills"
+    __table_args__ = (
+        UniqueConstraint("meter_id", "period_start", "period_end", name="uq_bill_meter_period"),
+        UniqueConstraint("id", "meter_id", name="uq_bill_id_meter"),
+        CheckConstraint("isfinite(period_start) AND isfinite(period_end) AND period_start <= period_end",
+                        name="ck_bill_period"),
+        CheckConstraint("value_kwh >= 0 AND value_kwh < 1000000000000000000 "
+                        "AND value_kwh = trunc(value_kwh, 3)", name="ck_bill_kwh"),
+        CheckConstraint("amount_ars IS NULL OR (amount_ars >= 0 AND "
+                        "amount_ars < 1000000000000000000 AND amount_ars = trunc(amount_ars, 2))",
+                        name="ck_bill_amount"),
+        CheckConstraint("version > 0", name="ck_bill_version"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    meter_id: Mapped[str] = mapped_column(ForeignKey("es_meters.id"), nullable=False, index=True)
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    value_kwh: Mapped[Decimal] = mapped_column(Numeric(), nullable=False)
+    amount_ars: Mapped[Decimal | None] = mapped_column(Numeric(), nullable=True)
+    file_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    file_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+
+
+class BillCreation(Base):
+    """Committed create response for an account and meter's idempotency key."""
+
+    __tablename__ = "es_bill_creations"
+    __table_args__ = (
+        ForeignKeyConstraint(["meter_id", "account_id"], ["es_meters.id", "es_meters.account_id"],
+                             name="fk_bill_creation_meter_owner"),
+        ForeignKeyConstraint(["bill_id", "meter_id"],
+                             ["es_electricity_bills.id", "es_electricity_bills.meter_id"],
+                             name="fk_bill_creation_bill_meter"),
+    )
+    account_id: Mapped[str] = mapped_column(ForeignKey("es_accounts.id"), primary_key=True)
+    meter_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    idempotency_key: Mapped[str] = mapped_column(String(36), primary_key=True)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    bill_id: Mapped[str] = mapped_column(String(36), nullable=False)
     response: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)

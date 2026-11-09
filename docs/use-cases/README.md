@@ -47,7 +47,7 @@ not a source for this product. Q00 is approved on the user's U06 teacher-approva
 | CU03 | [Get guidance from the integrated assistant](cu03.md) | Visitor or account holder | P / accepted documentary baseline; implementation planned |
 | CU04 | [Manage personal addresses and meters](cu04.md) | Account holder | P / full CU04 planned; minimum domicile prerequisite implemented under CU09 |
 | CU05 | [Record a meter reading with a photo](cu05.md) | Account holder | P / accepted documentary baseline; implementation planned |
-| CU06 | [Record an electricity bill](cu06.md) | Account holder | P / accepted documentary baseline; implementation planned |
+| CU06 | [Record an electricity bill](cu06.md) | Account holder | P / implemented, verified and archived on 2026-11-09 |
 | CU07 | [Compare recorded consumption with a bill](cu07.md) | Account holder | P + U05 / approved matching and kWh difference; residual TBDs |
 | CU08 | [View consumption trends and estimates](cu08.md) | Account holder | P + U05 / approved base and grouping; projection formula TBD |
 | CU09 | [Record and query an interruption diary](cu09.md) | Account holder | P + U05-U10 / implemented, verified and archived; bounded CU04 prerequisite only |

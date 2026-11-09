@@ -1,6 +1,12 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-09 (CU05 authenticated DEV tests passed; red-fraction contract decision open).
+Updated: 2026-11-09 (CU06 implemented, verified and archived; CU05 red-fraction decision open).
+
+## CU06 - CLOSED
+- [Archived change](../openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/proposal.md), [design](../openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/design.md), [tasks](../openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/tasks.md) (16/16), [main spec](../openspec/specs/electricity-bills/spec.md), [engineering record](ai-engineering/record-cu06-electricity-bills.md) and [Q12](use-cases/decisions.md#q12). Sync applied all 8 requirements and the change was archived on 2026-11-09.
+- Implemented owner-only bill list/create/detail/edit and private attachment download; required periods and kWh, optional ARS, 5,000,000-byte PDF/JPG/PNG validation, duplicate rejection, overlap warning with payload-bound confirmation, optimistic versions, idempotency, startup reconciliation and a separate `cu06_bills` volume. `pypdf` is runtime; local Compose generates the confirmation key at start.
+- PASS: 243 backend tests (2 opt-in skipped) on fresh isolated PostgreSQL/Python 3.13; Ruff and mypy (28 modules); frontend 80 tests, Oxlint, TypeScript and build; OpenSpec strict 9/9. The single independent review found four issues, all corrected.
+- PASS: reconciliation keeps live files/CU05 objects and removes only unreferenced or crashed candidates, failing closed on missing references; two-account browser flow and restart passed; isolated matched PostgreSQL + `cu06_bills` backup/restore preserved bill fields and file SHA-256. The user authorized the closure commit and push; no CU07 work.
 
 ## Active CU05 proposal
 - [Proposal](../openspec/changes/record-cu05-meter-readings/proposal.md), [design and review gates](../openspec/changes/record-cu05-meter-readings/design.md), [delta](../openspec/changes/record-cu05-meter-readings/specs/meter-readings/spec.md), [tasks](../openspec/changes/record-cu05-meter-readings/tasks.md); [U13](use-cases/decisions.md#u13---cu05-functional-decisions-and-propose-authorization) and [M1](use-cases/decisions.md#cu05-m1---ocr-may-abstain-closure-decision) record approved rules.
@@ -47,8 +53,8 @@ Updated: 2026-11-09 (CU05 authenticated DEV tests passed; red-fraction contract 
 - Unrelated catalog TBDs, hosting and persistent chatbot memory remain unresolved. No other CU claimed complete.
 
 ## Next actions
-1. Resolve the red-fraction contract conflict with the user before Sync/Archive; do not invent a guarantee.
-2. Keep the synthetic DEV accounts and data until their deletion is explicitly authorized.
-3. Preserve retained synthetic resources and unrelated work; test-only repository artifacts were removed.
+1. CU06 is closed; retain its synthetic evidence and closed archive unless cleanup is authorized.
+2. Resolve the CU05 red-fraction contract conflict with the user before its Sync/Archive.
+3. Keep synthetic DEV accounts/data and retained CU05/CU06 containers, databases, volumes and artifacts until deletion is explicitly authorized.
 4. Reuse the foundation for future accepted CUs; CU03 chat runtime is separate.
 5. Track CU09's low out-of-band-row and NUL-input risks for future triage.

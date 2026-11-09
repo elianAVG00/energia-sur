@@ -16,6 +16,8 @@ services:
 
   backend:
     platform: linux/amd64
+    environment:
+      CU06_CONFIRMATION_SECRET: ${CU06_CONFIRMATION_SECRET:-}
     mem_limit: 1g
     memswap_limit: 1g
     ulimits:
@@ -29,6 +31,7 @@ services:
     volumes:
       - ./backend/app:/app/app:ro
       - cu05_photos:/var/lib/energia-sur/photos
+      - cu06_bills:/var/lib/energia-sur/bills
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
       interval: 5s
@@ -55,3 +58,4 @@ services:
 volumes:
   pgdata:
   cu05_photos:
+  cu06_bills:

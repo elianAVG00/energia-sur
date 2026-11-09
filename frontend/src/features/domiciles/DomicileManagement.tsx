@@ -10,6 +10,7 @@ import { domicilesApi } from './api.ts';
 import type { ManagedDomicile, Meter, MeterInput } from './api.ts';
 import { AddressForm, MeterForm } from './forms.tsx';
 import { ReadingHistory } from '../readings/ReadingHistory.tsx';
+import { BillHistory } from '../bills/BillHistory.tsx';
 
 export function DomicileManagement({ selected, generation, rows, updateRow }: {
   selected: string; generation: number; rows: Domicile[]; updateRow: (row: Domicile) => void;
@@ -113,6 +114,7 @@ export function DomicileManagement({ selected, generation, rows, updateRow }: {
           </select>
         </div>}
         {readingMeter && meters.some(row => row.id === readingMeter) && <ReadingHistory key={`${generation}:${selected}:${readingMeter}`} generation={generation} domicileId={selected} meterId={readingMeter} />}
+        {readingMeter && meters.some(row => row.id === readingMeter) && <BillHistory key={`${generation}:${selected}:${readingMeter}`} generation={generation} domicileId={selected} meterId={readingMeter} />}
       </>}
     </div>
   </CardContent></Card>;

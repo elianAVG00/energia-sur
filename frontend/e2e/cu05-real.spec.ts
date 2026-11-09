@@ -109,6 +109,7 @@ test('real CU05: browser-rendered digits are suggested without saving', async ({
     context.fillText('56538', 20, 80);
     return canvas.toDataURL('image/png').split(',')[1];
   });
+  if (!encoded) throw new Error('Synthetic PNG encoding failed');
   await form.getByLabel(/Fotografía/).setInputFiles({ name: 'synthetic.png', mimeType: 'image/png', buffer: Buffer.from(encoded, 'base64') });
   await form.getByRole('button', { name: 'Leer dígitos con OCR' }).click();
   await expect(form.getByLabel('Lectura acumulada en kWh')).toHaveValue('56538');

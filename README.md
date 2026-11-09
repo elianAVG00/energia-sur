@@ -13,6 +13,21 @@ Git staging, commits and pushes are managed by the user:
 [proposal](openspec/changes/archive/2026-11-08-manage-cu04-domiciles-meters/proposal.md),
 [engineering record](docs/ai-engineering/manage-cu04-domiciles-meters.md).
 
+CU06 electricity bills are implemented: owner-scoped list/create/detail/edit and
+private attachment download under `/api/meters/{meter_id}/bills`. Bills store inclusive
+period dates, nonnegative kWh (3 decimals), optional ARS (2 decimals) and a required
+PDF/JPG/PNG file up to 5,000,000 bytes. Identical periods are rejected; overlaps require
+an explicit, payload-bound confirmation. Corrections keep the bill ID, increment a
+version and may replace the file; deletion and reassignment are not offered.
+See the [archived change](openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/proposal.md),
+[main specification](openspec/specs/electricity-bills/spec.md) and
+[engineering record](docs/ai-engineering/record-cu06-electricity-bills.md). PDF checks
+use a time- and memory-bounded `pypdf` worker and detect basic active content; they are
+not an antivirus. Local Compose keeps attachments in the private `cu06_bills` volume and
+generates the confirmation key at backend start. Startup reconciliation removes only
+unreferenced CU06 objects; a synthetic matched PostgreSQL + volume backup/restore drill
+passed with the backend stopped.
+
 CU05 meter readings have manual history, confirmation, private photo attachments and
 photo/OCR endpoints. The OCR endpoint uses local Tesseract and OpenCV in bounded
 workers, with editable suggestions or abstention. Recognition is not guaranteed:

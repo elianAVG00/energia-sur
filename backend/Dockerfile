@@ -28,7 +28,7 @@ USER 10001:10001
 
 FROM ocr-tooling AS runtime
 
-RUN mkdir -p /var/lib/energia-sur/photos && chown 10001:10001 /var/lib/energia-sur/photos && chmod 700 /var/lib/energia-sur/photos
+RUN mkdir -p /var/lib/energia-sur/photos /var/lib/energia-sur/bills && chown 10001:10001 /var/lib/energia-sur/photos /var/lib/energia-sur/bills && chmod 700 /var/lib/energia-sur/photos /var/lib/energia-sur/bills
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-cache
@@ -40,4 +40,4 @@ COPY migrations ./migrations
 
 USER 10001:10001
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "app.start"]
