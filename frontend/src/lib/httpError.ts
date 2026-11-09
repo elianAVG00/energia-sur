@@ -1,7 +1,7 @@
 export class DiaryError extends Error {
   readonly status: number | null;
   readonly kind: 'http' | 'network' | 'invalid-response' | 'aborted' | 'timeout';
-  readonly code: 'DUPLICATE_METER' | 'VERSION_CONFLICT' | null;
+  readonly code: 'DUPLICATE_METER' | 'DUPLICATE_READING' | 'IDEMPOTENCY_KEY_REUSED' | 'VERSION_CONFLICT' | null;
 
   constructor(kind: DiaryError['kind'], message: string, status: number | null = null, code: DiaryError['code'] = null) {
     super(message);

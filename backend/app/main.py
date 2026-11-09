@@ -1,5 +1,6 @@
 """Storage-free HTTP liveness for the local development environment."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Literal
@@ -10,10 +11,17 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import StaleDataError
+from starlette.concurrency import run_in_threadpool
 
 from app import management
 from app.api import router
 from app.db import DatabaseUnavailable, dispose_engines
+from app.photo_store import reconcile_photos
+from app.reading_api import DuplicateReading
+from app.reading_api import router as reading_router
+from app.reading_store import IdempotencyKeyReused, ReadingVersionConflict
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class HealthResponse(BaseModel):
@@ -25,6 +33,13 @@ class HealthResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     try:
+        # Fail closed: if recovery cannot prove the locks, no files are removed.
+        try:
+            await run_in_threadpool(reconcile_photos)
+        except Exception as error:
+            # Log only the failure class: no paths, keys or user data.
+            _LOGGER.warning("Photo reconciliation failed; no files were removed (%s).",
+                            type(error).__name__)
         yield
     finally:
         dispose_engines()
@@ -32,6 +47,21 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
+app.include_router(reading_router)
+
+
+@app.exception_handler(DuplicateReading)
+@app.exception_handler(IdempotencyKeyReused)
+@app.exception_handler(ReadingVersionConflict)
+async def reading_conflict(request: Request, error: Exception) -> JSONResponse:
+    if isinstance(error, DuplicateReading):
+        code = "DUPLICATE_READING"
+    elif isinstance(error, IdempotencyKeyReused):
+        code = "IDEMPOTENCY_KEY_REUSED"
+    else:
+        code = "VERSION_CONFLICT"
+    return JSONResponse({"detail": "El registro entra en conflicto con datos existentes.", "code": code},
+                        status_code=409, headers={"Cache-Control": "no-store"})
 
 
 @app.exception_handler(management.MissingResource)

@@ -61,6 +61,20 @@ test('external and normalized traversal destinations never dispatch or receive t
   assert.equal(calls, 1);
 });
 
+test('reading creation sends only a valid scoped idempotency key', async () => {
+  const key = '12345678-1234-4234-8234-123456789abc';
+  let calls = 0;
+  const { http } = mockHttp({}, 200, 'application/json', config => {
+    calls++;
+    assert.equal(config.headers.get('Idempotency-Key'), key);
+    assert.ok(config.headers.get('X-CSRF-Token'));
+  });
+  await http.request('/meters/m/readings', signal(), { method: 'POST', idempotencyKey: key });
+  await assert.rejects(http.request('/meters/m/readings/ocr', signal(), { method: 'POST', idempotencyKey: key }), DiaryError);
+  await assert.rejects(http.request('/meters/m/readings', signal(), { method: 'POST', idempotencyKey: 'invalid' }), DiaryError);
+  assert.equal(calls, 1);
+});
+
 test('missing session CSRF fails locally, while captured logout token works after local clear', async () => {
   let calls = 0;
   const { http, store } = mockHttp(null, 204, 'application/json', config => {

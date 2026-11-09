@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { isCut, isDomicile, isSession, isSummary } from '../src/diaryApi.ts';
 import { isMeter } from '../src/features/domiciles/api.ts';
+
+/** The same meter number also appears in the CU05 reading <select>; assert only the list. */
+function registeredMeters(page: Page) {
+  return page.getByRole('list', { name: 'Medidores registrados' });
+}
 
 function setting(name: string): string {
   const value = process.env[name];
@@ -36,7 +42,7 @@ test('real CU04 management preserves diary draft and distinguishes conflicts', a
   await form.getByRole('button', { name: 'Registrar medidor' }).click();
   const meterBody: unknown = await (await meterResponse).json();
   if (!isMeter(meterBody)) throw new Error('Invalid meter DTO');
-  await expect(page.getByText(number, { exact: true })).toBeVisible();
+  await expect(registeredMeters(page).getByText(number, { exact: true })).toBeVisible();
   await form.getByLabel('Número de medidor').fill(number);
   await form.getByRole('button', { name: 'Registrar medidor' }).click();
   await expect(page.getByRole('alert')).toContainText('ya está registrado');
@@ -54,7 +60,7 @@ test('real CU04 management preserves diary draft and distinguishes conflicts', a
   await editor.getByRole('button', { name: 'Guardar medidor' }).click();
   await expect(page.getByRole('button', { name: 'Descartar borrador y recargar administración' })).toBeVisible();
   await page.getByRole('button', { name: 'Descartar borrador y recargar administración' }).click();
-  await expect(page.getByText(`${number} — Otro escritor`, { exact: true })).toBeVisible();
+  await expect(registeredMeters(page).getByText(`${number} — Otro escritor`, { exact: true })).toBeVisible();
   await expect(diary.getByLabel('Observaciones')).toHaveValue('Borrador sintético');
 });
 
@@ -129,7 +135,7 @@ test('rendered selection and account switches isolate delayed meter responses', 
   const meterForm = page.getByRole('form', { name: 'Registrar medidor' });
   await meterForm.getByLabel('Número de medidor').fill(firstNumber);
   await meterForm.getByRole('button', { name: 'Registrar medidor' }).click();
-  await expect(page.getByText(firstNumber, { exact: true })).toBeVisible();
+  await expect(registeredMeters(page).getByText(firstNumber, { exact: true })).toBeVisible();
   await page.getByLabel('Domicilio nuevo').fill(secondAddress);
   const createdSecond = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/api/domiciles'));
   await page.getByRole('button', { name: 'Registrar domicilio', exact: true }).click();
@@ -138,7 +144,7 @@ test('rendered selection and account switches isolate delayed meter responses', 
   await expect(page.getByLabel('Domicilio seleccionado')).toHaveValue(second.id);
   await meterForm.getByLabel('Número de medidor').fill(secondNumber);
   await meterForm.getByRole('button', { name: 'Registrar medidor' }).click();
-  await expect(page.getByText(secondNumber, { exact: true })).toBeVisible();
+  await expect(registeredMeters(page).getByText(secondNumber, { exact: true })).toBeVisible();
 
   function gate() {
     let start: () => void = () => { throw new Error('Gate not initialized'); };
@@ -169,11 +175,11 @@ test('rendered selection and account switches isolate delayed meter responses', 
     await page.getByLabel('Domicilio seleccionado').selectOption({ label: firstAddress });
     await firstGate.started;
     await page.getByLabel('Domicilio seleccionado').selectOption({ label: secondAddress });
-    await expect(page.getByText(secondNumber, { exact: true })).toBeVisible();
+    await expect(registeredMeters(page).getByText(secondNumber, { exact: true })).toBeVisible();
     firstGate.release();
     await firstGate.finished;
-    await expect(page.getByText(firstNumber, { exact: true })).toHaveCount(0);
-    await expect(page.getByText(secondNumber, { exact: true })).toBeVisible();
+    await expect(registeredMeters(page).getByText(firstNumber, { exact: true })).toHaveCount(0);
+    await expect(registeredMeters(page).getByText(secondNumber, { exact: true })).toBeVisible();
 
     await page.getByLabel('Domicilio seleccionado').selectOption({ label: firstAddress });
     await secondGate.started;
@@ -184,9 +190,9 @@ test('rendered selection and account switches isolate delayed meter responses', 
     await expect(page.getByText(`Cuenta: ${setting('QA_USERNAME_B')}`, { exact: true })).toBeVisible();
     secondGate.release();
     await secondGate.finished;
-    await expect(page.getByText(firstNumber, { exact: true })).toHaveCount(0);
+    await expect(registeredMeters(page).getByText(firstNumber, { exact: true })).toHaveCount(0);
     await expect(page.getByRole('option', { name: firstAddress, exact: true })).toHaveCount(0);
-    await expect(page.getByText(secondNumber, { exact: true })).toHaveCount(0);
+    await expect(registeredMeters(page).getByText(secondNumber, { exact: true })).toHaveCount(0);
   } finally {
     firstGate.release(); secondGate.release();
   }

@@ -38,7 +38,9 @@ records; they are distinct from automatically acquired public data. **AGENTS
 constraint:** use synthetic/redacted examples; do not transfer real bills, photos,
 addresses or secrets without explicit authorization. File policies and lifecycle
 remain [Q09](decisions.md#q09), [Q11](decisions.md#q11) and
-[Q12](decisions.md#q12). No OCR provider or automatic extraction is approved.
+[Q12](decisions.md#q12). **U13, CU05 only:** optional photo and user-requested OCR
+are approved with explicit confirmation and manual fallback; no OCR provider or
+external transfer is approved. Other evidence types remain unaffected.
 
 ## SR05 - Automatic public-data acquisition
 

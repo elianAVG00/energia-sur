@@ -104,15 +104,56 @@ The user distinguishes physical meter number from customer number; a customer nu
 
 The user authorizes Apply of this change only after documentary validation, traceability and independent review pass without blockers or unresolved functional decisions. No sync, archive, commit or push is authorized.
 
+## U13 - CU05 functional decisions and propose authorization
+
+Recorded from the user's current instruction beginning “Rol: Modo PROPOSE (OpenSpec)”, together with the preceding CU05 OCR instruction. **CONFIRMED, CU05 only:** a required nonnegative integer kWh value and date no later than today; warn but allow decreasing readings; allow same-day readings at different times but reject identical date/time; allow editing value/date/photo but not reading deletion; retain stable meter ID and newest-first history. A photo is optional, at most one, JPG/PNG/WebP, maximum 5 MB. Photo bytes live in a persistent Docker volume managed by FastAPI, PostgreSQL stores metadata only, and access requires account ownership; no S3 or Cloudinary. On user request, OCR attempts the kWh register, excluding red fractional digits; a reliable result is editable and never auto-saved. Explicit confirmation is mandatory. On failure or low confidence, no suggestion and the exact message “No pudimos identificar con seguridad la lectura del medidor. Intentá subir una fotografía más clara o ingresá manualmente el valor en kWh” are required; manual entry remains available. No independent blur detector.
+
+**Subsequent clarification:** D01–D13 below approve local Tesseract/manual crop, UTC seconds, per-meter uniqueness and selected photo/concurrency rules. Residual contract details remain in the [design](../../openspec/changes/record-cu05-meter-readings/design.md). U13 supersedes U06's CU05 photo-required/no-OCR baseline only; it does not settle other CUs or authorize Apply, installation, migrations, Sync or Archive.
+
+## CU05 D01–D13 - Approved documentary review decisions
+
+Recorded from the user's instruction beginning “Rol: Modo REVIEW documental (OpenSpec)”. The user supplied the identifiers in groups, not a one-to-one mapping; this register preserves that grouping rather than inventing individual assignments.
+
+- **D01, D02, D03, D04, D10 — OCR and processing:** Docker-local Tesseract without external APIs, manually cropped region, opt-in editable suggestion and confirmation, exact U13 fallback on failure or uncertainty, 5 MB limit, no automatic retries. Only the example photo supplied via a simulated local path may be used for OCR image tests; it must not enter Git or artifacts. Distinguish success, abstention, engine failure and coverage limits. No sample path or photo was supplied in this review.
+- **D05, D06, D07 — time/data:** persist UTC normalized to seconds; display America/Argentina/Buenos_Aires; no future dates; PostgreSQL uniqueness per meter and exact instant; warning but allow confirmed decreasing readings; no physical replacement.
+- **D08, D09, D13 — files/storage:** OCR temporary photos remain in memory, not persisted before confirmation. Retain the old photo through successful replacement transaction and clean it afterward; coordinate simple Docker volume and PostgreSQL backups. The subsequent technical review proposes a concrete crash-safe protocol requiring independent review and runtime verification.
+- **D11, D12 — API/concurrency:** meter-scoped REST and separate OCR endpoint; authenticated private photo access, Origin/CSRF and CU04 ownership isolation; every PATCH, including unchanged, checks and increments version, stale versions return 409 `VERSION_CONFLICT`.
+
+These decisions preserve U13 and CU04/CU09; they do not authorize APPLY, tests, installation, migrations, Sync, Archive, commit or push. A single image does not prove representative OCR accuracy; residual safety and executable-contract gaps are tracked in design.
+
+## CU05 technical review clarification
+
+In the subsequent technical-review request and confirmation, the user selected **always abstain when a red fractional digit is detected**, even if separable; this supersedes only the earlier CU05 scenario suggesting the black digits in that case. The user confirmed for the proposed contract 5,000,000 bytes, 20 million pixels, 5 seconds, 256 MiB per engine process, one concurrent OCR job, immutable durable objects before versioned DB publication, coordinated cleanup and paused-write backup, meter-scoped routes and offset-aware second-resolution timestamps rejecting fractions and future instants. Exact payloads and recovery refinements are documented in [design](../../openspec/changes/record-cu05-meter-readings/design.md) for review. This does not authorize implementation, tests, installation or migration; an OCR suggestion still requires reliable identification, and missing evidence cannot be waived by confirmation.
+
+## CU05 D14–D15 and BUILD authorization
+
+The user subsequently authorized BUILD and approved **D14:** decimal-string `value_kwh` throughout APIs/frontend and exact PostgreSQL storage, including OCR; **D15:** stable account/meter/payload-scoped transactional create idempotency, with `409 IDEMPOTENCY_KEY_REUSED` for the same key and different payload. On a subsequent technical-limit question the user approved at most 131072 ASCII digits, with 422 above the limit. Synthetic image tests are authorized; the real photograph is not available and its test remains pending without blocking BUILD solely for that reason. No Sync, Archive, commit, push or other CU is authorized. See [design](../../openspec/changes/record-cu05-meter-readings/design.md) for transport details.
+
+## CU05 photo validation clarification
+
+During photo implementation the user approved declaring the existing locked Pillow 13.0.0 as a direct dependency and a separate maximum of 40,000,000 decoded pixels per image frame for stored photos. The existing 20,000,000-pixel OCR limit remains unchanged; the 5,000,000-byte photo limit still applies. This does not approve unbounded in-process decoding, external transfer or any weakening of photo isolation.
+
+## CU05 M1 - OCR may abstain (closure decision)
+
+The user resolved M1 from the independent review: the OCR may abstain whenever it cannot identify the reading with sufficient confidence, without adding unnecessary complexity or claiming unverified precision. Manual kWh entry and explicit confirmation always remain available and authoritative. The fail-closed implementation that returns the exact U13 fallback without invoking Tesseract is therefore accepted for closure, and the delta spec/design were revised to permit safe abstention. A future suggestion requires documented register-identity and red-fraction evidence; a real meter photo and representative accuracy remain pending and are not approved. No Sync, Archive, commit or push is authorized by this decision.
+
 ## Confirmed facts versus inferences
+
+### CU05 subsequent OCR BUILD instruction
+
+The user subsequently requires a real local Tesseract attempt on the manually selected register region, and permits excluding clearly separable red fractional digits; uncertain results still abstain and require manual confirmation. This supersedes the earlier always-abstain-on-red rule and the M1 permission to close without invoking Tesseract. Previously approved security and resource limits remain unchanged. Synthetic tests are authorized; a real local photo remains pending. No Sync, Archive, commit or push is authorized.
+
+### CU05 worker security acceptance
+
+The user subsequently accepts the OCR worker security topic and requests documenting abstention on the supplied real photograph as a known limitation. This records human acceptance, not an assertion that a new independent review occurred or that resource/privacy safeguards were waived. The user has not authorized Sync, Archive, commit or push.
 
 - **C:** React/TypeScript, Vite/npm, FastAPI/Uvicorn/uv and PostgreSQL in Docker
   are decided in the [Docker design](../../openspec/changes/docker-development-environment/design.md).
   Driver, ORM, migrations and application/database connection are excluded there.
 - **C:** backend LangChain + OpenAI is the assistant direction, not installed
-  business functionality. Auth/authorization mechanism, hosting and persistent
-  assistant memory remain TBD. Oxlint is approved for CU09 under U08; other
-  lint/type frameworks remain unapproved.
+  business functionality. CU09/CU04 use approved server sessions and PostgreSQL;
+  hosting and persistent assistant memory remain TBD. CU09 tooling approvals
+  and Oxlint under U08 are recorded in the corresponding contract.
 - **C:** [MCP evidence](../ai-engineering/configure-readonly-development-mcp.md)
   records GitHub read-only and Context7 development calls. That is not proof of
   chat functionality or a fresh permission/token audit.
@@ -122,11 +163,11 @@ The user authorizes Apply of this change only after documentary validation, trac
   and PDF content are approved as detailed below. No interpolation is authorized.
 - **U06:** stage 05 baseline acceptance, academic Q00 confirmation and the bounded
   CU09 policies above are approved; CU09 is chosen for stage 06 proposal review.
-- **I/TBD:** CU08 projection, unrelated reading/period rules, auth technology,
-  persistence and PDF implementation are not inferred from those approvals.
-- **Observed:** zero main specs; CU09 now has a proposed change alongside the
-  existing technical changes. A checked task or
-  structural PASS cannot approve these fiches. [Evidence](../ai-engineering/stage-05-sdd.md).
+- **I/TBD:** CU08 projection and unrelated reading/period rules are not inferred
+  from CU09/CU04 approvals.
+- **Historical stage 05:** the earlier checkpoint had zero main specs. CU04/CU09
+  now have archived changes and current main specs; see [STATE](../STATE.md).
+  A checked task or structural PASS cannot approve unimplemented fiches.
 
 ## Questions, motivation and blocked scope
 
@@ -152,7 +193,7 @@ domicile may save, view, correct, close or export its cuts (Q18).
 U07/U07-T approve opaque server sessions, controlled provisioning and the contract's
 cookie/CSRF/hash details for CU09 and its minimum CU04 slice.
 **U11, CU04:** a domicile belongs to one account and a meter to one domicile; ownership is checked via that domicile's account. Only its owner manages either using the existing opaque session; writes require trusted Origin and CSRF. Foreign or nonexistent resources return 404. No roles or Edesur ownership verification are introduced.
-**Pending:** other CUs' roles/ownership behavior remains unspecified. Actual CU04 isolation tests and independent review remain required before closure.
+**Pending:** other CUs' roles/ownership behavior remains unspecified. CU04's historical isolation checks and review are recorded in [STATE](../STATE.md); CU05 requires its own independent review and isolation evidence.
 
 ### Q04
 **TBD - CU01/CU02/CU03/CU10:** Which official endpoints, terms, coverage and refresh
@@ -184,17 +225,13 @@ without a meter or legal-address verification.
 **PARTIAL - CU04-CU09. Approved for CU09 by U06:** the owner account can correct
 open and closed cuts using the same date validation, and close ongoing cuts.
 **U11, CU04:** correct address, meter number and alias without changing IDs; do not delete, transfer or physically replace domiciles/meters. CU09 cuts retain their domicile ID; future PDFs display the current address.
-**Pending:** reassignment/deletion, replacement, retention and linked-file policy outside this CU04 scope; reopening a closed cut by removing its end remains unspecified. The CU04 decision does not settle future CU05/CU06 histories or approve deletion.
+**U13, CU05:** reading correction is allowed, reading deletion is not; photo edit is allowed and its detailed lifecycle remains TBD. **Pending:** reassignment/deletion, physical meter replacement, retention and other linked-file policies; reopening a closed cut by removing its end remains unspecified. CU06 is not settled.
 
 ### Q10
-**TBD - CU05/CU07/CU08:** How are equal/decreasing, duplicate/out-of-order readings,
-meter rollover/replacement and precision validated? Blocks CU05-S03 and the definition
-of valid input for comparisons/estimates. No monotonicity exception is chosen.
+**PARTIAL - CU05, U13 and D05–D07:** nonnegative integer kWh, nonfuture date, warning without blocking decreases, UTC seconds displayed in Buenos Aires, and uniqueness per meter/exact instant. **TBD:** timestamp input and future-instant interpretation, warning comparator, equal/out-of-order readings, rollover and CU07/CU08 implications. No physical replacement or downstream boundary-selection policy is implied.
 
 ### Q11
-**TBD - CU05:** What photo formats/size limits/storage and extraction method, if any,
-are approved? Blocks CU05-S02's exact rejection rules. P requires photo and user
-confirmation; it does not approve OCR or an external transfer.
+**PARTIAL - CU05, U13 and D01–D04/D08–D10/D13:** optional single photo, JPG/PNG/WebP up to 5 MB; private volume and PostgreSQL metadata; opt-in local Docker Tesseract and manual crop, in-memory preconfirmation processing, explicit confirmation and manual fallback. **TBD:** confidence oracle, byte convention, decoded limits, crash recovery and detailed errors. No external photo transfer is approved.
 
 ### Q12
 **TBD - CU06:** What bill formats/limits/storage, required period fields and duplicate

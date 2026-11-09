@@ -11,6 +11,7 @@ interface RequestOptions {
   responseType?: 'json' | 'blob';
   // Logout alone may use a captured token after immediate local session clearing.
   logoutToken?: string;
+  idempotencyKey?: string;
 }
 interface Context {
   generation: number;
@@ -83,7 +84,8 @@ async function errorDetail(response: AxiosResponse<unknown>, context: Context): 
   if (typeof body === 'object' && body !== null && 'detail' in body &&
       typeof body.detail === 'string' && body.detail.trim() && body.detail.length <= 2048) {
     const code = response.status === 409 && 'code' in body &&
-      (body.code === 'DUPLICATE_METER' || body.code === 'VERSION_CONFLICT') ? body.code : null;
+      (body.code === 'DUPLICATE_METER' || body.code === 'DUPLICATE_READING' ||
+       body.code === 'IDEMPOTENCY_KEY_REUSED' || body.code === 'VERSION_CONFLICT') ? body.code : null;
     return { detail: body.detail, code };
   }
   return fallback;
@@ -145,6 +147,11 @@ export function createHttpClient(options: { store?: SessionStore; adapter?: Axio
         if (request.logoutToken !== undefined && (path !== '/logout' || request.method !== 'POST')) {
           throw new DiaryError('invalid-response', 'El destino de la solicitud no está permitido.');
         }
+        if (request.idempotencyKey !== undefined &&
+            (request.method !== 'POST' || !/^\/meters\/[^/?]+\/readings$/.test(path) ||
+             !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(request.idempotencyKey))) {
+          throw new DiaryError('invalid-response', 'La clave de la solicitud no está permitida.');
+        }
         const deadline = options.deadlineSignal?.() ?? AbortSignal.timeout(10000);
         const combined = AbortSignal.any([signal, deadline]);
         contexts.set(combined, {
@@ -155,6 +162,7 @@ export function createHttpClient(options: { store?: SessionStore; adapter?: Axio
         return await instance.request<unknown>({
           url, method: request.method ?? 'GET', data: request.data,
           responseType: request.responseType ?? 'json', signal: combined,
+          ...(request.idempotencyKey === undefined ? {} : { headers: { 'Idempotency-Key': request.idempotencyKey } }),
         });
       } catch (error: unknown) {
         if (signal.aborted) throw new DiaryError('aborted', 'La solicitud fue cancelada.');

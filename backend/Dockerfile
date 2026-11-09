@@ -11,7 +11,12 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-FROM tooling AS verification
+FROM tooling AS ocr-tooling
+
+RUN apt-get update -qq
+RUN apt-get install -y --no-install-recommends tesseract-ocr=5.3.0-2 tesseract-ocr-eng=1:4.1.0-2
+
+FROM ocr-tooling AS verification
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-cache
@@ -21,7 +26,9 @@ COPY alembic.ini ./
 COPY migrations ./migrations
 USER 10001:10001
 
-FROM tooling AS runtime
+FROM ocr-tooling AS runtime
+
+RUN mkdir -p /var/lib/energia-sur/photos && chown 10001:10001 /var/lib/energia-sur/photos && chmod 700 /var/lib/energia-sur/photos
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-cache

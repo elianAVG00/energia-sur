@@ -24,6 +24,7 @@ coverage/
 *.sqlite3
 *.db
 uploads/
+.local-test-data/
 
 # System and logs
 .DS_Store

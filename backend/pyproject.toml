@@ -10,6 +10,8 @@ dependencies = [
     "psycopg[binary]==3.3.8",
     "alembic==1.20.1",
     "reportlab==5.1.0",
+    "pillow==13.0.0",
+    "opencv-python-headless==4.12.0.88",
 ]
 
 [dependency-groups]

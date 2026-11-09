@@ -13,6 +13,16 @@ Git staging, commits and pushes are managed by the user:
 [proposal](openspec/changes/archive/2026-11-08-manage-cu04-domiciles-meters/proposal.md),
 [engineering record](docs/ai-engineering/manage-cu04-domiciles-meters.md).
 
+CU05 meter readings have manual history, confirmation, private photo attachments and
+photo/OCR endpoints. The OCR endpoint uses local Tesseract and OpenCV in bounded
+workers, with editable suggestions or abstention. Recognition is not guaranteed:
+the supplied real example abstained, and the user must verify suggestions. OCR
+requires cgroup v2 swap disabled, core dumps disabled, and a shared private photo
+volume across backend instances; Compose configures these safeguards. The
+[proposal](openspec/changes/record-cu05-meter-readings/proposal.md) and
+[engineering record](docs/ai-engineering/record-cu05-meter-readings.md) record the
+remaining recognition and safety-verification gates.
+
 ## CU09 - private interruption diary
 
 Implemented paths: credentialed local login/logout, own-account domicile registration
@@ -105,6 +115,16 @@ the first Compose startup. Frontend/backend use loopback ports 5173/8000 with an
 `/api/health` proxy. PostgreSQL has no published host port and persists in `pgdata`.
 Startup does not require an OpenAI key. Base-only Compose remains the health scaffold;
 CU09's overlay adds the backend/database connection. LangChain/OpenAI is still later scope.
+
+Compose mounts the private `cu05_photos` volume at `/var/lib/energia-sur/photos`.
+FastAPI publishes and reads confirmed CU05 photos there under PostgreSQL and
+filesystem locks and reconciles proven-unreferenced objects at startup. A coordinated
+backup/restore drill and a real production restart remain untested. Preserve this
+volume and `pgdata`; do not remove either as a cleanup step.
+
+Run the backend in its Linux Docker image. Photo locking and bounded decoding import
+Linux-only `fcntl`/`resource` modules, so starting `app.main` natively on the Windows
+host is not supported; use Compose or the verification image for backend commands.
 
 The runtime images and uv are pinned by verified immutable digests for
 `linux/amd64`. npm and uv use versioned lockfiles; the normal builds run `npm ci`

@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 Push-Location (Split-Path $PSScriptRoot -Parent)
 $keys = @('DATABASE_URL', 'TEST_DATABASE_URL', 'CU09_DATABASE_URL', 'POSTGRES_PASSWORD',
-          'QA_USERNAME_A', 'QA_USERNAME_B', 'QA_PASSWORD', 'E2E_BASE_URL')
+          'QA_USERNAME_A', 'QA_USERNAME_B', 'QA_PASSWORD', 'E2E_BASE_URL', 'CU05_PHOTO_DIR')
 $previous = @{}
 foreach ($key in $keys) { $previous[$key] = [Environment]::GetEnvironmentVariable($key, 'Process') }
 try {
@@ -44,7 +44,10 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Repeated migration failed.' }
     }
     $env:DATABASE_URL = $env:TEST_DATABASE_URL
-    docker run --rm --network $network --env DATABASE_URL --env TEST_DATABASE_URL energia-sur-backend-checks:cu09 python -m unittest discover -s tests -v
+    # CU05 photo tests need a writable private directory owned by runtime UID 10001.
+    # A per-run tmpfs keeps synthetic objects out of every persistent volume.
+    $env:CU05_PHOTO_DIR = '/photo-tests'
+    docker run --rm --network $network --env DATABASE_URL --env TEST_DATABASE_URL --env TEST_CU04_MIGRATION=1 --env CU05_PHOTO_DIR --tmpfs '/photo-tests:rw,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=700' energia-sur-backend-checks:cu09 python -m unittest discover -s tests -v
     if ($LASTEXITCODE -ne 0) { throw 'Backend PostgreSQL acceptance failed.' }
     $env:DATABASE_URL = $env:CU09_DATABASE_URL
     foreach ($username in @($env:QA_USERNAME_A, $env:QA_USERNAME_B)) {
@@ -83,8 +86,9 @@ try {
     # Invoke-RestMethod emits a JSON array as one pipeline object. Assign first,
     # then normalize; wrapping the command itself creates a nested one-item array.
     $homes = Invoke-RestMethod 'http://127.0.0.1:5173/api/domiciles' -WebSession $webSession
-    if (@($homes).Count -ne 2) { throw 'Domiciles did not persist across restart.' }
     $saved = Get-Content (Join-Path $ArtifactDirectory 'state.json') -Raw | ConvertFrom-Json
+    # CU04 browser specs share this synthetic account; require the saved domicile, not a count.
+    if (-not (@($homes) | Where-Object { $_.id -eq $saved.domicile })) { throw 'Saved domicile did not persist across restart.' }
     $records = Invoke-RestMethod "http://127.0.0.1:5173/api/domiciles/$($saved.domicile)/interruptions" -WebSession $webSession
     if (@($records).Count -ne 3) { throw 'Three diary records did not persist across restart.' }
     foreach ($record in $records) {
@@ -94,9 +98,20 @@ try {
             if ($record.$field -ne $original[0].$field) { throw 'Stored corrected/closed record changed across restart.' }
         }
     }
+    # CU05: the browser saved a manual reading with a synthetic private photo.
+    $cu05 = Get-Content (Join-Path $ArtifactDirectory 'cu05-state.json') -Raw | ConvertFrom-Json
+    if (-not (@($homes) | Where-Object { $_.id -eq $cu05.domicile })) { throw 'CU05 domicile did not persist across restart.' }
+    $readings = Invoke-RestMethod "http://127.0.0.1:5173/api/meters/$($cu05.meter)/readings" -WebSession $webSession
+    $reading = @($readings | Where-Object { $_.id -eq $cu05.reading })
+    if ($reading.Count -ne 1) { throw 'CU05 reading did not persist across restart.' }
+    if ($reading[0].value_kwh -ne '12345' -or $reading[0].has_photo -ne $true) { throw 'CU05 reading value or photo link changed across restart.' }
+    $photo = Invoke-WebRequest "http://127.0.0.1:5173/api/meters/$($cu05.meter)/readings/$($cu05.reading)/photo" -WebSession $webSession
+    if ($photo.StatusCode -ne 200 -or $photo.RawContentLength -le 0) { throw 'CU05 private photo did not persist across restart.' }
+    if ([string]$photo.Headers['Content-Type'] -ne 'image/png') { throw 'CU05 private photo content type changed across restart.' }
+    if ([string]$photo.Headers['X-Content-Type-Options'] -ne 'nosniff') { throw 'CU05 private photo lost its nosniff header.' }
     $after = docker inspect --format '{{.Id}}' energia-sur-db-1
     if ($LASTEXITCODE -ne 0 -or $before -ne $after) { throw 'Unexpected original database recreation.' }
-    Write-Output 'PASS: migrated PostgreSQL tests, real browser workflow, five-action isolation, downloaded PDFs, restart persistence, exact health and unchanged original db container.'
+    Write-Output 'PASS: migrated PostgreSQL tests, real browser workflow, five-action isolation, downloaded PDFs, restart persistence, exact health, private CU05 reading/photo restart persistence and unchanged original db container.'
     Write-Output "Retained synthetic databases: $appDatabase and $testDatabase. QA container: $qaContainer. No data/volume deletion."
     Write-Output "Synthetic-only PDF artifacts: $ArtifactDirectory"
 }

@@ -130,8 +130,13 @@ test('real private diary: registration, overlaps, PDF, correction, closure and t
   await otherPage.getByLabel('Domicilio nuevo', { exact: true }).fill('Domicilio exclusivo B QA');
   await otherPage.getByRole('button', { name: 'Registrar domicilio', exact: true }).click();
   await expect(otherPage.getByRole('form', { name: 'Registrar corte', exact: true })).toBeVisible();
-  await expect(otherPage.getByLabel('Domicilio seleccionado').locator('option')).toHaveText(['Elegí un domicilio', 'Domicilio exclusivo B QA']);
-  await expect(page.getByLabel('Domicilio seleccionado').locator('option')).toHaveText(['Elegí un domicilio', 'Domicilio sintético Álvarez QA']);
+  await expect(otherPage.getByLabel('Domicilio seleccionado').locator('option').filter({ hasText: 'Domicilio exclusivo B QA' })).toHaveCount(1);
+  // CU04 specs share this synthetic account, so assert ownership isolation instead of an exact list.
+  const otherOptions = otherPage.getByLabel('Domicilio seleccionado').locator('option');
+  await expect(otherOptions.filter({ hasText: 'Domicilio sintético Álvarez QA' })).toHaveCount(0);
+  const ownerOptions = page.getByLabel('Domicilio seleccionado').locator('option');
+  await expect(ownerOptions.filter({ hasText: 'Domicilio sintético Álvarez QA' })).toHaveCount(1);
+  await expect(ownerOptions.filter({ hasText: 'Domicilio exclusivo B QA' })).toHaveCount(0);
   const session: unknown = await (await other.request.get('/api/session')).json();
   if (!isSession(session)) throw new Error('Invalid session DTO');
   const headers = { Origin: setting('E2E_BASE_URL'), 'X-CSRF-Token': session.csrf_token };

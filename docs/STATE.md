@@ -1,6 +1,18 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-08 (CU04 implemented, verified, synchronized and archived).
+Updated: 2026-11-09 (CU05 authenticated DEV tests passed; red-fraction contract decision open).
+
+## Active CU05 proposal
+- [Proposal](../openspec/changes/record-cu05-meter-readings/proposal.md), [design and review gates](../openspec/changes/record-cu05-meter-readings/design.md), [delta](../openspec/changes/record-cu05-meter-readings/specs/meter-readings/spec.md), [tasks](../openspec/changes/record-cu05-meter-readings/tasks.md); [U13](use-cases/decisions.md#u13---cu05-functional-decisions-and-propose-authorization) and [M1](use-cases/decisions.md#cu05-m1---ocr-may-abstain-closure-decision) record approved rules.
+- OCR endpoint now runs Tesseract + OpenCV in a bounded child, using a shared-volume inherited flock and Linux parent-death signal; frontend keeps suggestions editable and requires explicit confirmation. All backend instances must share the same private volume and lock inode.
+- PASS fresh isolated DB: 207 backend tests; Ruff and mypy (20 files); frontend 75 tests and lint. Chromium regression now reads the formerly misrecognized synthetic canvas correctly, keeps it editable and does not save; the real photo abstains, which the user accepts. No representative accuracy is claimed.
+- PASS isolated container tests: shared-lock saturation, first-container kill, recovery and restart; measured 256 MiB engine and 512 MiB worker limits, timeout and no swap/core on configured runtime. OCR now abstains before buffering if privacy controls cannot be verified.
+- One focused independent review found three issues: image validation before admission, wrong invalid-crop status, and a conflict between absolute red-fraction requirements and heuristic detection. The first two were fixed; worker and API checks passed, including API death during decoding.
+- PASS: two authenticated Chromium DEV flows, including confirmed synthetic reading/photo, history, OCR suggestion and abstention; both were repeated after fixes (2/2). Synthetic DEV accounts and data are retained. No real photo was transferred or committed.
+- BLOCKED for Sync/Archive: the spec's unconditional exclusion of fractional digits conflicts with the heuristic, which cannot prove all red fractions are detected. A user decision on that contract is required; no new independent review has been requested. The real-photo abstention remains accepted.
+- The real photo stays Git-ignored and was tested locally; preprocessing abstained, with no value returned. The user supplied only a provisional visual reference, not a confirmed ground truth. See [evidence](ai-engineering/record-cu05-meter-readings.md).
+- PASS isolated synthetic backup drill: fresh migrated PostgreSQL and photo volume were backed up with writers stopped and restored as a matched pair. After database and backend restarts, the restored reading and synthetic PNG were retrieved through the authenticated API. Resources are retained under `cu05-restore-*-20261109` and `cu05-drill-*-20261109`; this is not a production deployment.
+- Isolated synthetic resources retained: container `cu05-isolated-pg-20261108`, network `cu05-isolated-qa-20261108`, volumes `cu05-photo-test-20261108` and `cu05-pw-artifacts-20261108`, databases `cu05_tmpfs_20261108`, `cu05_final_20261108`, `cu05_final2_20261108`, `cu09_app_71a13f97d035`, `cu09_test_71a13f97d035`, `cu09_app_78cb3dbbb73a`, `cu09_test_78cb3dbbb73a`, and QA containers `energia-sur-cu09-qa-71a13f97d035` and `energia-sur-cu09-qa-78cb3dbbb73a`; no published PostgreSQL port. Do not use for real data or remove without authorization.
 
 ## Latest checkpoint - CU09 and frontend foundation archived
 - **CU04 IMPLEMENTED / VERIFIED / ARCHIVED:** [proposal](../openspec/changes/archive/2026-11-08-manage-cu04-domiciles-meters/proposal.md), [design](../openspec/changes/archive/2026-11-08-manage-cu04-domiciles-meters/design.md), [tasks](../openspec/changes/archive/2026-11-08-manage-cu04-domiciles-meters/tasks.md); U11/U12 and REVIEW authorized Apply. Synthetic backend 91 tests, frontend 56 tests, browser CU04 4/4 and CU09 1/1, PDF and restart checks passed. Independent reviewer rechecked the draft-loss fix; see [evidence](ai-engineering/manage-cu04-domiciles-meters.md). User authorized sync and archive; main specs synchronized.
@@ -35,8 +47,8 @@ Updated: 2026-11-08 (CU04 implemented, verified, synchronized and archived).
 - Unrelated catalog TBDs, hosting and persistent chatbot memory remain unresolved. No other CU claimed complete.
 
 ## Next actions
-1. Git staging, commit and push are managed manually by the user; do not perform them.
-2. Reuse the documented foundation for future accepted CUs; CU03 must implement the chat runtime/streaming separately.
-3. Track CU09's low out-of-band-row and NUL-input risks for future triage; do not claim they are fixed.
-4. Preserve retained synthetic resources and unrelated local work; no unauthorized cleanup.
-5. Do not modify archived CU09, touch CU03 mounting, commit or push without authorization.
+1. Resolve the red-fraction contract conflict with the user before Sync/Archive; do not invent a guarantee.
+2. Keep the synthetic DEV accounts and data until their deletion is explicitly authorized.
+3. Preserve retained synthetic resources and unrelated work; test-only repository artifacts were removed.
+4. Reuse the foundation for future accepted CUs; CU03 chat runtime is separate.
+5. Track CU09's low out-of-band-row and NUL-input risks for future triage.
