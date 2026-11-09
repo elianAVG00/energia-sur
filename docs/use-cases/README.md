@@ -30,6 +30,9 @@ CUs does not remove the other three from the proposed ten-CU scope.
   Teacher approval date/channel are not recorded; U06 alone did not authorize Apply.
 - **U07/U07-T**: subsequent CU09 design/Apply and technical-package approval;
   [evidence](decisions.md#u07---cu09-apply-and-technical-package-approval).
+- **U14**: the 2026-11-09 CU07 instruction replacing the exact-boundary rule with a
+  ±7-day local-date window, explicit approximate confirmation and manual candidate
+  selection; [evidence](decisions.md#u14---cu07-revised-matching-and-comparison-authorization).
 - **I**: an explicitly labeled inference or proposed defensive alternative for
   review, not an approved addition to P. **TBD**: no documented decision; see the
   [question register](decisions.md). No implied policy may fill a TBD.
@@ -48,7 +51,7 @@ not a source for this product. Q00 is approved on the user's U06 teacher-approva
 | CU04 | [Manage personal addresses and meters](cu04.md) | Account holder | P / full CU04 planned; minimum domicile prerequisite implemented under CU09 |
 | CU05 | [Record a meter reading with a photo](cu05.md) | Account holder | P / accepted documentary baseline; implementation planned |
 | CU06 | [Record an electricity bill](cu06.md) | Account holder | P / implemented, verified and archived on 2026-11-09 |
-| CU07 | [Compare recorded consumption with a bill](cu07.md) | Account holder | P + U05 / approved matching and kWh difference; residual TBDs |
+| CU07 | [Compare recorded consumption with a bill](cu07.md) | Account holder | P + U05/U14 / implemented, verified and archived on 2026-11-09 |
 | CU08 | [View consumption trends and estimates](cu08.md) | Account holder | P + U05 / approved base and grouping; projection formula TBD |
 | CU09 | [Record and query an interruption diary](cu09.md) | Account holder | P + U05-U10 / implemented, verified and archived; bounded CU04 prerequisite only |
 | CU10 | [Supervise automatic source refresh](cu10.md) | Administrator | P / accepted documentary baseline; implementation planned |
@@ -61,7 +64,7 @@ under this accepted documentary baseline; **REVIEW** marks an inference; **BLOCK
 requires a decision before a determinate acceptance oracle can be written.
 **APPROVED RULE** marks a U05/U06-backed result for the stated synthetic fixture;
 it does not claim executed acceptance, resolution of other TBDs or an implemented CU.
-The register has 24 questions: six approved within scope, seven partial and eleven open.
+The register has 24 questions; Q13 is superseded by U14 and Q14 remains partial.
 Q00 is satisfied; CU09's accepted contract and U08 date-floor/lint decisions are
 separate from unrelated catalog questions.
 

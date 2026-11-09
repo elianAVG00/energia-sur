@@ -2,8 +2,8 @@ import axios from 'axios';
 import type { AxiosAdapter, AxiosResponse, GenericAbortSignal } from 'axios';
 import { sessionStore } from '../stores/session.ts';
 import type { SessionStore } from '../stores/session.ts';
-import { DiaryError, statusMessage } from './httpError.ts';
-import type { BillOverlap, BillWarning } from './httpError.ts';
+import { DiaryError, comparisonConfirmation, statusMessage } from './httpError.ts';
+import type { BillOverlap, BillWarning, ComparisonConfirmation } from './httpError.ts';
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 interface RequestOptions {
@@ -80,8 +80,8 @@ function billWarning(body: unknown): BillWarning | null {
   return { overlap_token: body.overlap_token, overlaps };
 }
 
-async function errorDetail(response: AxiosResponse<unknown>, context: Context): Promise<{ detail: string; code: DiaryError['code']; warning: BillWarning | null }> {
-  const fallback = { detail: statusMessage(response.status), code: null, warning: null };
+async function errorDetail(response: AxiosResponse<unknown>, context: Context): Promise<{ detail: string; code: DiaryError['code']; warning: BillWarning | null; confirmation: ComparisonConfirmation | null }> {
+  const fallback = { detail: statusMessage(response.status), code: null, warning: null, confirmation: null };
   const contentType: unknown = response.headers['content-type'];
   let body: unknown = response.data;
   if (typeof contentType !== 'string' || !/^application\/json(?:\s*;|$)/i.test(contentType)) return fallback;
@@ -97,9 +97,10 @@ async function errorDetail(response: AxiosResponse<unknown>, context: Context): 
       typeof body.detail === 'string' && body.detail.trim() && body.detail.length <= 2048) {
     const code = response.status === 409 && 'code' in body &&
        (body.code === 'DUPLICATE_METER' || body.code === 'DUPLICATE_READING' || body.code === 'DUPLICATE_BILL' || body.code === 'OVERLAP_CONFIRMATION_REQUIRED' ||
-       body.code === 'IDEMPOTENCY_KEY_REUSED' || body.code === 'VERSION_CONFLICT') ? body.code : null;
+       body.code === 'IDEMPOTENCY_KEY_REUSED' || body.code === 'VERSION_CONFLICT' || body.code === 'CONFIRMATION_REQUIRED') ? body.code : null;
     const warning = code === 'OVERLAP_CONFIRMATION_REQUIRED' ? billWarning(body) : null;
-    return { detail: body.detail, code, warning };
+    const confirmation = code === 'CONFIRMATION_REQUIRED' ? comparisonConfirmation(body) : null;
+    return { detail: body.detail, code, warning, confirmation };
   }
   return fallback;
 }
@@ -140,14 +141,14 @@ export function createHttpClient(options: { store?: SessionStore; adapter?: Axio
     }
     if (context.combined.aborted) throw cancellation(context);
     if (response.status < 200 || response.status >= 300) {
-      const { detail, code, warning } = await errorDetail(response, context);
+      const { detail, code, warning, confirmation } = await errorDetail(response, context);
       // Error-body decoding can be asynchronous (PDF JSON blobs).
       if (context.generation !== store.getState().generation) {
         throw new DiaryError('aborted', 'La solicitud fue cancelada.');
       }
       if (context.combined.aborted) throw cancellation(context);
       if (response.status === 401 && store.getState().session) store.getState().clearSession(context.generation, true);
-      throw new DiaryError('http', detail, response.status, code, warning);
+      throw new DiaryError('http', detail, response.status, code, warning, confirmation);
     }
     return response;
   });

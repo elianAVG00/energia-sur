@@ -9,6 +9,7 @@ import { useRequestScope } from '../../useRequestScope.ts';
 import { newRequestKey } from '../readings/attempts.ts';
 import { billsApi, validDate, validDecimal } from './api.ts';
 import type { Bill, BillEdit, BillInput } from './api.ts';
+import { BillComparison } from './BillComparison.tsx';
 
 type CreateAttempt = { input: BillInput; key: string };
 type EditAttempt = { id: string; version: number };
@@ -40,6 +41,7 @@ export function BillHistory({ generation: sessionGeneration, domicileId, meterId
   const [notice, setNotice] = useState('');
   const [editing, setEditing] = useState<Bill | null>(null);
   const [detail, setDetail] = useState<Bill | null>(null);
+  const [comparing, setComparing] = useState<Bill | null>(null);
   const [draft, setDraft] = useState<BillInput>(empty);
   const [fileName, setFileName] = useState('');
   const [fileProblem, setFileProblem] = useState(false);
@@ -159,7 +161,7 @@ export function BillHistory({ generation: sessionGeneration, domicileId, meterId
   }
   function startEdit(row: Bill) {
     setEditing(row); setDraft({ period_start: row.period_start, period_end: row.period_end, value_kwh: row.value_kwh, amount_ars: row.amount_ars, file_base64: null, overlap_token: null });
-    setFileName(''); setFileProblem(false); setWarning(null); setError(''); setNotice('');
+    setFileName(''); setFileProblem(false); setWarning(null); setError(''); setNotice(''); setComparing(null);
   }
   const disabled = busy || Boolean(createAttempt) || Boolean(editAttempt);
   return <Card><CardHeader><CardTitle>Facturas del medidor</CardTitle></CardHeader><CardContent><div className="space-y-3">
@@ -183,8 +185,10 @@ export function BillHistory({ generation: sessionGeneration, domicileId, meterId
     {!loading && !rows.length && <p>No hay facturas registradas.</p>}
     <ul>{rows.map(row => <li key={row.id}><span>{row.period_start} — {row.period_end}: {row.value_kwh} kWh{row.amount_ars === null ? '' : ` — ARS ${row.amount_ars}`} (versión {row.version})</span>{' '}
       <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => void showDetail(row)}>Ver detalle</Button>{' '}
+      <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => { setComparing(row); setError(''); setNotice(''); }}>Comparar</Button>{' '}
       <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => startEdit(row)}>Corregir factura</Button>{' '}
       <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => void download(row)}>Descargar archivo</Button></li>)}</ul>
+    {comparing && <BillComparison key={`${meterId}:${comparing.id}`} generation={sessionGeneration} domicileId={domicileId} meterId={meterId} bill={comparing} onClose={() => setComparing(null)} />}
     {detail && <section aria-label="Detalle de factura"><p>Período: {detail.period_start} — {detail.period_end}</p><p>Consumo: {detail.value_kwh} kWh</p><p>Importe: {detail.amount_ars === null ? 'No informado' : `ARS ${detail.amount_ars}`}</p><p>Archivo: {detail.file_type} — versión {detail.version}</p><Button type="button" variant="outline" onClick={() => setDetail(null)}>Cerrar detalle</Button></section>}
   </div></CardContent></Card>;
 }

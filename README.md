@@ -28,6 +28,17 @@ generates the confirmation key at backend start. Startup reconciliation removes 
 unreferenced CU06 objects; a synthetic matched PostgreSQL + volume backup/restore drill
 passed with the backend stopped.
 
+CU07 comparison is implemented as a read-only endpoint and bill-workspace panel. It
+matches CU05 readings within +/-7 days of each CU06 bill boundary using Buenos Aires
+local dates, compares exact dates directly and requires backend-validated confirmation
+for approximate periods. Multiple candidates require manual selection; missing or
+decreasing readings yield no calculation; recorded, billed and the exact difference are
+shown in kWh without a percentage. See the
+[archived change](openspec/changes/archive/2026-11-09-compare-cu07-consumption-with-bill/proposal.md),
+[main specification](openspec/specs/bill-comparisons/spec.md)
+and [engineering record](docs/ai-engineering/compare-cu07-consumption-with-bill.md). No
+table, migration or dependency was added; independent review and archive are complete.
+
 CU05 meter readings have manual history, confirmation, private photo attachments and
 photo/OCR endpoints. The OCR endpoint uses local Tesseract and OpenCV in bounded
 workers, with editable suggestions or abstention. Recognition is not guaranteed:
@@ -283,6 +294,7 @@ Before live checks:
 - [Accepted stage 05 catalog and decision baseline](docs/use-cases/README.md)
 - [CU09 approved first-development proposal and Apply contract](openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/proposal.md)
 - [CU09 implementation, verification evidence and remaining gates](docs/ai-engineering/record-cu09-interruption-diary.md)
+- [CU07 comparison implementation, verification evidence and archive](docs/ai-engineering/compare-cu07-consumption-with-bill.md)
 - [Approved MCP design and tasks](openspec/changes/configure-readonly-development-mcp/design.md)
 - [MCP setup, authentication checkpoint, and redacted checks](docs/ai-engineering/configure-readonly-development-mcp.md)
 - [Docker environment decisions, planning checks, and pending implementation evidence](docs/ai-engineering/docker-development-environment.md)

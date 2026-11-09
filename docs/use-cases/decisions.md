@@ -137,6 +137,36 @@ During photo implementation the user approved declaring the existing locked Pill
 
 The user resolved M1 from the independent review: the OCR may abstain whenever it cannot identify the reading with sufficient confidence, without adding unnecessary complexity or claiming unverified precision. Manual kWh entry and explicit confirmation always remain available and authoritative. The fail-closed implementation that returns the exact U13 fallback without invoking Tesseract is therefore accepted for closure, and the delta spec/design were revised to permit safe abstention. A future suggestion requires documented register-identity and red-fraction evidence; a real meter photo and representative accuracy remain pending and are not approved. No Sync, Archive, commit or push is authorized by this decision.
 
+## U14 - CU07 revised matching and comparison authorization
+
+Recorded on 2026-11-09 from the user's instruction beginning "Continuá el PROPOSE de
+CU07 con las nuevas decisiones funcionales aprobadas". The user **replaces** the
+exact-boundary rule of Q13/CU07-R1 with:
+
+- Compare CU05 readings with structured CU06 bill data only, always for the same
+  meter and owning account.
+- Exact boundary dates compare directly.
+- Otherwise allow an approximate comparison only with explicit confirmation in a
+  modal.
+- Accept readings whose `America/Argentina/Buenos_Aires` local date is within ±7
+  days inclusive of each billed-period boundary.
+- When multiple candidate readings exist, the user must manually select the start and
+  end readings.
+- Do not interpolate, prorate or estimate consumption.
+- Show the real reading dates and a visible warning when the periods differ.
+- Do not calculate when compatible readings are missing or the end reading is lower
+  than the start reading.
+- Show recorded consumption, billed kWh and the exact kWh difference, with no
+  percentage.
+- Keep CU07 read-only: no new tables, migrations or PDF extraction.
+
+The user also requires a simple candidate/confirmation contract validated in the
+backend (selected IDs, dates, ownership and confirmation), not only in the modal, and
+requests tests for exact match, 7/8-day tolerance, multiple candidates, confirmation,
+zero consumption, decreasing readings and cross-account isolation. This authorizes
+the CU07 proposal and documentation update for review; it does not authorize Apply,
+code, migrations, Sync, Archive, commit or push.
+
 ## Confirmed facts versus inferences
 
 ### CU05 subsequent OCR BUILD instruction
@@ -253,24 +283,25 @@ the change was archived on 2026-11-09 and the [main specification](../../openspe
 is synchronized. Q13's exact boundary-date rule is preserved.
 
 ### Q13
-**APPROVED - CU07, U05:** compare only with valid readings of the same meter whose
-dates exactly match both the start and end dates of the billed period. If either
-match is absent, do not calculate a comparison. No tolerance, interpolation or
-proration substitutes for a missing match.
-**Pending:** no compatibility alternative remains open in Q13. Reading validity
-(Q10), bill-period representation (Q12) and auth (Q03) remain separate dependencies;
-this approval does not settle timestamp precision or duplicate-boundary selection.
-**Impact:** CU07-S01/S02/S03 now have determinate matching outcomes. Input validity
-still gates implementation; ambiguous duplicate readings remain within Q10.
+**SUPERSEDED - CU07, U14 (replaces the U05 exact-match rule):** candidate readings
+are those of the same meter whose Buenos Aires local date is within ±7 days
+inclusive of each billed boundary. Exact boundary dates compare directly; other
+in-window pairs require explicit confirmation. No tolerance beyond ±7 days,
+interpolation or proration is authorized.
+**Pending:** no matching alternative remains open. Reading validity (Q10),
+bill-period representation (Q12) and auth (Q03) remain separate dependencies.
+**Impact:** CU07-S01-S05 and the U14 scenarios have determinate matching outcomes;
+multiple candidates require manual selection (U14).
 
 ### Q14
-**PARTIAL - CU07, U05. Approved:** display the difference in kWh and identify whether
-recorded or billed consumption is higher; if equal, state there is no difference.
-**Pending:** rounding, formatting/wording and other presentation details not stated
-by the user remain TBD. No percentage, warning threshold, tariff or fraud feature
-is approved by this rule.
-**Impact:** CU07-S01/S04/S05 cover recorded-higher, billed-higher and equality with
-integer fixtures; fractional/precision/display variants remain blocked by this TBD.
+**PARTIAL - CU07, U05 + U14. Approved:** display recorded consumption, billed kWh and
+the exact difference in kWh, identifying whether recorded or billed consumption is
+higher, or that there is no difference. **Percentage is explicitly excluded.**
+**Pending:** exact Spanish wording/rounding of warnings and no-comparison messages
+remains a presentation detail under Q14.
+**Impact:** CU07-S01/S04/S05 and the U14 scenarios cover recorded-higher,
+billed-higher, equality and zero consumption; fractional values are displayed
+exactly without a percentage.
 
 ### Q15
 **PARTIAL - CU08, U05. Approved:** use the two latest valid readings of the same
