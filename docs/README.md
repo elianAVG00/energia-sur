@@ -17,6 +17,8 @@
   scaffold, runtime acceptance and remaining lint/backend-type gates; change open.
 - [Read-only development MCP](ai-engineering/configure-readonly-development-mcp.md):
   approved design, actual redacted calls and limits of the verification.
+- [CU01 outcome source integration](ai-engineering/implement-current-outages-cu01.md):
+  BUILD 1 ENRE→FastAPI→PostgreSQL→public API evidence; GeoRef, coverage and UI remain pending.
 
 The root [README](../README.md) remains the setup/architecture entry point. Stage
 05 does not authorize changing it or rewriting historical evidence records.

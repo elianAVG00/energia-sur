@@ -51,8 +51,9 @@ export class DiaryError extends Error {
   readonly code: 'DUPLICATE_METER' | 'DUPLICATE_READING' | 'DUPLICATE_BILL' | 'OVERLAP_CONFIRMATION_REQUIRED' | 'IDEMPOTENCY_KEY_REUSED' | 'VERSION_CONFLICT' | 'CONFIRMATION_REQUIRED' | null;
   readonly billWarning: BillWarning | null;
   readonly comparisonWarning: ComparisonConfirmation | null;
+  readonly retryAfter: number | null;
 
-  constructor(kind: DiaryError['kind'], message: string, status: number | null = null, code: DiaryError['code'] = null, billWarning: BillWarning | null = null, comparisonWarning: ComparisonConfirmation | null = null) {
+  constructor(kind: DiaryError['kind'], message: string, status: number | null = null, code: DiaryError['code'] = null, billWarning: BillWarning | null = null, comparisonWarning: ComparisonConfirmation | null = null, retryAfter: number | null = null) {
     super(message);
     this.name = 'DiaryError';
     this.kind = kind;
@@ -60,6 +61,7 @@ export class DiaryError extends Error {
     this.code = code;
     this.billWarning = billWarning;
     this.comparisonWarning = comparisonWarning;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -78,6 +80,7 @@ export function statusMessage(status: number): string {
     case 404: return 'El recurso no está disponible.';
     case 409: return 'El registro fue modificado.';
     case 422: return 'Revisá los datos ingresados.';
+    case 429: return 'Demasiadas solicitudes. Esperá un momento e intentá nuevamente.';
     case 503: return 'El servicio no está disponible temporalmente. Intentá nuevamente.';
     default: return `No se pudo completar la solicitud (HTTP ${status}).`;
   }

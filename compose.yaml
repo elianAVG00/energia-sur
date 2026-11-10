@@ -18,6 +18,8 @@ services:
     platform: linux/amd64
     environment:
       CU06_CONFIRMATION_SECRET: ${CU06_CONFIRMATION_SECRET:-}
+      OUTAGE_SCHEDULER_ENABLED: ${OUTAGE_SCHEDULER_ENABLED:-true}
+      OUTAGE_REFRESH_SECONDS: ${OUTAGE_REFRESH_SECONDS:-300}
     mem_limit: 1g
     memswap_limit: 1g
     ulimits:

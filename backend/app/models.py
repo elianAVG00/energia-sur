@@ -178,7 +178,6 @@ class ElectricityBill(Base):
 
 class BillCreation(Base):
     """Committed create response for an account and meter's idempotency key."""
-
     __tablename__ = "es_bill_creations"
     __table_args__ = (
         ForeignKeyConstraint(["meter_id", "account_id"], ["es_meters.id", "es_meters.account_id"],
@@ -193,3 +192,83 @@ class BillCreation(Base):
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     bill_id: Mapped[str] = mapped_column(String(36), nullable=False)
     response: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+
+class OutageSnapshot(Base):
+    """One acquired ENRE snapshot; exactly one row is the current state."""
+
+    __tablename__ = "es_outage_snapshots"
+    __table_args__ = (
+        CheckConstraint("total_users_without IS NULL OR total_users_without >= 0",
+                        name="ck_outage_total_without"),
+        CheckConstraint("total_users_with IS NULL OR total_users_with >= 0",
+                        name="ck_outage_total_with"),
+        CheckConstraint("users_affected_yesterday IS NULL OR users_affected_yesterday >= 0",
+                        name="ck_outage_total_yesterday"),
+        Index("uq_outage_snapshot_current", "is_current", unique=True,
+              postgresql_where=text("is_current")),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    distributor: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_url: Mapped[str] = mapped_column(String(300), nullable=False)
+    source_last_modified: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    source_reported_time: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    is_current: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+    total_users_without: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_users_with: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    users_affected_yesterday: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    row_counts: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+
+
+class OutageReport(Base):
+    """One normalized outage row belonging to a snapshot."""
+
+    __tablename__ = "es_outage_reports"
+    __table_args__ = (
+        CheckConstraint("affected_users IS NULL OR affected_users >= 0",
+                        name="ck_outage_report_users"),
+        CheckConstraint("category IN ('medium_voltage','low_voltage','preventive')",
+                        name="ck_outage_report_category"),
+        Index("ix_outage_report_snapshot", "snapshot_id"),
+        Index("ix_outage_report_area", "partido_key", "localidad_key"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    snapshot_id: Mapped[str] = mapped_column(
+        ForeignKey("es_outage_snapshots.id", ondelete="CASCADE"), nullable=False,
+    )
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    partido: Mapped[str] = mapped_column(String(120), nullable=False)
+    localidad: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    partido_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    localidad_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    subestacion_alimentador: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    affected_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    normalizacion: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class OutageFetchRun(Base):
+    """Every acquisition attempt, including failures and skipped runs."""
+
+    __tablename__ = "es_outage_fetch_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "outcome IN ('ok','not_modified','http_error','tls_error','parse_error',"
+            "'schema_error','source_degraded','timeout','skipped_locked')",
+            name="ck_outage_run_outcome",
+        ),
+        Index("ix_outage_run_started", "started_at"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    detail_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)

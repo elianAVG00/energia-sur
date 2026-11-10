@@ -211,3 +211,29 @@ test('generation change during PDF JSON decoding cannot expire a new login', asy
   await assert.rejects(pending, error => error instanceof DiaryError && error.kind === 'aborted');
   assert.equal(store.getState().session?.account.id, 'new');
 });
+
+test('public CU01 resolve POSTs skip CSRF without weakening private writes', async () => {
+  const store = createSessionStore();
+  const seen: { url: string; token: string | undefined }[] = [];
+  const adapter: AxiosAdapter = async config => {
+    seen.push({ url: config.url ?? '', token: config.headers.get('X-CSRF-Token') as string | undefined });
+    return { data: {}, status: 200, statusText: 'OK', headers: new AxiosHeaders({ 'content-type': 'application/json' }), config };
+  };
+  const http = createHttpClient({ store, adapter });
+  await http.request('/outages/resolve', signal(), { method: 'POST', data: { address: 'synthetic' } });
+  await http.request('/outages/resolve-location', signal(), { method: 'POST', data: { lat: 1, lon: 2 } });
+  assert.deepEqual(seen.map(item => item.url), ['/api/outages/resolve', '/api/outages/resolve-location']);
+  assert.equal(seen.every(item => item.token === undefined), true);
+  await assert.rejects(http.request('/domiciles', signal(), { method: 'POST' }), error => error instanceof DiaryError && error.status === 403);
+});
+
+test('429 exposes Retry-After without replaying the request', async () => {
+  let calls = 0;
+  const adapter: AxiosAdapter = async config => {
+    calls++;
+    return { data: { detail: 'Demasiadas solicitudes.' }, status: 429, statusText: 'Too Many Requests', headers: new AxiosHeaders({ 'content-type': 'application/json', 'retry-after': '30' }), config };
+  };
+  const http = createHttpClient({ store: createSessionStore(), adapter });
+  await assert.rejects(http.request('/outages/resolve', signal(), { method: 'POST', data: { address: 'synthetic' } }), error => error instanceof DiaryError && error.status === 429 && error.retryAfter === 30 && error.message.includes('Demasiadas'));
+  assert.equal(calls, 1);
+});

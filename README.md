@@ -5,8 +5,10 @@ managing electricity consumption in southern Greater Buenos Aires. The selected
 stack is React + TypeScript and Python + FastAPI, developed with OpenCode, Codex,
 and OpenSpec. CU09 has a private interruption diary and the minimum CU04
 domicile-registration slice. CU09 and the shared frontend foundation were verified
-and archived on 2026-11-08. CU04 was subsequently implemented and verified;
-other business CUs are not implemented.
+and archived on 2026-11-08; CU04, CU06, CU07 and CU08 are implemented and
+archived. CU05 is implemented with a red-fraction Sync/Archive block, and CU01 is
+implemented and verified pending closure authorization. CU02, CU03 and CU10
+remain planned.
 
 CU04 domicile and meter management is implemented, verified and archived;
 Git staging, commits and pushes are managed by the user:
@@ -132,6 +134,54 @@ See the [reuse guide](docs/frontend-foundation.md) for module boundaries, adding
 next CU, reset/security rules and documented checks. Actual verification and the
 independent source review are in the [engineering record](docs/ai-engineering/establish-frontend-foundation.md).
 Both changes were archived with main specs synchronized; no closure commit, push or deployment performed.
+
+## CU01 public outage queries and UI (BUILD 3)
+
+The public, read-only outage API is backed by a cached ENRE snapshot:
+`GET /api/outages?partido=<name>&localidad=<optional>`, `GET /api/outages/areas`,
+`POST /api/outages/resolve` (address in the body) and `POST /api/outages/resolve-location`
+(coordinates in the body). Backend paths are `/outages`, `/outages/areas`, `/outages/resolve`
+and `/outages/resolve-location`; no session is required and responses use
+`Cache-Control: no-store`. Addresses and coordinates are body-only, rate-limited and never logged.
+The backend refreshes `data_EDS.js` every five minutes under a PostgreSQL advisory lock when
+`OUTAGE_SCHEDULER_ENABLED=true` (Compose default); `OUTAGE_REFRESH_SECONDS` defaults to `300`.
+Migration `0005_cu01` adds `es_outage_snapshots`, `es_outage_reports` and `es_outage_fetch_runs`.
+
+Coverage uses the versioned catalog `backend/app/data/edesur_coverage.2026-11-10.json` with
+`covered`, `out_of_coverage` and `coverage_unverified`. The shipped catalog is a partial,
+observation-based seed (provenance and retrieval date in the file; most entries were observed in
+current-outage collections and three in the same feed's programmed/comunicado collections).
+Absence is always `coverage_unverified` and no `out_of_coverage` entry is asserted without
+explicit evidence. `no_reports` is reachable only for localidades explicitly listed in the seed.
+
+Resolve requests are rate-limited in-process per socket peer (20/minute). Behind the Vite proxy
+all browser traffic shares that peer; revisit the client-identity key before multi-user hosting.
+CABA addresses/positions resolve to partido `CAPITAL` only, because GeoRef returns a comuna and
+not an ENRE barrio; the catalog's CABA barrios are not address-resolvable.
+
+The public UI lives at the "Cortes" section of the shell (the "Mi cuenta" account view remains the
+default, so the existing login flow is unchanged). It offers a partido→optional-localidad selector
+from `/outages/areas`, a normalized "Buscar zona" filter, GeoRef address search with candidate
+selection, consented browser geolocation, granularity messaging, category rows, Edesur-scope totals
+and the source provenance. Every normative availability/coverage state is presented, including
+"coverage unverified" (never "out of coverage" or "no outages" without evidence). The public view
+calls only `/api/outages/*` plus the shared `/api/session` and `/api/health` probes; the two public
+resolve POSTs are the only CSRF-free writes besides login, and 429 responses surface `Retry-After`.
+
+Known BUILD 3 limits are accepted by U20: the partial nine-localidad coverage catalog (0.4) and the
+unobserved media/preventivo feed shapes (0.1). GeoRef address matching is sparse and reverse
+geocoding returns only a partido, so address/position results often degrade to partido.
+
+Verification: `docker build --target verification -t energia-sur-backend-checks:cu01 backend`,
+then run `python -m unittest discover -s tests -p "test_cu01_*.py"` against an isolated migrated
+`TEST_DATABASE_URL`; set `TEST_ENRE_LIVE=1` and `TEST_GEOREF_LIVE=1` for the live tests. Frontend:
+`docker build --target verification -t energia-sur-frontend-checks:cu01 frontend` (runs typecheck,
+build, tests and lint), then run `npx playwright test e2e/cu01.spec.ts` with the dev server up.
+The contract-mocked suite needs no backend; the real-backend smoke
+(`e2e/cu01-real.spec.ts`) requires a migrated isolated database seeded from
+`backend/tests/fixtures/enre_data_eds_redacted.js` via `app.outage_store._store_snapshot`, the
+backend reachable as `backend:8000` from the frontend proxy, and `CU01_LIVE=1`.
+CU09 remains covered by its existing E2E against a seeded backend.
 
 ## Local Docker environment
 

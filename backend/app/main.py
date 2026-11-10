@@ -1,8 +1,10 @@
 """Storage-free HTTP liveness for the local development environment."""
 
+import asyncio
 import logging
+import os
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
@@ -13,13 +15,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import StaleDataError
 from starlette.concurrency import run_in_threadpool
 
-from app import management
+from app import management, outage_store
 from app.api import router
 from app.bill_api import router as bill_router
 from app.bill_reconcile import reconcile_bills
 from app.comparison_api import router as comparison_router
 from app.consumption_api import router as consumption_router
 from app.db import DatabaseUnavailable, dispose_engines
+from app.outages_api import router as outage_router
 from app.photo_store import reconcile_photos
 from app.reading_api import DuplicateReading
 from app.reading_api import router as reading_router
@@ -36,6 +39,7 @@ class HealthResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    scheduler: asyncio.Task[None] | None = None
     try:
         # Fail closed: if recovery cannot prove the locks, no files are removed.
         try:
@@ -49,9 +53,32 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         except Exception as error:
             _LOGGER.warning("Bill reconciliation failed; no files were removed (%s).",
                             type(error).__name__)
+        if os.environ.get("OUTAGE_SCHEDULER_ENABLED", "false").lower() in {
+            "1", "true", "yes",
+        }:
+            scheduler = asyncio.create_task(_outage_scheduler())
         yield
     finally:
+        if scheduler is not None:
+            scheduler.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await scheduler
         dispose_engines()
+
+
+async def _outage_scheduler() -> None:
+    try:
+        interval = float(os.environ.get("OUTAGE_REFRESH_SECONDS", "300"))
+    except ValueError:
+        interval = 300.0
+    interval = max(interval, 30.0)
+    while True:
+        try:
+            await run_in_threadpool(outage_store.refresh_once)
+        except Exception as error:
+            # No payload, URL or database detail is logged.
+            _LOGGER.warning("Outage refresh failed (%s).", type(error).__name__)
+        await asyncio.sleep(interval)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -60,6 +87,7 @@ app.include_router(reading_router)
 app.include_router(bill_router)
 app.include_router(comparison_router)
 app.include_router(consumption_router)
+app.include_router(outage_router)
 
 
 @app.exception_handler(DuplicateReading)

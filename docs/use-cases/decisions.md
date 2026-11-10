@@ -218,6 +218,114 @@ is not Apply, code, installation, migration, Sync, Archive, commit or push.
 These complete CU08's functional decisions alongside D01–D11. The chart library
 remains TBD under D11.
 
+## U16 - CU01 current outages decisions and traceability
+
+Recorded from the user's 2026-11-10 REVIEW/REVISE instructions for CU01, which approved the
+complementary decisions T1–T3 and required the independent-review fixes. The user approved
+for **CU01 only**:
+
+- **D1:** HTTPS with a legacy-TLS `SSLContext` isolated to the ENRE client, keeping certificate
+  and hostname verification.
+- **D2:** query by partido, localidad and address via GeoRef.
+- **D3:** show medium-tension, low-tension and preventive categories when applicable, without
+  presuming all are active; programmed cuts stay in CU02.
+- **D4:** a verifiable Edesur coverage catalog combined with ENRE data.
+- **D5:** PostgreSQL stores the last valid snapshot, its normalized records and execution history.
+- **D6:** an initial five-minute refresh via the backend scheduler, coordinated with a PostgreSQL
+  advisory lock.
+- **D7:** `httpx` + JSON5, conditioned on demonstrated compatibility with the real JavaScript;
+  never execute remote code.
+- **D8:** freshness fresh ≤15 min, stale ≤60 min, unavailable >60 min or no valid data; keep the
+  last valid snapshot on failure or `N/A`.
+- **D9:** browser geolocation with consent and reverse geocoding, without persisting unnecessary
+  coordinates.
+- **D10:** show the official global total and per-record figures, without summing localities or
+  deduplicating via unverified heuristics.
+- **D11:** public access and differentiated states: loading, reported outages, no reports, stale,
+  unavailable, out of coverage, geographic errors.
+- **T1:** GeoRef is centralized in the backend, mandatory Buenos Aires/CABA territorial scoping,
+  ambiguity resolution, and explicit degradation to partido when no localidad is known; personal
+  coordinates are never persisted or logged.
+- **T2:** a versioned territorial catalog with provenance and verification date; distinguish
+  `covered`, `out_of_coverage` and `coverage_unverified`, where absence means unverified, never
+  out of coverage.
+- **T3:** record D1–D11 and T1–T3 in this register and resolve Q01/Q02/Q04/Q07 only as far as the
+  approved decisions support, keeping genuinely undefined aspects explicitly pending.
+
+These decisions authorize the CU01 OpenSpec proposal and its documentation corrections only. They
+do not authorize implementation, migrations, dependency installation, Sync, Archive, commit or push.
+The ENRE feed contract was verified read-only on 2026-11-10 (live payload, UTF-8, `Last-Modified`
+refresh, legacy TLS requirement); the GeoRef forward/reverse shapes were probed read-only the same
+day. Unverified items stay listed as pre-BUILD blockers in the change's `tasks.md`.
+
+## U17 - CU01 BUILD 1 authorization
+
+Recorded from the user's 2026-11-10 instruction beginning "BUILD 1 — CU01: Integración ENRE y
+backend". The user authorizes the first functional stage of `implement-current-outages-cu01`:
+ENRE acquisition, JSON5 parsing, PostgreSQL snapshot persistence, the five-minute advisory-locked
+refresh and the public partido/localidad query API. Explicitly excluded from this stage: GeoRef,
+browser geolocation, the definitive territorial coverage catalog and the full visual interface.
+The user requires stopping if JSON5 cannot interpret a real fixture, forbids Sync, Archive, commit
+and push, and forbids declaring CU01 complete at the end of this stage.
+
+This authorization covers BUILD 1 only. It does not authorize BUILD 2/3, does not resolve the
+coverage-catalog or GeoRef↔ENRE mapping blockers, and does not authorize implementation of CU02,
+CU03, CU09 or CU10.
+
+## U18 - CU01 BUILD 2 authorization
+
+Recorded from the user's 2026-11-10 instruction beginning "BUILD 2 — CU01: GeoRef y cobertura
+territorial". The user authorizes the territorial backend stage of
+`implement-current-outages-cu01`: a centralized GeoRef adapter (forward addresses and reverse
+coordinates, Buenos Aires/CABA scope, verified GeoRef↔ENRE naming rules, ambiguity, degradation
+to partido, granularity reporting), the versioned Edesur coverage catalog with `covered`,
+`out_of_coverage` and `coverage_unverified`, and integration with the BUILD 1 snapshot/API.
+
+The user explicitly excludes the React interface and the browser GPS flow, forbids replacing the
+ENRE integration or the GeoRef provider without approval, forbids Sync, Archive, commit and push,
+and forbids declaring CU01 complete. Coverage must not be asserted from absence, and insufficient
+evidence must remain `coverage_unverified`.
+
+This authorization covers BUILD 2 only. It does not authorize BUILD 3, does not supply the
+definitive Edesur concession enumeration and does not authorize CU02/CU03/CU09/CU10 changes.
+
+## U19 - CU01 BUILD 3 authorization
+
+Recorded from the user's 2026-11-10 instruction beginning "BUILD 3 — CU01: Frontend público y
+verificación E2E". The user authorizes the public CU01 interface and end-to-end verification:
+partido/localidad selection from `/outages/areas`, GeoRef address search, consented browser
+geolocation, candidate selection, partido degradation messaging, all normative availability and
+coverage states, official source/update/totals presentation, and the narrow public-POST exception
+in the shared HTTP client.
+
+The user requires that CU01 never be presented as complete while blocking functional defects
+exist, forbids direct browser access to ENRE/GeoRef, forbids altering CU04–CU09 behavior, forbids
+Sync, Archive, commit and push, and requires an independent review plus separate reporting of
+pre-existing CU05/OCR problems.
+
+This authorization covers BUILD 3 only. It does not resolve the coverage-catalog enumeration
+(task 0.4) or the unobserved media/preventivo shapes (task 0.1), and does not authorize CU01
+closure, Sync or Archive.
+
+## U20 - CU01 final verification and closure preparation
+
+Recorded from the user's 2026-11-10 instruction beginning "VERIFY & CLOSE — CU01: Current
+Outages". The user accepts the two remaining limitations as documented exceptions and authorizes
+preparing the formal closure of `implement-current-outages-cu01`:
+
+- **0.1 (ENRE unobserved categories):** stop waiting for populated `cortesServicioMedia` /
+  `cortesPreventivos` captures. Accept the limitation only because the parser handles unknown
+  collections and extra keys safely, fails closed on invalid structures, preserves the last valid
+  snapshot, and never presents invented data. Synthetic fixtures are not production evidence; no
+  claim is made that populated categories were verified live.
+- **0.4 (territorial catalog):** approve the current versioned nine-localidad catalog with its
+  documented provenance. Unverified zones remain `coverage_unverified`; do not expand coverage or
+  assert negative results without evidence.
+
+This authorization covers verification and closure preparation only. It does not authorize Sync,
+Archive, commit, push or deployment, does not authorize starting CU02, and does not convert the
+0.1/0.4 exceptions into verified production behavior.
+
 ## Confirmed facts versus inferences
 
 ### CU05 subsequent OCR BUILD instruction
@@ -260,13 +368,20 @@ that confirmation; no teacher approval date or channel is recorded.
 **Impact:** Q00 no longer blocks CU09 or the other CUs; it does not authorize Apply.
 
 ### Q01
-**TBD - CU01:** Which address/device/locality inputs and GeoRef resolution/coverage
-are supported? Needed to define matching; blocks CU01-S01's exact search oracle.
+**PARTIAL - CU01, U16 + D2/T1/T2/U20:** the supported inputs are partido, optional localidad and
+address, resolved through a backend GeoRef adapter scoped to Buenos Aires/CABA, with candidate
+selection for ambiguous addresses and explicit degradation to partido when no localidad is
+resolved; coverage uses the approved versioned nine-localidad catalog. **Pending:** only the
+definitive Edesur enumeration (accepted 0.4 limitation; `out_of_coverage` unimplemented) and the
+exact Q02 copy. The GeoRef↔ENRE mapping is verified (0.3) and the address/location modes are
+implemented.
+**Impact:** CU01-S01 has a determinate partido/localidad oracle; the exact fallback copy stays Q02.
 
 ### Q02
-**TBD - CU01/CU02:** What happens on ambiguous location, unavailable geolocation
-or denied consent? Avoid implicit fallback/permission requests; blocks CU01-S02
-and CU02-S02's location-error behavior.
+**PARTIAL - CU01/CU02, U16 + T1:** ambiguous addresses require explicit candidate selection;
+denied geolocation performs no query and no repeated permission request, preserving the
+no-implicit-fallback constraint. **Pending:** the exact Spanish copy for candidate selection and
+the denied-consent fallback; CU02-S02 remains open.
 
 ### Q03
 **PARTIAL - CU04-CU09. Approved for CU09 by U06:** only the account with the registered
@@ -277,9 +392,11 @@ cookie/CSRF/hash details for CU09 and its minimum CU04 slice.
 **Pending:** other CUs' roles/ownership behavior remains unspecified. CU04's historical isolation checks and review are recorded in [STATE](../STATE.md); CU05 requires its own independent review and isolation evidence.
 
 ### Q04
-**TBD - CU01/CU02/CU03/CU10:** Which official endpoints, terms, coverage and refresh
-provenance are usable, and how are last attempt and last successful update exposed?
-Blocks reliable live-data and CU10-S01/S02 acceptance; no connector is presumed.
+**PARTIAL - CU01, U16 + D1/D5/D8/T2:** the ENRE `data_EDS.js` feed is verified accessible and is
+the provisional CU01 primary source; provenance exposes the source URL, a `Last-Modified`-based
+source update time, the UTC fetch time, a freshness class and an internal fetch-run history reserved for CU10; coverage
+provenance is part of the versioned catalog. **Pending:** CU02/CU03/CU10 sources, terms and
+reconfiguration remain open.
 
 ### Q05
 **TBD - CU02:** What upcoming horizon, date-range boundaries, timezone, distance
@@ -291,9 +408,10 @@ CU02-S01/S03's exact results.
 Needed for grounding; blocks CU03-S01's source acceptance oracle.
 
 ### Q07
-**TBD - CU01/CU02/CU03:** What staleness threshold and unavailable-source behavior
-are approved? Blocks CU01-S03, CU02-S02 and CU03-S02's exact fallback responses.
-The no-invention constraint remains in force without selecting that UX.
+**PARTIAL - CU01, U16 + D8/D11:** freshness is fresh ≤15 min, stale ≤60 min and unavailable >60
+min or no valid snapshot; a degraded/`N/A` source keeps the last valid snapshot, and stale or
+unavailable are explicit states rather than empty results. **Pending:** CU02/CU03 fallback UX
+remains open; the no-invention constraint is unchanged.
 
 ### Q08
 **PARTIAL - CU04:** U07/U07-T approve the CU09 prerequisite's stable domicile ID,

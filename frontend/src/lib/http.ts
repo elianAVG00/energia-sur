@@ -22,6 +22,12 @@ interface Context {
   combined: AbortSignal;
 }
 
+const PUBLIC_POSTS = new Set(['/api/outages/resolve', '/api/outages/resolve-location']);
+
+function isPublicPost(url: string | undefined, method: string | undefined): boolean {
+  return method === 'post' && url !== undefined && PUBLIC_POSTS.has(url);
+}
+
 function cancellation(context: Context): DiaryError {
   return context.caller.aborted || !context.deadline.aborted
     ? new DiaryError('aborted', 'La solicitud fue cancelada.')
@@ -80,8 +86,11 @@ function billWarning(body: unknown): BillWarning | null {
   return { overlap_token: body.overlap_token, overlaps };
 }
 
-async function errorDetail(response: AxiosResponse<unknown>, context: Context): Promise<{ detail: string; code: DiaryError['code']; warning: BillWarning | null; confirmation: ComparisonConfirmation | null }> {
-  const fallback = { detail: statusMessage(response.status), code: null, warning: null, confirmation: null };
+async function errorDetail(response: AxiosResponse<unknown>, context: Context): Promise<{ detail: string; code: DiaryError['code']; warning: BillWarning | null; confirmation: ComparisonConfirmation | null; retryAfter: number | null }> {
+  const retryHeader: unknown = response.headers['retry-after'];
+  const retryValue = typeof retryHeader === 'string' ? Number(retryHeader) : NaN;
+  const retryAfter = Number.isSafeInteger(retryValue) && retryValue > 0 ? retryValue : null;
+  const fallback = { detail: statusMessage(response.status), code: null, warning: null, confirmation: null, retryAfter };
   const contentType: unknown = response.headers['content-type'];
   let body: unknown = response.data;
   if (typeof contentType !== 'string' || !/^application\/json(?:\s*;|$)/i.test(contentType)) return fallback;
@@ -100,7 +109,7 @@ async function errorDetail(response: AxiosResponse<unknown>, context: Context): 
        body.code === 'IDEMPOTENCY_KEY_REUSED' || body.code === 'VERSION_CONFLICT' || body.code === 'CONFIRMATION_REQUIRED') ? body.code : null;
     const warning = code === 'OVERLAP_CONFIRMATION_REQUIRED' ? billWarning(body) : null;
     const confirmation = code === 'CONFIRMATION_REQUIRED' ? comparisonConfirmation(body) : null;
-    return { detail: body.detail, code, warning, confirmation };
+    return { detail: body.detail, code, warning, confirmation, retryAfter };
   }
   return fallback;
 }
@@ -126,7 +135,7 @@ export function createHttpClient(options: { store?: SessionStore; adapter?: Axio
     config.headers.delete('Authorization');
     config.headers.delete('X-CSRF-Token');
     const unsafe = !['get', 'head', 'options'].includes(config.method ?? 'get');
-    if (unsafe && config.url !== '/api/login') {
+    if (unsafe && config.url !== '/api/login' && !isPublicPost(config.url, config.method)) {
       const token = config.url === '/api/logout' ? context.logoutToken : store.getState().session?.csrf_token;
       if (!token) throw new DiaryError('http', 'La solicitud no tiene un token CSRF válido.', 403);
       config.headers.set('X-CSRF-Token', token);
@@ -141,14 +150,14 @@ export function createHttpClient(options: { store?: SessionStore; adapter?: Axio
     }
     if (context.combined.aborted) throw cancellation(context);
     if (response.status < 200 || response.status >= 300) {
-      const { detail, code, warning, confirmation } = await errorDetail(response, context);
+      const { detail, code, warning, confirmation, retryAfter } = await errorDetail(response, context);
       // Error-body decoding can be asynchronous (PDF JSON blobs).
       if (context.generation !== store.getState().generation) {
         throw new DiaryError('aborted', 'La solicitud fue cancelada.');
       }
       if (context.combined.aborted) throw cancellation(context);
       if (response.status === 401 && store.getState().session) store.getState().clearSession(context.generation, true);
-      throw new DiaryError('http', detail, response.status, code, warning, confirmation);
+      throw new DiaryError('http', detail, response.status, code, warning, confirmation, retryAfter);
     }
     return response;
   });

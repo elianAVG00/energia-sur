@@ -7,9 +7,11 @@ import { Alert } from './components/ui/alert.tsx';
 import { Button } from './components/ui/button.tsx';
 import { LoginForm } from './features/diary/forms.tsx';
 import { Workspace } from './features/diary/Workspace.tsx';
+import { OutagesPanel } from './features/outages/OutagesPanel.tsx';
 
 export default function App() {
   const scope = useRequestScope();
+  const [view, setView] = useState<'outages' | 'account'>('account');
   const session = useSessionStore(state => state.session);
   const generation = useSessionStore(state => state.generation);
   const expired = useSessionStore(state => state.expired);
@@ -51,13 +53,24 @@ export default function App() {
     } finally { if (request.isCurrent()) setPending(false); }
   }
 
-  return <AppLayout>
-    {error && <Alert>{error}</Alert>}
-    {expired && !session && <Alert>La sesión venció. Ingresá nuevamente.</Alert>}
-    {session ? <>
-      <div className="flex flex-wrap items-center justify-between gap-3"><p>Cuenta: {session.account.username}</p><Button type="button" variant="outline" disabled={pending} onClick={() => void logout()}>Cerrar sesión</Button></div>
-      <Workspace key={`${generation}:${session.account.id}`} session={session} generation={generation} />
-    </> : <LoginForm key={generation} pending={pending} login={login} />}
+  return <AppLayout title={view === 'outages' ? 'Cortes eléctricos' : 'Diario de interrupciones'}>
+    <nav aria-label="Secciones" className="flex flex-wrap gap-2">
+      <Button type="button" variant={view === 'outages' ? 'default' : 'outline'}
+        aria-current={view === 'outages' ? 'page' : undefined}
+        onClick={() => setView('outages')}>Cortes</Button>
+      <Button type="button" variant={view === 'account' ? 'default' : 'outline'}
+        aria-current={view === 'account' ? 'page' : undefined}
+        onClick={() => setView('account')}>Mi cuenta</Button>
+    </nav>
+    {view === 'outages' && <OutagesPanel />}
+    {view === 'account' && <>
+      {error && <Alert>{error}</Alert>}
+      {expired && !session && <Alert>La sesión venció. Ingresá nuevamente.</Alert>}
+      {session ? <>
+        <div className="flex flex-wrap items-center justify-between gap-3"><p>Cuenta: {session.account.username}</p><Button type="button" variant="outline" disabled={pending} onClick={() => void logout()}>Cerrar sesión</Button></div>
+        <Workspace key={`${generation}:${session.account.id}`} session={session} generation={generation} />
+      </> : <LoginForm key={generation} pending={pending} login={login} />}
+    </>}
     {pending && <p role="status">Comprobando sesión…</p>}
   </AppLayout>;
 }
