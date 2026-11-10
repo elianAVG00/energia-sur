@@ -1,27 +1,34 @@
-# CU02 scheduled works (reduced scope) - engineering record
+# CU02 maintenance works consultation (definitive scope) - engineering record
 
-Status: **CLOSED / ARCHIVED for the U21 reduced scope**; main spec synced; no push.
+Status: **COMPLETED / ARCHIVED (definitive scope U22)**; main spec synced; no push.
 Change: [proposal](../../openspec/changes/archive/2026-11-10-implement-scheduled-works-cu02/proposal.md),
 [design](../../openspec/changes/archive/2026-11-10-implement-scheduled-works-cu02/design.md),
 [delta spec](../../openspec/changes/archive/2026-11-10-implement-scheduled-works-cu02/specs/scheduled-works/spec.md),
 [tasks](../../openspec/changes/archive/2026-11-10-implement-scheduled-works-cu02/tasks.md).
-Decisions: [U21](../use-cases/decisions.md#u21---cu02-reduced-scope-and-propose-authorization)
-(D1-D8); Q04 partial, Q05 still TBD for the dated behavior.
+Decisions: [U22](../use-cases/decisions.md#u22---cu02-definitive-scope-redefinition)
+(definitive scope) and [U21](../use-cases/decisions.md#u21---cu02-reduced-scope-and-propose-authorization)
+(historical reduction, D1-D8).
 
 ## Goal and approved scope
 
 Show the ENRE-reported maintenance works (`cortesProgramados`) for a partido with an
 optional localidad, with provenance, publication freshness, three-valued coverage and
-explicit limits for unpublished fields. The original CU02-R1 (filter by dates, planned
-start/end, reason, proximity) is **not implemented**: the operational source does not
-publish those values. `cortesComunicados` is counted and flagged but not displayed, and
-the Edesur `outage-report` agenda is not integrated while unavailable.
+explicit limits for unpublished fields. The definitive scope (U22) is public
+consultation with partido/localidad filtering, address/GPS assistance, feeder, affected
+users, published restoration estimate, provenance, coverage and availability.
+`cortesComunicados` is counted and flagged but not displayed, and the Edesur
+`outage-report` agenda is out of scope.
+
+Future agenda, temporal filters, planned start/end, unpublished reasons and distances
+are **out of scope by design**, not pending tasks. The original academic proposal is
+preserved in the CU02 fiche; U21 records the historical reduction.
 
 ## Authorization and agents
 
 - User BUILD instruction on 2026-11-10 authorized documentation plus implementation of
-  the reduced scope, and resolved the pending decision to reuse
-  `enre_parser.normalized_key` without duplicating it.
+  the initial reduced scope (later redefined in U22), and resolved the pending decision
+  to reuse `enre_parser.normalized_key` without duplicating it. The user's FINALIZE
+  instruction redefined the definitive scope in U22; no new behavior was added.
 - OpenCode implemented the change; an independent read-only `reviewer` audited it.
   `spec-analyst` had audited the scope during PLAN.
 - Docker provided the pinned Python 3.13 / Node 24.22.2 runtimes, an ephemeral
@@ -49,7 +56,7 @@ the Edesur `outage-report` agenda is not integrated while unavailable.
 ## Problems and corrections
 
 - PLAN verified the Edesur agenda is unavailable (HTTP 500/timeout) and that
-  `cortesComunicados` has never been observed populated; the reduced scope follows
+  `cortesComunicados` has never been observed populated; the definitive scope follows
   from that evidence, not from an implementation shortcut.
 - First test run found three local defects: `works` was returned as `[]` for an
   `unavailable` snapshot with no rows, a fixture replacement dropped a JSON5 comma,
@@ -79,6 +86,7 @@ the Edesur `outage-report` agenda is not integrated while unavailable.
 | Migration upgrade on fresh PostgreSQL | PASS, three CU02 tables |
 | Additive check with a seeded CU01 row | PASS, row preserved after upgrade; downgrade drops only CU02 tables and preserves the row; re-upgrade PASS |
 | `openspec validate implement-scheduled-works-cu02 --strict` | PASS |
+| `openspec validate --specs --strict` after the definitive-scope sync | PASS, 10/10 specs |
 
 Live evidence: the 2026-11-10 ENRE capture exposed four `cortesProgramados` rows, all
 with `normalizacion: 'Sin datos'`; the 2026-01-14 archived capture exposed
@@ -107,14 +115,17 @@ The full backend suite was run against the isolated PostgreSQL instance:
 - The known pre-existing CU05 OCR/red-fraction failures remain separate and are not
   fixed or hidden by this change.
 
-## Limitations
+## Out of scope and operational notes
 
-Dates, planned start/end, reason and proximity remain unimplemented and are labelled
-as limitations. `cortesComunicados` is hidden until a populated shape is observed;
-Edesur is not integrated; coverage remains the partial U20 catalog. Two conservative
+Future agenda, temporal filters, planned start/end, unpublished reasons and distances
+are **out of scope by design**, not pending tasks; ENRE does not publish them and no
+value is invented. `cortesComunicados` is hidden until a populated shape is observed;
+Edesur is out of scope; coverage remains the partial U20 catalog. Two conservative
 edges are recorded: with no successful CU02 run, a fresh covered zero-row snapshot
 reports `unavailable` rather than `no_works`; and a non-`EnreError` fetch exception is
 logged by the scheduler without a run row, so freshness ages out instead of inventing
 a result. Pre-existing CU05/CU06 full-suite failures are environmental (photo/bill
 directories and secrets in the minimal verification container) and were not changed;
-the targeted CU01/CU02/CU09 suites pass. No commit or push was performed.
+the targeted CU01/CU02/CU09 suites pass. The original dated proposal is preserved as
+history in the fiche and U21; no teacher approval of the U22 redefinition is claimed.
+A CU02-only commit was created; no push was performed.

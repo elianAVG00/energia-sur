@@ -2,7 +2,7 @@
 
 ## 0. Pre-build evidence and scope record
 
-- [x] 0.1 Confirm U21, D1-D8 and the reduced-scope wording are recorded in `docs/use-cases/decisions.md` and the CU02 fiche — PASS: U21 with D1-D8 and the unmet CU02-R1 requirements; Q04/Q05 updated; `docs/use-cases/cu02.md` carries the limitation
+- [x] 0.1 Confirm U22, D1-D8 and the definitive-scope wording are recorded in `docs/use-cases/decisions.md` and the CU02 fiche — PASS: U22 with D1-D8 and the definitive scope; the original proposal is preserved as historical context; Q04/Q05 updated
 - [x] 0.2 Capture a redacted live `data_EDS.js` payload containing at least one `cortesProgramados` row and add it as an official fixture — PASS: `backend/tests/fixtures/enre_data_eds_scheduled.js` (2026-11-10 11:08 ART, four rows)
 - [x] 0.3 Add the 2026-01-14 archived capture whose `normalizacion` is a full date-time as a second fixture — PASS: `enre_data_eds_scheduled_dated.js` (excerpt, `2026-01-14 15:33`)
 - [x] 0.4 Confirm `cortesComunicados` remains unobserved populated and no synthetic populated fixture is committed — PASS: `fixtures/README.md` records the provenance and the decision
@@ -51,7 +51,7 @@
 ## 7. Review and acceptance
 
 - [x] 7.1 Run an independent read-only review of source honesty, CU01 isolation, public-endpoint safety and coverage guards — PASS: no BLOCKER/HIGH runtime defect; the documentation/review findings were corrected (task/state reconciliation, no-works localidad, CU02-only degradation, extra contract tests)
-- [x] 7.2 Confirm the reduced scope is not presented as complete CU02 behavior — PASS: U21, the fiche and the spec keep dates, proximity and the future agenda as unmet
+- [x] 7.2 Confirm the definitive scope is documented, the original proposal is preserved and no out-of-scope item is presented as pending — PASS: U22, the fiche and the spec record dates, proximity and the future agenda as out of scope, not pending
 
 ## Workflow follow-up
 

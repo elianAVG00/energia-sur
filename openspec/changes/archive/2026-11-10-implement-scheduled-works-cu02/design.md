@@ -5,9 +5,10 @@
 CU01 is archived and provides the verified ENRE transport (`app/enre_client.py`),
 normalization helpers (`app/enre_parser.normalized_key`), the GeoRef adapter
 (`app/georef.py`), the versioned coverage catalog (`app/coverage.py`), the FastAPI
-lifespan scheduler pattern and the public shell. U21 approves a reduced CU02 that
-reuses those pieces without changing their contracts. See proposal.md - Why for
-motivation and scope.
+lifespan scheduler pattern and the public shell. U22 establishes the definitive CU02
+scope: public consultation of the maintenance works ENRE reports for Edesur, reusing
+those pieces without changing their contracts. See proposal.md - Why for motivation
+and scope.
 
 **Verified source contract (2026-11-10 live, plus archived captures 2019-2026):**
 `cortesProgramados[]` rows carry `partido` (required), `localidad`,
@@ -37,7 +38,7 @@ unchanged `enre_client.fetch_feed()`. `cortesProgramados` is required and must b
 list. `cortesComunicados` is optional: a missing or non-list value is recorded under
 `unverified_collections`, and a non-empty list is recorded as
 `comunicados_present: true` but its rows are neither normalized nor emitted. This
-keeps the demo honest and makes future work observable without guessing a shape.
+keeps the capability honest and makes future work observable without guessing a shape.
 
 ### Acquisition reuse (simplest maintainable option)
 
@@ -69,15 +70,15 @@ read-only: `covered`, `out_of_coverage` only for explicit entries, otherwise
 entries plus localidades present in the current snapshot, with `reported` meaning
 "has an informed work".
 
-### D3 - Temporal rule deferred
+### D3 - No dated behavior (out of scope)
 
-No `from`/`to` parameters, no ordering by an invented date and no
-`upcoming`/`in_progress` label. The API returns `planned_start_at: null` and
-`planned_end_at: null` for every row. The future overlap/horizon rule (0-7 days ART,
-inclusive boundaries, in-progress separated) is recorded as a future rule and stays
-unimplemented; Q05 remains TBD. `normalizacion` is stored as `restoration_estimate_text` after NFC and whitespace
-normalization and is never parsed into an instant, even when it contains a full
-date-time.
+No `from`/`to` parameters, no ordering by an invented date, no
+`upcoming`/`in_progress` label and no planned start/end. The API returns
+`planned_start_at: null` and `planned_end_at: null` for every row because the source
+does not publish them. `normalizacion` is stored as `restoration_estimate_text` after
+NFC and whitespace normalization and is never parsed into an instant, even when it
+contains a full date-time. The original dated proposal is preserved in U22 as
+historical context; it is not a pending requirement of this capability.
 
 ### D4 - Independent persistence and refresh
 
@@ -160,9 +161,10 @@ cancelled, finished or upcoming.
 
 ## Risks / Trade-offs
 
-- [Reduced scope could read as the full CU02] -> explicit `limitations`, U21, fiche
-  note and no date UI.
-- [Unobserved `cortesComunicados`] -> counted and hidden; a future capture enables it.
+- [Out-of-scope items could be mistaken for pending work] -> explicit non-goals, U22,
+  fiche note and no date UI.
+- [Unobserved `cortesComunicados`] -> counted and hidden; a future capability would
+  need a real capture.
 - [Partial coverage catalog] -> unverified zones stay unverified; no negative invention.
 - [Two ENRE fetches per cycle] -> accepted for an independent failure domain.
 - [Publication age mistaken for event validity] -> UI copy and spec state the limit.
@@ -175,6 +177,6 @@ the three tables and unregisters the router and view.
 
 ## Open Questions
 
-- Populated `cortesComunicados` shape (requires a real capture).
-- Q05 horizon, boundaries, timezone and proximity rule (future dated source).
-- Edesur `outage-report` recovery and its real payload contract.
+None for the definitive scope. The unobserved `cortesComunicados` shape and the Edesur
+agenda are operational facts outside this capability; enabling them would require a
+new change with real evidence. No dated behavior is promised here.

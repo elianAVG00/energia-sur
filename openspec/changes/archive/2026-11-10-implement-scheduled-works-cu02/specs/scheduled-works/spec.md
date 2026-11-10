@@ -6,15 +6,16 @@ Provide public, read-only queries for ENRE-reported scheduled maintenance works 
 zone, served from a cached snapshot with provenance, publication freshness,
 three-valued coverage and explicit limits for fields the source does not publish.
 This capability intentionally excludes a future agenda, date filters, planned
-start/end, reasons and distance; those remain unmet CU02-R1 requirements recorded by
-U21, not behavior provided here.
+start/end, reasons and distance. They are **out of scope** for this capability; the
+original proposal is preserved in the CU02 fiche, with the redefinition recorded in
+U22, not as a pending requirement.
 
 ## ADDED Requirements
 
 ### Requirement: Query scheduled works without an account
 
 The system SHALL allow a visitor to query reported scheduled works without signing in.
-Trace: SR01, CU02-R1 (reduced by U21), D1.
+Trace: SR01, CU02-R1 (definitive scope, U22), D1.
 
 #### Scenario: Visitor queries a known area
 - **GIVEN** a fresh cached snapshot containing a maintenance work for partido "ALMIRANTE BROWN" and localidad "GLEW"
@@ -146,7 +147,7 @@ The system SHALL emit rows only from `cortesProgramados` with category `maintena
 It SHALL count `cortesComunicados` and record whether it is present, but SHALL NOT
 emit its rows while no populated shape has been observed, and SHALL expose
 `announced_works_not_displayed` when the collection is non-empty. Rows SHALL NOT be
-deduplicated and affected users SHALL NOT be summed by zone. Trace: D1, D6, U21.
+deduplicated and affected users SHALL NOT be summed by zone. Trace: D1, D6, U22.
 
 #### Scenario: Empty comunicados costs nothing
 - **GIVEN** a payload with `cortesComunicados: []`
@@ -186,7 +187,7 @@ The system SHALL expose a public "Trabajos" view that reuses the shell, shows
 partido/localidad selection, provenance, coverage and limitations, offers no date
 input, and calls only the application API. Trace: D8, D2.
 
-#### Scenario: Visitor sees the reduced scope
+#### Scenario: Visitor sees the definitive scope
 - **GIVEN** a visitor without a session
 - **WHEN** the "Trabajos" view is opened
 - **THEN** the panel shows reported works with "No publicado por la fuente" for the reason and no date filter

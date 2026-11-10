@@ -365,19 +365,34 @@ not integrated while unavailable.
 - **D7:** CU01 coverage catalog reused read-only; no entries added.
 - **D8:** independent public "Trabajos" view reusing the shell; CU01 and CU09 unchanged.
 
-**Unmet original requirements (explicit):** CU02-R1's date filtering, planned start, planned end
-and proximity are **not implemented**; the reason is unsatisfied by the source. CU02-S01 is
-satisfied only for its area/source part, CU02-S02 is satisfied by the fail-closed states, and
-CU02-S03 stays BLOCKED. Q04 becomes PARTIAL for CU02 (ENRE approved for the reduced scope; Edesur
-not authorized) and Q05 remains TBD as the future date/proximity rule. Nothing here authorizes
-implementation outside documentation, Apply, migrations, dependencies, Sync, Archive, commit or push.
+**U21 historical limitation (superseded for delivery by U22):** CU02-R1's date
+filtering, planned start, planned end and proximity were not implemented in the U21
+reduction; the reason was unsatisfied by the source. CU02-S01 was satisfied only for
+its area/source part, CU02-S02 by the fail-closed states, and CU02-S03 remained
+blocked. Q04 became PARTIAL for CU02 (ENRE approved for the reduced scope; Edesur not
+authorized) and Q05 remained TBD for the dated rule. This paragraph is preserved as
+history; U22 establishes the definitive scope and treats those items as out of scope,
+not pending.
 
-**Final approval (2026-11-10):** the user approves closing CU02 as a functional demo of
-the reduced scope named **"CU02 — Consultar trabajos programados informados por ENRE."**
-The excluded original requirements (future agenda, temporal filters, planned start/end,
-unpublished reasons and distances) are accepted scope limitations, not implementation
-failures. Whether the academic evaluation accepts this reduced demo in place of the
-full original CU02 remains subject to teacher conformity and is not claimed as met.
+## U22 - CU02 definitive scope redefinition
+
+Recorded from the user's 2026-11-10 FINALIZE instruction. The user approves the
+definitive scope: **"CU02 — Consultar trabajos de mantenimiento eléctrico informados
+por ENRE."** The delivered functionality is the public consultation of the maintenance
+works ENRE reports for Edesur, with partido/localidad filtering, address/GPS
+assistance, feeder, affected users, published restoration estimate, provenance,
+three-valued coverage and availability states.
+
+The original academic proposal (upcoming works filtered by dates, with planned
+start/end, reason and proximity) is preserved in the CU02 fiche and in U21 as
+historical context. It is **not the delivered scope**. Future agenda, temporal
+filters, planned start/end, unpublished reasons and distances are **out of scope by
+design**, not pending tasks; ENRE does not publish them and no value is invented.
+
+This decision supersedes the "reduced/incomplete" framing of U21 for delivery. It does
+not add behavior, change CU01 or modify CU05/CU06. No teacher approval of this
+redefinition is claimed; academic conformity remains a separate decision. It
+authorizes documentation, OpenSpec sync/archive and a CU02-only commit; no push.
 
 ## Confirmed facts versus inferences
 
@@ -433,8 +448,9 @@ implemented.
 ### Q02
 **PARTIAL - CU01/CU02, U16 + T1:** ambiguous addresses require explicit candidate selection;
 denied geolocation performs no query and no repeated permission request, preserving the
-no-implicit-fallback constraint. **Pending:** the exact Spanish copy for candidate selection and
-the denied-consent fallback; CU02-S02 remains open.
+no-implicit-fallback constraint. **U22, CU02:** candidate selection and the denied-consent
+fallback are implemented in the delivered UI; the fail-closed states (CU02-S04) are delivered.
+**Pending:** only any copy refinement outside the delivered flow.
 
 ### Q03
 **PARTIAL - CU04-CU09. Approved for CU09 by U06:** only the account with the registered
@@ -448,18 +464,16 @@ cookie/CSRF/hash details for CU09 and its minimum CU04 slice.
 **PARTIAL - CU01, U16 + D1/D5/D8/T2:** the ENRE `data_EDS.js` feed is verified accessible and is
 the provisional CU01 primary source; provenance exposes the source URL, a `Last-Modified`-based
 source update time, the UTC fetch time, a freshness class and an internal fetch-run history reserved for CU10; coverage
-provenance is part of the versioned catalog. **U21, CU02:** ENRE `cortesProgramados` is the
-approved CU02 source for the reduced scope; `cortesComunicados` is counted but not displayed, and
-the Edesur `outage-report` API is not authorized while unavailable. **Pending:** CU03/CU10
-sources, terms and reconfiguration, and any future dated/proximity source for CU02, remain open.
+provenance is part of the versioned catalog. **U22, CU02:** ENRE `cortesProgramados` is the
+approved source for the definitive CU02 scope; `cortesComunicados` is counted but not displayed,
+and Edesur is out of scope. **Pending:** CU03/CU10 sources and terms remain open; CU02 has no
+pending source decision.
 
 ### Q05
-**TBD - CU02:** What upcoming horizon, date-range boundaries, timezone, distance
-definition and nearby threshold apply? Needed for filters/proximity; blocks
-CU02-S01/S03's exact results.
-**U21, CU02 reduced scope:** no date filter, overlap rule, horizon or proximity is
-implemented until an official source publishes verifiable dates; Q05 stays TBD for
-the dated behavior.
+**CLOSED for CU02 - U22:** the definitive scope excludes the future agenda, temporal
+filters, start/end and proximity; those items are out of scope by design, not pending.
+The original dated proposal is preserved in the CU02 fiche and U21 as historical
+context. **Pending:** none for CU02; any dated capability would require a new proposal.
 
 ### Q06
 **TBD - CU03:** Which official guides and retrieval/citation granularity are accepted?
@@ -468,8 +482,9 @@ Needed for grounding; blocks CU03-S01's source acceptance oracle.
 ### Q07
 **PARTIAL - CU01, U16 + D8/D11:** freshness is fresh ≤15 min, stale ≤60 min and unavailable >60
 min or no valid snapshot; a degraded/`N/A` source keeps the last valid snapshot, and stale or
-unavailable are explicit states rather than empty results. **Pending:** CU02/CU03 fallback UX
-remains open; the no-invention constraint is unchanged.
+unavailable are explicit states rather than empty results. **U22, CU02:** the unavailable,
+stale, no-works and unverified-coverage fallback UX is specified and implemented. **Pending:**
+CU03 fallback UX remains open; the no-invention constraint is unchanged.
 
 ### Q08
 **PARTIAL - CU04:** U07/U07-T approve the CU09 prerequisite's stable domicile ID,

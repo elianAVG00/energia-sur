@@ -6,9 +6,9 @@ stack is React + TypeScript and Python + FastAPI, developed with OpenCode, Codex
 and OpenSpec. CU09 has a private interruption diary and the minimum CU04
 domicile-registration slice. CU09 and the shared frontend foundation were verified
 and archived on 2026-11-08; CU04, CU06, CU07 and CU08 are implemented and
-archived. CU05 is implemented with a red-fraction Sync/Archive block, and CU01 is
-implemented and verified pending closure authorization. CU02, CU03 and CU10
-remain planned.
+archived. CU05 is implemented with a red-fraction Sync/Archive block, CU01 and CU02
+are implemented, verified and archived (CU02 under its U22 definitive scope), and
+CU03 and CU10 remain planned.
 
 CU04 domicile and meter management is implemented, verified and archived;
 Git staging, commits and pushes are managed by the user:
@@ -183,22 +183,22 @@ The contract-mocked suite needs no backend; the real-backend smoke
 backend reachable as `backend:8000` from the frontend proxy, and `CU01_LIVE=1`.
 CU09 remains covered by its existing E2E against a seeded backend.
 
-## CU02 scheduled works (reduced scope)
+## CU02 maintenance works consultation (definitive scope)
 
-**Demo name:** *CU02 — Consultar trabajos programados informados por ENRE.* The
-original CU02 (upcoming works filtered by dates, with start/end, reason and proximity)
-remains a proposal; this demo does not claim that full scope. Whether the teacher
-accepts the reduction is a separate academic decision.
+**Definitive scope (U22):** *CU02 — Consultar trabajos de mantenimiento eléctrico
+informados por ENRE.* CU02 is completed and archived with this scope. The original
+academic proposal (upcoming works filtered by dates, with start/end, reason and
+proximity) is preserved in the use-case fiche, with the redefinition recorded in U22;
+it is not the delivered scope. No teacher approval of the redefinition is claimed.
 
-CU02 is implemented only for the U21 reduced scope: it shows the ENRE-reported
-maintenance works (`cortesProgramados`) and never invents dates, reasons, coordinates
-or a future agenda. `GET /api/scheduled-works?partido=<name>&localidad=<optional>`
+CU02 shows the ENRE-reported maintenance works (`cortesProgramados`) and never invents
+dates, reasons, coordinates or a future agenda. `GET /api/scheduled-works?partido=<name>&localidad=<optional>`
 and `GET /api/scheduled-works/areas` reuse the same public resolve endpoints for
 address/GPS zone resolution. `cortesComunicados` is counted and flagged but not
-displayed because no populated payload has been observed; the Edesur agenda is not
-integrated while unavailable. `planned_start_at`, `planned_end_at` and `reason_text`
-are returned as null and the response lists `limitations`; `normalizacion` is the
-ENRE estimated-restoration text, never a planned end.
+displayed because no populated payload has been observed; the Edesur agenda is out of
+scope. `planned_start_at`, `planned_end_at` and `reason_text` are returned as null and
+the response lists `limitations`; `normalizacion` is the ENRE estimated-restoration
+text, never a planned end.
 
 The backend refreshes the feed every five minutes under its own advisory lock when
 `SCHEDULED_WORKS_SCHEDULER_ENABLED=true` (Compose default);
@@ -214,7 +214,9 @@ migrated `TEST_DATABASE_URL` (set `TEST_ENRE_LIVE=1` for the live test). Fronten
 `docker build --target verification -t energia-sur-frontend-checks:cu02 frontend`
 (runs typecheck, build, tests and lint), then run
 `npx playwright test e2e/cu02.spec.ts` with the dev server up (mocked API only).
-CU01 and CU09 remain covered by their existing E2E suites.
+CU01 and CU09 remain covered by their existing E2E suites. The implementation record,
+decisions and original-scope traceability are in the
+[CU02 engineering record](docs/ai-engineering/implement-scheduled-works-cu02.md).
 
 ## Local Docker environment
 
