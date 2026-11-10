@@ -18,6 +18,7 @@ from app.api import router
 from app.bill_api import router as bill_router
 from app.bill_reconcile import reconcile_bills
 from app.comparison_api import router as comparison_router
+from app.consumption_api import router as consumption_router
 from app.db import DatabaseUnavailable, dispose_engines
 from app.photo_store import reconcile_photos
 from app.reading_api import DuplicateReading
@@ -58,6 +59,7 @@ app.include_router(router)
 app.include_router(reading_router)
 app.include_router(bill_router)
 app.include_router(comparison_router)
+app.include_router(consumption_router)
 
 
 @app.exception_handler(DuplicateReading)

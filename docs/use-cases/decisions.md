@@ -167,6 +167,57 @@ zero consumption, decreasing readings and cross-account isolation. This authoriz
 the CU07 proposal and documentation update for review; it does not authorize Apply,
 code, migrations, Sync, Archive, commit or push.
 
+## U15 - CU08 consumption evolution and estimate PROPOSE authorization
+
+Recorded on 2026-11-09 from the user's current instruction beginning "Rol: Modo
+PROPOSE ESTRICTO (OpenSpec)" for CU08. The user confirms eleven decisions
+(D01–D11) for CU08 only and authorizes the `view-cu08-consumption-evolution-and-estimates`
+proposal and this documentation update for review; this is not Apply, code,
+installation, migration, Sync, Archive, commit or push.
+
+**CONFIRMED, CU08 only:**
+
+- **D01:** deterministic estimate = (daily average of the last valid interval) × chosen days; no AI or historical averages. "Last valid interval" = the last chronological interval (two most recent readings by `recorded_at` UTC), validity reused from CU05 per R01.
+- **D02:** manual 1–90 day horizon selector.
+- **D03:** irregular intervals use real elapsed time between readings; no exact-month requirement.
+- **D04:** decreasing readings shown as "not calculable" (no negative consumption, not an estimate base) without blocking the rest of the history.
+- **D05:** internal UTC computation (including same-day readings); UI in `America/Argentina/Buenos_Aires`.
+- **D06:** zero-kWh intervals and zero-kWh estimates are accepted.
+- **D07:** two separate views — real consumption (kWh) and daily average (kWh/day) — with a clear visual distinction between historical and estimated.
+- **D08:** source is CU05 readings only; no CU06 bills or CU07 rules mixed in.
+- **D09:** backend uses `Decimal`; UI shows two decimals plus the warning "orientativa, no facturada".
+- **D10:** filter by own meter and date range with account isolation.
+- **D11:** evaluate Recharts in `design.md`; on stack conflicts, propose alternatives and leave the chart library as TBD.
+
+**Residual TBDs (resolved by R01–R07 below):** the seven items — (1) strict
+"valid reading" definition, (2) behavior on a decreasing last interval, (3)
+corrected/out-of-order/replaced readings, (4) extreme projections from very short
+intervals, (5) visual filter rule on range-crossing intervals, (6) rounding vs.
+real zeros, (7) UI with 0/1/no valid pair — are now approved as R01–R07 and
+recorded immediately below.
+
+This resolves Q15 (projection formula via D01, base selection via R01–R03) and Q16
+(period limit via D02, presentation/filter/empty-state via R04–R07); the chart
+library remains TBD under D11.
+
+## CU08 R01-R07 - Approved residual decisions
+
+Recorded on 2026-11-09 from the user's current instruction beginning "Rol: Modo
+REVIEW FINAL Documental (OpenSpec)". The user approves the seven residual decisions
+for CU08 only and authorizes updating the PROPOSE artifacts for human review; this
+is not Apply, code, installation, migration, Sync, Archive, commit or push.
+
+- **R01:** reading validity is reused from CU05 (confirmed stored readings: nonnegative integer, nonfuture, second-resolution UTC); no additional CU08 filter.
+- **R02:** if the last chronological interval is decreasing, no estimate is shown and older intervals are NOT searched as a fallback base; historical decreasing intervals remain visible as "not calculable".
+- **R03:** readings are always ordered by `recorded_at` UTC using current stored values (edits included); physical meter replacement is not managed.
+- **R04:** sub-24-hour intervals are still computed but flagged in the UI as "poco representativo" (not representative).
+- **R05:** date-range filtering uses inclusive overlap; an interval that crosses or touches the range is included whole, with its real endpoint dates visible, without clipping, interpolation or proration.
+- **R06:** a computed value that is positive but rounds to "0.00" at two decimals is shown as "< 0.01" so it is not confused with a real zero; `Decimal` is used without loss and the two-decimal display uses half-up rounding.
+- **R07:** zero or one reading shows an empty state with no estimate.
+
+These complete CU08's functional decisions alongside D01–D11. The chart library
+remains TBD under D11.
+
 ## Confirmed facts versus inferences
 
 ### CU05 subsequent OCR BUILD instruction
@@ -258,7 +309,7 @@ open and closed cuts using the same date validation, and close ongoing cuts.
 **U13, CU05:** reading correction is allowed, reading deletion is not; photo edit is allowed and its detailed lifecycle remains TBD. **CU06:** the user approved bill correction without bill deletion or domicile/meter reassignment; see Q12. **Pending:** broader reassignment/deletion, physical meter replacement, retention and other linked-file policies; reopening a closed cut by removing its end remains unspecified.
 
 ### Q10
-**PARTIAL - CU05, U13 and D05–D07:** nonnegative integer kWh, nonfuture date, warning without blocking decreases, UTC seconds displayed in Buenos Aires, and uniqueness per meter/exact instant. **TBD:** timestamp input and future-instant interpretation, warning comparator, equal/out-of-order readings, rollover and CU07/CU08 implications. No physical replacement or downstream boundary-selection policy is implied.
+**PARTIAL - CU05, U13 and D05–D07:** nonnegative integer kWh, nonfuture date, warning without blocking decreases, UTC seconds displayed in Buenos Aires, and uniqueness per meter/exact instant. **TBD:** timestamp input and future-instant interpretation, warning comparator, equal/out-of-order readings, rollover and CU07 implications. **CU08 resolved by R01/R03:** CU08 reuses CU05 validity and orders by `recorded_at` UTC with current values, without managing physical replacement.
 
 ### Q11
 **PARTIAL - CU05, U13 and D01–D04/D08–D10/D13:** optional single photo, JPG/PNG/WebP up to 5 MB; private volume and PostgreSQL metadata; opt-in local Docker Tesseract and manual crop, in-memory preconfirmation processing, explicit confirmation and manual fallback. **TBD:** confidence oracle, byte convention, decoded limits, crash recovery and detailed errors. No external photo transfer is approved.
@@ -306,19 +357,22 @@ exactly without a percentage.
 ### Q15
 **PARTIAL - CU08, U05. Approved:** use the two latest valid readings of the same
 meter as the estimation base.
-**Pending:** the projection formula, rounding and handling of gaps/replacements
-beyond Q10's validity definition. Latest-pair selection does not approve linear
-extrapolation or any projected kWh value.
-**Impact:** CU08-S02 has a determinate base-selection outcome but its numerical
-projection remains BLOCKED/TBD; Q10 still defines which readings are valid.
+**Pending:** resolved by U15/D01 and R01–R03 — the base is the last chronological
+interval (two most recent readings by `recorded_at` UTC, current values); a
+decreasing latest interval yields no estimate with no fallback to older intervals.
+Latest-pair selection does not approve linear extrapolation beyond the horizon.
+**Impact:** CU08-S02 has a determinate base-selection and projection outcome;
+validity is reused from Q10/CU05 as-is (R01).
 
 ### Q16
 **PARTIAL - CU08, U05. Approved:** show evolution by interval between readings,
 with interval consumption in kWh and daily average in kWh/day.
-**Pending:** limits of the chosen estimation period, elapsed-time precision and
-rounding/presentation not approved by the instruction; no global timezone is chosen.
-**Impact:** CU08-S01 has determinate interval rows for the stated elapsed-day fixture;
-period-limit variants of CU08-S02/S03 remain blocked. Q15 blocks the projection formula.
+**Pending:** resolved by U15/D01–D05 and R04–R07 — the 1–90 day horizon, real
+elapsed time, UTC/Buenos Aires, the sub-24-hour "poco representativo" flag, the
+inclusive-overlap filter, the "< 0.01" presentation and the 0/1-reading empty state
+are all decided. Exact Spanish wording of warnings remains a presentation detail.
+**Impact:** CU08-S01/S02/S03 have determinate outcomes; the projection formula and
+presentation rules are now set.
 
 ### Q17
 **APPROVED - CU09, U06:** use Buenos Aires local time and record times to the minute.

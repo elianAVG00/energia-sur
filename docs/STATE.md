@@ -1,6 +1,6 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-09 (CU07 completed, synced and archived; CU08 is next; CU05 red-fraction decision open).
+Updated: 2026-11-09 (CU08 implemented, verified, synced and archived; CU07 archived; CU05 red-fraction decision open).
 
 ## CU06 - CLOSED
 - [Archived change](../openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/proposal.md), [design](../openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/design.md), [tasks](../openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/tasks.md) (16/16), [main spec](../openspec/specs/electricity-bills/spec.md), [engineering record](ai-engineering/record-cu06-electricity-bills.md) and [Q12](use-cases/decisions.md#q12). Sync applied all 8 requirements and the change was archived on 2026-11-09.
@@ -12,6 +12,13 @@ Updated: 2026-11-09 (CU07 completed, synced and archived; CU08 is next; CU05 red
 - [Archived change](../openspec/changes/archive/2026-11-09-compare-cu07-consumption-with-bill/proposal.md), [design](../openspec/changes/archive/2026-11-09-compare-cu07-consumption-with-bill/design.md), [tasks](../openspec/changes/archive/2026-11-09-compare-cu07-consumption-with-bill/tasks.md) (13/13), [main spec](../openspec/specs/bill-comparisons/spec.md), [engineering record](ai-engineering/compare-cu07-consumption-with-bill.md) and [U14](use-cases/decisions.md#u14---cu07-revised-matching-and-comparison-authorization).
 - Implemented read-only CU05/CU06 comparison with ±7-day Buenos Aires candidates, exact/approximate confirmation, manual candidate selection, exact kWh without percentage, zero/decreasing outcomes and cross-account isolation; no new tables, migrations or dependencies.
 - PASS: 278 backend tests (2 skipped), Ruff/mypy (30 modules), 80 frontend tests, Oxlint, TypeScript, build, 4/4 Chromium and OpenSpec strict 10/10. A focused independent review found and corrected one MAJOR Decimal-precision defect plus confirmed MINOR edges. Sync created `bill-comparisons`; archived on 2026-11-09.
+
+## CU08 - IMPLEMENTED / VERIFIED / ARCHIVED
+- [Archived change](../openspec/changes/archive/2026-11-09-view-cu08-consumption-evolution-and-estimates/proposal.md), [design](../openspec/changes/archive/2026-11-09-view-cu08-consumption-evolution-and-estimates/design.md), [tasks](../openspec/changes/archive/2026-11-09-view-cu08-consumption-evolution-and-estimates/tasks.md) (16/16), [main spec](../openspec/specs/consumption-trends/spec.md), [engineering record](ai-engineering/view-cu08-consumption-evolution-and-estimates.md); [U15](use-cases/decisions.md#u15---cu08-consumption-evolution-and-estimate-propose-authorization) records D01–D11 and [R01–R07](use-cases/decisions.md#cu08-r01-r07---approved-residual-decisions).
+- Implemented read-only CU08: `app/consumption.py` + `app/consumption_api.py` (`GET /meters/{id}/consumption-evolution` and `.../consumption-estimate`, `Auth`-only, `own_meter` 404, 1–90 horizon, inclusive-overlap `from`/`to`) and `frontend/src/features/consumption/` (two views — consumo real kWh / promedio diario kWh/día — dependency-free SVG/CSS chart, "orientativa, no facturada", "poco representativo" and "< 0.01" indicators). No tables, migrations or dependencies; Recharts evaluated and the fallback used (D11).
+- PASS: backend domain/adapter/PostgreSQL tests (13 + 6 + 19), Ruff, mypy (32 files), frontend 93 tests, Oxlint, TypeScript and production build, OpenSpec strict, and 4/4 Chromium E2E (main flow, decreasing, zero, cross-account isolation). Independent reviewer returned READY; five MINOR findings corrected or recorded.
+- 8-test global-suite diagnosis (environmental, not CU08): the 3 CU06 bill tests (503) needed an absolute `CU06_BILL_DIR` and a ≥32-byte `CU06_CONFIRMATION_SECRET`; the 5 CU05 photo/OCR tests needed `--ulimit core=0`, cgroup-v2 swap `0`, and a fresh photo volume matching the DB (my ad-hoc run reused a DB with accumulated photo references over an empty tmpfs, so reconciliation correctly failed closed). Re-run against a fresh migrated DB with that configuration: bill 17/17 PASS, photo 30/30 PASS. `git status` confirms no CU05/CU06 source was modified.
+- Sync created the `consumption-trends` main spec (15 requirements, D01–D11/R01–R07 traced) and the change was archived on 2026-11-09. Not performed: commit or push. Manual commit is the next step.
 
 ## Active CU05 proposal
 - [Proposal](../openspec/changes/record-cu05-meter-readings/proposal.md), [design and review gates](../openspec/changes/record-cu05-meter-readings/design.md), [delta](../openspec/changes/record-cu05-meter-readings/specs/meter-readings/spec.md), [tasks](../openspec/changes/record-cu05-meter-readings/tasks.md); [U13](use-cases/decisions.md#u13---cu05-functional-decisions-and-propose-authorization) and [M1](use-cases/decisions.md#cu05-m1---ocr-may-abstain-closure-decision) record approved rules.
@@ -53,7 +60,7 @@ Updated: 2026-11-09 (CU07 completed, synced and archived; CU08 is next; CU05 red
 - Unrelated catalog TBDs, hosting and persistent chatbot memory remain unresolved. No other CU claimed complete.
 
 ## Next actions
-1. CU08 is the next use case; prepare its own proposal and obtain a separate authorization before implementation.
+1. CU08 is synced and archived; stage the CU08 files for manual commit (no commit/push performed).
 2. Resolve the CU05 red-fraction contract conflict with the user before its Sync/Archive.
 3. Keep synthetic DEV accounts/data and retained CU05/CU06 containers, databases, volumes and artifacts until deletion is explicitly authorized.
 4. Reuse the foundation for future accepted CUs; CU03 chat runtime is separate.
