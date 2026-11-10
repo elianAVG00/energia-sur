@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import StaleDataError
 from starlette.concurrency import run_in_threadpool
 
-from app import management, outage_store
+from app import management, outage_store, scheduled_store
 from app.api import router
 from app.bill_api import router as bill_router
 from app.bill_reconcile import reconcile_bills
@@ -27,6 +27,7 @@ from app.photo_store import reconcile_photos
 from app.reading_api import DuplicateReading
 from app.reading_api import router as reading_router
 from app.reading_store import IdempotencyKeyReused, ReadingVersionConflict
+from app.scheduled_api import router as scheduled_router
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ class HealthResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     scheduler: asyncio.Task[None] | None = None
+    scheduled_scheduler: asyncio.Task[None] | None = None
     try:
         # Fail closed: if recovery cannot prove the locks, no files are removed.
         try:
@@ -57,12 +59,17 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             "1", "true", "yes",
         }:
             scheduler = asyncio.create_task(_outage_scheduler())
+        if os.environ.get("SCHEDULED_WORKS_SCHEDULER_ENABLED", "false").lower() in {
+            "1", "true", "yes",
+        }:
+            scheduled_scheduler = asyncio.create_task(_scheduled_works_scheduler())
         yield
     finally:
-        if scheduler is not None:
-            scheduler.cancel()
-            with suppress(asyncio.CancelledError, Exception):
-                await scheduler
+        for task in (scheduler, scheduled_scheduler):
+            if task is not None:
+                task.cancel()
+                with suppress(asyncio.CancelledError, Exception):
+                    await task
         dispose_engines()
 
 
@@ -81,6 +88,21 @@ async def _outage_scheduler() -> None:
         await asyncio.sleep(interval)
 
 
+async def _scheduled_works_scheduler() -> None:
+    try:
+        interval = float(os.environ.get("SCHEDULED_WORKS_REFRESH_SECONDS", "300"))
+    except ValueError:
+        interval = 300.0
+    interval = max(interval, 30.0)
+    while True:
+        try:
+            await run_in_threadpool(scheduled_store.refresh_once)
+        except Exception as error:
+            # No payload, URL or database detail is logged.
+            _LOGGER.warning("Scheduled-works refresh failed (%s).", type(error).__name__)
+        await asyncio.sleep(interval)
+
+
 app = FastAPI(lifespan=lifespan)
 app.include_router(router)
 app.include_router(reading_router)
@@ -88,6 +110,7 @@ app.include_router(bill_router)
 app.include_router(comparison_router)
 app.include_router(consumption_router)
 app.include_router(outage_router)
+app.include_router(scheduled_router)
 
 
 @app.exception_handler(DuplicateReading)

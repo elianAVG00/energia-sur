@@ -326,6 +326,59 @@ This authorization covers verification and closure preparation only. It does not
 Archive, commit, push or deployment, does not authorize starting CU02, and does not convert the
 0.1/0.4 exceptions into verified production behavior.
 
+## U21 - CU02 reduced scope and PROPOSE authorization
+
+Recorded from the user's 2026-11-10 PROPOSE instruction for CU02, which accepts a reduced,
+demonstrable version of the use case and authorizes only documentation and OpenSpec artifacts.
+
+**Verified evidence (2026-11-10):** the ENRE `data_EDS.js` feed returned HTTP 200 with
+`Last-Modified` advancing every ~6 minutes and four `cortesProgramados` rows (partido,
+localidad, subestacion_alimentador, usuarios, normalizacion), all with
+`normalizacion: 'Sin datos'` and no start date, end date, reason or coordinates.
+`cortesComunicados` was empty in every live sample and in all inspected archived captures
+from 2019 to 2026; one archived capture (2026-01-14) proves that `normalizacion` can carry a
+full date-time (estimated restoration only). The Edesur `ed.edesur.com.ar/api/utils/outage-report`
+endpoint returned HTTP 500 ("Error al consular el servicio") or timed out, is reported failing by
+the official page itself, and has no archived payload; its `fechaInicio`/`fechaFin` contract is
+visible only in the page JavaScript. ENRE therefore remains the only operational source and it
+does not publish a future agenda.
+
+**Approved reduction (D1):** CU02 SHALL use ENRE `cortesProgramados` as the operational source
+of reported scheduled works. `cortesComunicados` is evaluated and counted but its rows are not
+displayed because no populated shape has ever been observed. The Edesur `outage-report` API is
+not integrated while unavailable.
+
+**D1-D8 approved for the demo:**
+
+- **D1:** ENRE only; `cortesProgramados` displayed, `cortesComunicados` counted but not
+  displayed; no Edesur integration.
+- **D2:** query by partido with optional localidad through the CU01 GeoRef adapter and coverage
+  catalog in read-only mode; no distances or geographic precision asserted.
+- **D3:** overlap filtering, horizon and the upcoming/in-progress split are kept as a future
+  rule, enabled only with real verified dates. This version exposes no date filters, does not
+  classify records temporally and does not infer an end from `normalizacion`.
+- **D4:** independent snapshot tables, fetch-run history and advisory lock; reuse of the existing
+  ENRE transport/parser patterns without touching CU01.
+- **D5:** reason shown only when published; otherwise "No publicado por la fuente".
+  `normalizacion` is an estimated restoration time, never a planned end.
+- **D6:** provenance preserved per source; no heuristic deduplication or territorial sums.
+- **D7:** CU01 coverage catalog reused read-only; no entries added.
+- **D8:** independent public "Trabajos" view reusing the shell; CU01 and CU09 unchanged.
+
+**Unmet original requirements (explicit):** CU02-R1's date filtering, planned start, planned end
+and proximity are **not implemented**; the reason is unsatisfied by the source. CU02-S01 is
+satisfied only for its area/source part, CU02-S02 is satisfied by the fail-closed states, and
+CU02-S03 stays BLOCKED. Q04 becomes PARTIAL for CU02 (ENRE approved for the reduced scope; Edesur
+not authorized) and Q05 remains TBD as the future date/proximity rule. Nothing here authorizes
+implementation outside documentation, Apply, migrations, dependencies, Sync, Archive, commit or push.
+
+**Final approval (2026-11-10):** the user approves closing CU02 as a functional demo of
+the reduced scope named **"CU02 — Consultar trabajos programados informados por ENRE."**
+The excluded original requirements (future agenda, temporal filters, planned start/end,
+unpublished reasons and distances) are accepted scope limitations, not implementation
+failures. Whether the academic evaluation accepts this reduced demo in place of the
+full original CU02 remains subject to teacher conformity and is not claimed as met.
+
 ## Confirmed facts versus inferences
 
 ### CU05 subsequent OCR BUILD instruction
@@ -395,13 +448,18 @@ cookie/CSRF/hash details for CU09 and its minimum CU04 slice.
 **PARTIAL - CU01, U16 + D1/D5/D8/T2:** the ENRE `data_EDS.js` feed is verified accessible and is
 the provisional CU01 primary source; provenance exposes the source URL, a `Last-Modified`-based
 source update time, the UTC fetch time, a freshness class and an internal fetch-run history reserved for CU10; coverage
-provenance is part of the versioned catalog. **Pending:** CU02/CU03/CU10 sources, terms and
-reconfiguration remain open.
+provenance is part of the versioned catalog. **U21, CU02:** ENRE `cortesProgramados` is the
+approved CU02 source for the reduced scope; `cortesComunicados` is counted but not displayed, and
+the Edesur `outage-report` API is not authorized while unavailable. **Pending:** CU03/CU10
+sources, terms and reconfiguration, and any future dated/proximity source for CU02, remain open.
 
 ### Q05
 **TBD - CU02:** What upcoming horizon, date-range boundaries, timezone, distance
 definition and nearby threshold apply? Needed for filters/proximity; blocks
 CU02-S01/S03's exact results.
+**U21, CU02 reduced scope:** no date filter, overlap rule, horizon or proximity is
+implemented until an official source publishes verifiable dates; Q05 stays TBD for
+the dated behavior.
 
 ### Q06
 **TBD - CU03:** Which official guides and retrieval/citation granularity are accepted?

@@ -46,7 +46,7 @@ not a source for this product. Q00 is approved on the user's U06 teacher-approva
 | ID | Fiche | Actor | Source / status |
 | --- | --- | --- | --- |
 | CU01 | [Query current outages in an area](cu01.md) | Visitor or account holder | P / accepted documentary baseline; implementation planned |
-| CU02 | [Query upcoming scheduled works](cu02.md) | Visitor or account holder | P / accepted documentary baseline; implementation planned |
+| CU02 | [Query upcoming scheduled works](cu02.md) | Visitor or account holder | P / implemented and verified for the U21 reduced scope; original dates, reason and proximity excluded |
 | CU03 | [Get guidance from the integrated assistant](cu03.md) | Visitor or account holder | P / accepted documentary baseline; implementation planned |
 | CU04 | [Manage personal addresses and meters](cu04.md) | Account holder | P / full CU04 planned; minimum domicile prerequisite implemented under CU09 |
 | CU05 | [Record a meter reading with a photo](cu05.md) | Account holder | P / accepted documentary baseline; implementation planned |

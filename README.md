@@ -183,6 +183,39 @@ The contract-mocked suite needs no backend; the real-backend smoke
 backend reachable as `backend:8000` from the frontend proxy, and `CU01_LIVE=1`.
 CU09 remains covered by its existing E2E against a seeded backend.
 
+## CU02 scheduled works (reduced scope)
+
+**Demo name:** *CU02 — Consultar trabajos programados informados por ENRE.* The
+original CU02 (upcoming works filtered by dates, with start/end, reason and proximity)
+remains a proposal; this demo does not claim that full scope. Whether the teacher
+accepts the reduction is a separate academic decision.
+
+CU02 is implemented only for the U21 reduced scope: it shows the ENRE-reported
+maintenance works (`cortesProgramados`) and never invents dates, reasons, coordinates
+or a future agenda. `GET /api/scheduled-works?partido=<name>&localidad=<optional>`
+and `GET /api/scheduled-works/areas` reuse the same public resolve endpoints for
+address/GPS zone resolution. `cortesComunicados` is counted and flagged but not
+displayed because no populated payload has been observed; the Edesur agenda is not
+integrated while unavailable. `planned_start_at`, `planned_end_at` and `reason_text`
+are returned as null and the response lists `limitations`; `normalizacion` is the
+ENRE estimated-restoration text, never a planned end.
+
+The backend refreshes the feed every five minutes under its own advisory lock when
+`SCHEDULED_WORKS_SCHEDULER_ENABLED=true` (Compose default);
+`SCHEDULED_WORKS_REFRESH_SECONDS` defaults to `300`. Migration `0006_cu02` adds
+`es_scheduled_snapshots`, `es_scheduled_works` and `es_scheduled_fetch_runs` and does
+not alter CU01 tables. The public "Trabajos" shell view offers partido/localidad
+selection, address search and consented geolocation, provenance, coverage and every
+availability state, with no date inputs.
+
+Verification: `docker build --target verification -t energia-sur-backend-checks:cu02 backend`,
+then run `python -m unittest tests.test_cu02_scheduled_works` against an isolated
+migrated `TEST_DATABASE_URL` (set `TEST_ENRE_LIVE=1` for the live test). Frontend:
+`docker build --target verification -t energia-sur-frontend-checks:cu02 frontend`
+(runs typecheck, build, tests and lint), then run
+`npx playwright test e2e/cu02.spec.ts` with the dev server up (mocked API only).
+CU01 and CU09 remain covered by their existing E2E suites.
+
 ## Local Docker environment
 
 The Docker development environment uses React + TypeScript with Vite, Node 24.22.2 and

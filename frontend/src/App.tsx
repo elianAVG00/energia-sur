@@ -8,10 +8,11 @@ import { Button } from './components/ui/button.tsx';
 import { LoginForm } from './features/diary/forms.tsx';
 import { Workspace } from './features/diary/Workspace.tsx';
 import { OutagesPanel } from './features/outages/OutagesPanel.tsx';
+import { ScheduledWorksPanel } from './features/scheduled-works/ScheduledWorksPanel.tsx';
 
 export default function App() {
   const scope = useRequestScope();
-  const [view, setView] = useState<'outages' | 'account'>('account');
+  const [view, setView] = useState<'outages' | 'works' | 'account'>('account');
   const session = useSessionStore(state => state.session);
   const generation = useSessionStore(state => state.generation);
   const expired = useSessionStore(state => state.expired);
@@ -53,16 +54,20 @@ export default function App() {
     } finally { if (request.isCurrent()) setPending(false); }
   }
 
-  return <AppLayout title={view === 'outages' ? 'Cortes eléctricos' : 'Diario de interrupciones'}>
+  return <AppLayout title={view === 'outages' ? 'Cortes eléctricos' : view === 'works' ? 'Trabajos programados' : 'Diario de interrupciones'}>
     <nav aria-label="Secciones" className="flex flex-wrap gap-2">
       <Button type="button" variant={view === 'outages' ? 'default' : 'outline'}
         aria-current={view === 'outages' ? 'page' : undefined}
         onClick={() => setView('outages')}>Cortes</Button>
+      <Button type="button" variant={view === 'works' ? 'default' : 'outline'}
+        aria-current={view === 'works' ? 'page' : undefined}
+        onClick={() => setView('works')}>Trabajos</Button>
       <Button type="button" variant={view === 'account' ? 'default' : 'outline'}
         aria-current={view === 'account' ? 'page' : undefined}
         onClick={() => setView('account')}>Mi cuenta</Button>
     </nav>
     {view === 'outages' && <OutagesPanel />}
+    {view === 'works' && <ScheduledWorksPanel />}
     {view === 'account' && <>
       {error && <Alert>{error}</Alert>}
       {expired && !session && <Alert>La sesión venció. Ingresá nuevamente.</Alert>}

@@ -253,6 +253,80 @@ class OutageReport(Base):
     normalizacion: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
 
+class ScheduledSnapshot(Base):
+    """One acquired ENRE snapshot of reported scheduled works; one row is current."""
+
+    __tablename__ = "es_scheduled_snapshots"
+    __table_args__ = (
+        Index("uq_scheduled_snapshot_current", "is_current", unique=True,
+              postgresql_where=text("is_current")),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_url: Mapped[str] = mapped_column(String(300), nullable=False)
+    source_last_modified: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    source_reported_time: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    is_current: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+    row_counts: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    unverified_collections: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    comunicados_present: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+
+
+class ScheduledWork(Base):
+    """One normalized maintenance work belonging to a scheduled snapshot."""
+
+    __tablename__ = "es_scheduled_works"
+    __table_args__ = (
+        CheckConstraint("affected_users IS NULL OR affected_users >= 0",
+                        name="ck_scheduled_work_users"),
+        CheckConstraint("category = 'maintenance'", name="ck_scheduled_work_category"),
+        Index("ix_scheduled_work_snapshot", "snapshot_id"),
+        Index("ix_scheduled_work_area", "partido_key", "localidad_key"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    snapshot_id: Mapped[str] = mapped_column(
+        ForeignKey("es_scheduled_snapshots.id", ondelete="CASCADE"), nullable=False,
+    )
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    partido: Mapped[str] = mapped_column(String(120), nullable=False)
+    localidad: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    partido_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    localidad_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    subestacion_alimentador: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    affected_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    restoration_estimate_text: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class ScheduledFetchRun(Base):
+    """Every CU02 acquisition attempt, including failures and skipped runs."""
+
+    __tablename__ = "es_scheduled_fetch_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "outcome IN ('ok','not_modified','http_error','tls_error','parse_error',"
+            "'schema_error','source_degraded','timeout','skipped_locked')",
+            name="ck_scheduled_run_outcome",
+        ),
+        Index("ix_scheduled_run_started", "started_at"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    detail_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
 class OutageFetchRun(Base):
     """Every acquisition attempt, including failures and skipped runs."""
 
