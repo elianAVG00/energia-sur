@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -21,6 +22,8 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+EMBEDDING_DIMENSION = 1536
 
 
 def identifier() -> str:
@@ -346,3 +349,85 @@ class OutageFetchRun(Base):
     http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
     detail_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class GuideDocument(Base):
+    """One versioned guide document and its current active version."""
+
+    __tablename__ = "es_guide_documents"
+    document_id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    current_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    last_verified_at: Mapped[date] = mapped_column(Date, nullable=False)
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(300), nullable=False)
+    embedding_model: Mapped[str] = mapped_column(String(120), nullable=False)
+    embedding_dimension: Mapped[int] = mapped_column(Integer, nullable=False)
+    parser_version: Mapped[str] = mapped_column(String(32), nullable=False)
+
+
+class GuideChunk(Base):
+    """One complete guide article chunk with provenance and disclosure metadata."""
+
+    __tablename__ = "es_guide_chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id", "article_id", "version", name="uq_guide_article_version",
+        ),
+        Index(
+            "uq_guide_active_article", "document_id", "article_id", unique=True,
+            postgresql_where=text("is_active"),
+        ),
+        Index("ix_guide_chunk_active", "document_id", "is_active"),
+        Index("ix_guide_chunk_article", "document_id", "article_id"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("es_guide_documents.document_id", ondelete="CASCADE"), nullable=False,
+    )
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    last_verified_at: Mapped[date] = mapped_column(Date, nullable=False)
+    section: Mapped[str] = mapped_column(String(120), nullable=False)
+    article_id: Mapped[str] = mapped_column(String(16), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    source_urls: Mapped[list[dict[str, str]]] = mapped_column(JSON, nullable=False)
+    limitations: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    information_type: Mapped[str] = mapped_column(String(300), nullable=False)
+    volatility: Mapped[str] = mapped_column(String(16), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(300), nullable=False)
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIMENSION), nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AssistantConversation(Base):
+    """Owner-scoped persisted assistant conversation (BUILD 3)."""
+
+    __tablename__ = "es_assistant_conversations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    account_id: Mapped[str] = mapped_column(
+        ForeignKey("es_accounts.id"), nullable=False, index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AssistantMessage(Base):
+    """One persisted assistant message (BUILD 3)."""
+
+    __tablename__ = "es_assistant_messages"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("es_assistant_conversations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    sources: Mapped[list[dict[str, str]]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

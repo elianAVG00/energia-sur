@@ -58,5 +58,7 @@ chat and at least two MCP tools/servers including one external. Development MCP
 evidence is distinct from chatbot integration and must not expose privileged tools
 to the app. [Q00](decisions.md#q00) is approved on the user's U06 confirmation of
 teacher approval of all ten Energía Sur CUs, without recording a teacher date/channel. The approved stack
-now includes CU09's approved auth, ORM and migrations under U07/U07-T; hosting,
-persistent assistant memory and other CUs' unresolved decisions remain pending.
+now includes CU09's approved auth, ORM and migrations under U07/U07-T; U23 decides the
+CU03 persistent-memory mechanism, and the Edesur guide is delivered (v1.0.0, 2026-11-10)
+and ingested at article granularity; hosting and other CUs' unresolved decisions remain
+pending.

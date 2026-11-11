@@ -16,8 +16,10 @@ from app.api import DB, no_cache
 from app.coverage import CoverageCatalog, load_catalog
 from app.enre_client import FEED_URL
 from app.enre_parser import normalized_key
-from app.models import OutageReport, OutageSnapshot
+from app.models import OutageReport
 from app.outage_store import current_snapshot, latest_source_status
+from app.public_reads import freshness
+from app.public_reads import outage_state as _state
 
 router = APIRouter(dependencies=[Depends(no_cache)])
 
@@ -27,8 +29,6 @@ _GEO_NOT_FOUND = "No pudimos ubicar la dirección. Probá con partido y localida
 _GEO_OUTSIDE = "La ubicación está fuera del área consultada."
 _MAX_NAME = 120
 _MAX_ADDRESS = 300
-_FRESH_SECONDS = 15 * 60
-_STALE_SECONDS = 60 * 60
 _RATE_LIMIT = 20
 _RATE_WINDOW_SECONDS = 60.0
 
@@ -172,34 +172,6 @@ def _instant(value: datetime | None) -> str | None:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _freshness(snapshot: OutageSnapshot | None, now: datetime) -> Freshness:
-    if snapshot is None or snapshot.source_last_modified is None:
-        return "unavailable"
-    age = (now - snapshot.source_last_modified).total_seconds()
-    if age <= _FRESH_SECONDS:
-        return "fresh"
-    if age <= _STALE_SECONDS:
-        return "stale"
-    return "unavailable"
-
-
-def _state(freshness: Freshness, coverage: CoverageStatus, has_rows: bool,
-           source_status: str) -> State:
-    if coverage == "out_of_coverage":
-        return "out_of_coverage"
-    if freshness == "unavailable":
-        return "unavailable"
-    if freshness == "stale":
-        return "stale"
-    if has_rows:
-        return "reported"
-    if source_status == "degraded" and coverage == "covered":
-        return "unavailable"
-    if coverage == "covered":
-        return "no_reports"
-    return "coverage_unverified"
-
-
 def _known_areas(db: Session) -> georef.KnownAreas:
     snapshot = current_snapshot(db)
     if snapshot is None:
@@ -320,10 +292,13 @@ def current_outages(
             OutageReport.category, OutageReport.localidad_key, OutageReport.id,
         )))
 
-    freshness = _freshness(snapshot, datetime.now(UTC))
+    freshness_value = cast(Freshness, freshness(
+        snapshot.source_last_modified if snapshot is not None else None,
+        datetime.now(UTC),
+    ))
     coverage = cast(CoverageStatus, load_catalog().classify(partido_value, localidad_value))
     source_status = cast(Literal["ok", "degraded"], latest_source_status(db))
-    state = _state(freshness, coverage, bool(rows), source_status)
+    state = cast(State, _state(freshness_value, coverage, bool(rows), source_status))
     if rows and state in {"reported", "stale", "unavailable"}:
         payload: list[OutageOut] | None = [
             OutageOut(
@@ -344,7 +319,7 @@ def current_outages(
     return OutagesOut(
         state=state,
         source_status=source_status,
-        freshness=freshness,
+        freshness=freshness_value,
         granularity="localidad" if localidad_value is not None else "partido",
         source="ENRE",
         source_url=snapshot.source_url if snapshot is not None else FEED_URL,

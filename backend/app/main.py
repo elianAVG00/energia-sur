@@ -14,14 +14,18 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import StaleDataError
 from starlette.concurrency import run_in_threadpool
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app import management, outage_store, scheduled_store
 from app.api import router
+from app.assistant_api import router as assistant_router
+from app.assistant_limits import max_body_bytes
 from app.bill_api import router as bill_router
 from app.bill_reconcile import reconcile_bills
 from app.comparison_api import router as comparison_router
 from app.consumption_api import router as consumption_router
 from app.db import DatabaseUnavailable, dispose_engines
+from app.guide_store import ingest_guide
 from app.outages_api import router as outage_router
 from app.photo_store import reconcile_photos
 from app.reading_api import DuplicateReading
@@ -63,6 +67,15 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             "1", "true", "yes",
         }:
             scheduled_scheduler = asyncio.create_task(_scheduled_works_scheduler())
+        if os.environ.get("ASSISTANT_GUIDE_INGEST", "false").lower() in {
+            "1", "true", "yes",
+        }:
+            try:
+                outcome = await run_in_threadpool(ingest_guide)
+                _LOGGER.info("Guide ingest outcome: %s.", outcome.outcome)
+            except Exception as error:
+                # Never abort startup or other schedulers on a guide failure.
+                _LOGGER.warning("Guide ingest failed (%s).", type(error).__name__)
         yield
     finally:
         for task in (scheduler, scheduled_scheduler):
@@ -103,7 +116,66 @@ async def _scheduled_works_scheduler() -> None:
         await asyncio.sleep(interval)
 
 
+class AssistantBodyLimitMiddleware:
+    """Reject oversized assistant bodies before JSON parsing (pure ASGI)."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or not str(scope.get("path", "")).endswith(
+            "/assistant/chat",
+        ):
+            await self.app(scope, receive, send)
+            return
+        limit = max_body_bytes()
+        headers = dict(scope.get("headers", []))
+        length = headers.get(b"content-length", b"")
+        if length.isdigit() and int(length) > limit:
+            await self._too_large(scope, receive, send)
+            return
+        body = bytearray()
+        pending: Message | None = None
+        while True:
+            message = await receive()
+            if message["type"] != "http.request":
+                pending = message
+                break
+            chunk = message.get("body", b"")
+            if isinstance(chunk, bytes):
+                body.extend(chunk)
+            if len(body) > limit:
+                await self._too_large(scope, receive, send)
+                return
+            if not message.get("more_body", False):
+                break
+        replayed = False
+
+        async def replay() -> Message:
+            nonlocal replayed
+            if not replayed:
+                replayed = True
+                return {
+                    "type": "http.request", "body": bytes(body), "more_body": False,
+                }
+            if pending is not None:
+                return pending
+            return await receive()
+
+        await self.app(scope, replay, send)
+
+    @staticmethod
+    async def _too_large(scope: Scope, receive: Receive, send: Send) -> None:
+        response = JSONResponse(
+            {"detail": "La solicitud es demasiado grande."},
+            status_code=413,
+            headers={"Cache-Control": "no-store"},
+        )
+        await response(scope, receive, send)
+
+
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(AssistantBodyLimitMiddleware)
 app.include_router(router)
 app.include_router(reading_router)
 app.include_router(bill_router)
@@ -111,6 +183,7 @@ app.include_router(comparison_router)
 app.include_router(consumption_router)
 app.include_router(outage_router)
 app.include_router(scheduled_router)
+app.include_router(assistant_router)
 
 
 @app.exception_handler(DuplicateReading)

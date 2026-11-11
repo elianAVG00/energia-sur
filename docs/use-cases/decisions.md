@@ -394,6 +394,48 @@ not add behavior, change CU01 or modify CU05/CU06. No teacher approval of this
 redefinition is claimed; academic conformity remains a separate decision. It
 authorizes documentation, OpenSpec sync/archive and a CU02-only commit; no push.
 
+## U23 - CU03 integrated assistant decisions and PROPOSE authorization
+
+Recorded from the user's 2026-11-10 PROPOSE instruction for CU03 (`implement-integrated-assistant-cu03`).
+The user confirms for **CU03 only**:
+
+- **D1 - Guided RAG:** the assistant grounds procedural guidance on an approved Edesur
+  Markdown guide; the guide content is pending delivery and is not invented (superseded by
+  the Subsequent delivery paragraph below). Q06 becomes PARTIAL (identity decided; content
+  and retrieval/citation granularity pending).
+- **D2 - Vector storage:** PostgreSQL 18.6 with pgvector; an additive migration enables
+  the extension and the guide/memory tables.
+- **D3 - Read tools:** the assistant uses read-only tools over the CU01/CU02 cached
+  snapshots; no query-time ENRE/GeoRef call and no write tool.
+- **D4 - Memory:** temporary public memory (in-memory, bounded, short-lived) and
+  persistent memory only for authenticated users, account-scoped and owner-clearable.
+  This supersedes the earlier "persistent assistant memory TBD".
+- **D5 - Streaming:** responses stream over SSE (`text/event-stream`).
+- **D6 - Sources:** every data-bearing answer cites official sources with organism and link.
+- **D7 - Fallback:** provider/tool/rate-limit/empty-index failures return an identifiable
+  static fallback and unsupported questions an identifiable refusal (resolves the CU03
+  part of Q07; exact Spanish wording remains a review detail).
+- **D8 - Limits:** per-client rate limit (429 + `Retry-After`), timeouts, and
+  message-length and token/context/output limits.
+- **Transport security:** `POST /assistant/chat` is public and CSRF-exempt only for that
+  endpoint, with server-side Origin validation and abuse protection; authenticated unsafe
+  operations keep their existing Origin and CSRF requirements. The
+  `frontend-session-transport` adaptation is documented for review without changing its
+  current contract.
+- **MCP:** CU03 uses internal read tools and does not expose development MCP servers; an
+  external MCP server is deferred to CU10 as a proposal, not implemented or verified here.
+
+These decisions authorize the CU03 OpenSpec proposal and this documentation update for
+human review. They do not authorize Apply, code, dependency installation, migration,
+Sync, Archive, commit or push. Q00 remains approved; the Edesur guide delivery and the
+pgvector image digest/role verification remain open pre-BUILD items.
+
+**Subsequent delivery (2026-11-10):** the user supplied
+`backend/knowledge/guia-oficial-edesur.md` (`document_id` `energia-sur-kb-edesur-001`,
+version `1.0.0`, `last_verified_at` `2026-11-10`). It resolves the content-pending part of
+Q06; revalidation of time-sensitive data and the procedures the guide marks incomplete
+remain pending. The guide content is not modified.
+
 ## Confirmed facts versus inferences
 
 ### CU05 subsequent OCR BUILD instruction
@@ -409,8 +451,9 @@ The user subsequently accepts the OCR worker security topic and requests documen
   Driver, ORM, migrations and application/database connection are excluded there.
 - **C:** backend LangChain + OpenAI is the assistant direction, not installed
   business functionality. CU09/CU04 use approved server sessions and PostgreSQL;
-  hosting and persistent assistant memory remain TBD. CU09 tooling approvals
-  and Oxlint under U08 are recorded in the corresponding contract.
+  hosting remains TBD and persistent assistant memory is decided by U23 (mechanism;
+  the Edesur guide is delivered v1.0.0, 2026-11-10). CU09 tooling approvals and Oxlint
+  under U08 are recorded in the corresponding contract.
 - **C:** [MCP evidence](../ai-engineering/configure-readonly-development-mcp.md)
   records GitHub read-only and Context7 development calls. That is not proof of
   chat functionality or a fresh permission/token audit.
@@ -476,15 +519,25 @@ The original dated proposal is preserved in the CU02 fiche and U21 as historical
 context. **Pending:** none for CU02; any dated capability would require a new proposal.
 
 ### Q06
-**TBD - CU03:** Which official guides and retrieval/citation granularity are accepted?
-Needed for grounding; blocks CU03-S01's source acceptance oracle.
+**PARTIAL - CU03, U23; content delivered:** the approved guide is
+`backend/knowledge/guia-oficial-edesur.md` (`document_id` `energia-sur-kb-edesur-001`,
+version `1.0.0`, `last_verified_at` `2026-11-10`), ingested at article granularity
+(`CA-01`, `PA-01`, ...) with `source_name`/`source_urls` metadata. **Pending:** periodic
+revalidation of time-sensitive data and the procedures the guide itself marks incomplete;
+the staleness threshold and embedding model are Apply-time confirmations.
+**Impact:** CU03-S01 has a concrete content oracle; stale or incomplete items must be
+disclosed, not filled.
 
 ### Q07
 **PARTIAL - CU01, U16 + D8/D11:** freshness is fresh ≤15 min, stale ≤60 min and unavailable >60
 min or no valid snapshot; a degraded/`N/A` source keeps the last valid snapshot, and stale or
 unavailable are explicit states rather than empty results. **U22, CU02:** the unavailable,
-stale, no-works and unverified-coverage fallback UX is specified and implemented. **Pending:**
-CU03 fallback UX remains open; the no-invention constraint is unchanged.
+stale, no-works and unverified-coverage fallback UX is specified and implemented.
+**U23, CU03:** the assistant returns an identifiable static fallback for
+provider/tool/rate-limit/empty-index failures and an identifiable refusal for unsupported
+questions; exact Spanish wording remains a presentation detail. **Pending:** no
+fallback-UX alternative remains open for CU01/CU02/CU03; the no-invention constraint is
+unchanged.
 
 ### Q08
 **PARTIAL - CU04:** U07/U07-T approve the CU09 prerequisite's stable domicile ID,

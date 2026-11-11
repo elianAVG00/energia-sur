@@ -24,6 +24,7 @@ COPY app ./app
 COPY tests ./tests
 COPY alembic.ini ./
 COPY migrations ./migrations
+COPY knowledge ./knowledge
 USER 10001:10001
 
 FROM ocr-tooling AS runtime
@@ -37,6 +38,7 @@ COPY app ./app
 COPY tests ./tests
 COPY alembic.ini ./
 COPY migrations ./migrations
+COPY knowledge ./knowledge
 
 USER 10001:10001
 

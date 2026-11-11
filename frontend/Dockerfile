@@ -11,6 +11,8 @@ COPY index.html tsconfig.json vite.config.ts playwright.config.ts components.jso
 COPY src ./src
 COPY tests ./tests
 COPY e2e ./e2e
+ARG VITE_ASSISTANT_TTL_MINUTES=30
+ENV VITE_ASSISTANT_TTL_MINUTES=$VITE_ASSISTANT_TTL_MINUTES
 RUN npm run build && npm test && npm run lint && chown -R node:node /app
 
 USER node

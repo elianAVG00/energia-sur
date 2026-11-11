@@ -1,7 +1,10 @@
 """Approved local session primitives; no public account provisioning endpoint."""
 
 import hashlib
+import os
 import secrets
+
+from fastapi import HTTPException, Request
 
 COOKIE_NAME = "energia_sur_session"
 SESSION_SECONDS = 8 * 60 * 60
@@ -45,3 +48,14 @@ def new_token() -> str:
 
 def matches_csrf(supplied: str, expected: str) -> bool:
     return supplied.isascii() and secrets.compare_digest(supplied, expected)
+
+
+def origin(request: Request) -> None:
+    """Reject a request whose exact Origin is not in the configured allowlist."""
+    allowed = os.environ.get(
+        "APP_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173",
+    ).split(",")
+    if request.headers.get("origin", "") not in [
+        value.strip() for value in allowed if value.strip()
+    ]:
+        raise HTTPException(403, "El origen de la solicitud no est\u00e1 autorizado.")

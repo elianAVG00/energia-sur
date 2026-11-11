@@ -13,15 +13,15 @@ from app.api import DB, no_cache
 from app.coverage import CoverageCatalog, load_catalog
 from app.enre_client import FEED_URL
 from app.enre_parser import normalized_key
-from app.models import ScheduledSnapshot, ScheduledWork
+from app.models import ScheduledWork
+from app.public_reads import freshness, scheduled_limitations
+from app.public_reads import scheduled_state as _state
 from app.scheduled_store import current_snapshot, latest_source_status
 
 router = APIRouter(dependencies=[Depends(no_cache)])
 
 _INVALID = "Revisá los datos ingresados."
 _MAX_NAME = 120
-_FRESH_SECONDS = 15 * 60
-_STALE_SECONDS = 60 * 60
 
 CoverageStatus = Literal["covered", "out_of_coverage", "coverage_unverified"]
 Freshness = Literal["fresh", "stale", "unavailable"]
@@ -101,43 +101,6 @@ def _instant(value: datetime | None) -> str | None:
     if value is None:
         return None
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
-
-
-def _freshness(snapshot: ScheduledSnapshot | None, now: datetime) -> Freshness:
-    if snapshot is None or snapshot.source_last_modified is None:
-        return "unavailable"
-    age = (now - snapshot.source_last_modified).total_seconds()
-    if age <= _FRESH_SECONDS:
-        return "fresh"
-    if age <= _STALE_SECONDS:
-        return "stale"
-    return "unavailable"
-
-
-def _state(freshness: Freshness, coverage: CoverageStatus, has_rows: bool,
-           source_status: str) -> State:
-    if coverage == "out_of_coverage":
-        return "out_of_coverage"
-    if freshness == "unavailable":
-        return "unavailable"
-    if freshness == "stale":
-        return "stale"
-    if has_rows:
-        return "works_reported"
-    if source_status == "degraded" and coverage == "covered":
-        return "unavailable"
-    if coverage == "covered":
-        return "no_works"
-    return "coverage_unverified"
-
-
-def _limitations(snapshot: ScheduledSnapshot | None) -> list[Limitation]:
-    values: list[Limitation] = [
-        "dates_not_published", "reason_not_published", "proximity_not_available",
-    ]
-    if snapshot is not None and snapshot.comunicados_present:
-        values.append("announced_works_not_displayed")
-    return values
 
 
 def _areas(db: Session, catalog: CoverageCatalog) -> AreasOut:
@@ -237,10 +200,13 @@ def scheduled_works(
             ScheduledWork.category, ScheduledWork.localidad_key, ScheduledWork.id,
         )))
 
-    freshness = _freshness(snapshot, datetime.now(UTC))
+    freshness_value = cast(Freshness, freshness(
+        snapshot.source_last_modified if snapshot is not None else None,
+        datetime.now(UTC),
+    ))
     coverage = cast(CoverageStatus, load_catalog().classify(partido_value, localidad_value))
     source_status = cast(Literal["ok", "degraded"], latest_source_status(db))
-    state = _state(freshness, coverage, bool(rows), source_status)
+    state = cast(State, _state(freshness_value, coverage, bool(rows), source_status))
     if state == "works_reported" or (state in {"stale", "unavailable"} and rows):
         works: list[WorkOut] | None = [_work_out(row) for row in rows]
     elif state == "no_works":
@@ -251,7 +217,7 @@ def scheduled_works(
     result = ScheduledWorksOut(
         state=state,
         source_status=source_status,
-        freshness=freshness,
+        freshness=freshness_value,
         granularity="localidad" if localidad_value is not None else "partido",
         source="ENRE",
         source_url=snapshot.source_url if snapshot is not None else FEED_URL,
@@ -265,7 +231,9 @@ def scheduled_works(
         coverage=CoverageOut(
             partido=partido_value, localidad=localidad_value, status=coverage,
         ),
-        limitations=_limitations(snapshot),
+        limitations=cast(list[Limitation], scheduled_limitations(
+            snapshot.comunicados_present if snapshot is not None else False,
+        )),
         works=works,
     )
     return _payload(result)

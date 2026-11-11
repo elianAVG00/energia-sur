@@ -8,7 +8,7 @@ domicile-registration slice. CU09 and the shared frontend foundation were verifi
 and archived on 2026-11-08; CU04, CU06, CU07 and CU08 are implemented and
 archived. CU05 is implemented with a red-fraction Sync/Archive block, CU01 and CU02
 are implemented, verified and archived (CU02 under its U22 definitive scope), and
-CU03 and CU10 remain planned.
+CU03 is closed and archived (BUILD 1-3, real OpenAI query passed) and CU10 remains planned.
 
 CU04 domicile and meter management is implemented, verified and archived;
 Git staging, commits and pushes are managed by the user:
@@ -128,8 +128,8 @@ and [tasks](openspec/changes/archive/2026-11-08-establish-frontend-foundation/ta
 Implemented: Tailwind/local shadcn/ui components, memory-only Zustand session and
 domicile selection, React Hook Form/Zod forms and centralized Axios with cookie/CSRF
 interceptors, cancellation and safe PDF handling. CU09 adopts these layers without
-changing backend contracts. One root-layout chat mount is visibly unavailable;
-LangChain, messaging and streaming remain CU03 work, not implemented chat behavior.
+changing backend contracts. One root-layout chat mount now runs the CU03 assistant with
+SSE, temporary visitor memory and authenticated conversation persistence.
 See the [reuse guide](docs/frontend-foundation.md) for module boundaries, adding the
 next CU, reset/security rules and documented checks. Actual verification and the
 independent source review are in the [engineering record](docs/ai-engineering/establish-frontend-foundation.md).
@@ -166,7 +166,8 @@ selection, consented browser geolocation, granularity messaging, category rows, 
 and the source provenance. Every normative availability/coverage state is presented, including
 "coverage unverified" (never "out of coverage" or "no outages" without evidence). The public view
 calls only `/api/outages/*` plus the shared `/api/session` and `/api/health` probes; the two public
-resolve POSTs are the only CSRF-free writes besides login, and 429 responses surface `Retry-After`.
+resolve POSTs and the public assistant chat are the only CSRF-free unsafe endpoints besides
+login, and 429 responses surface `Retry-After`.
 
 Known BUILD 3 limits are accepted by U20: the partial nine-localidad coverage catalog (0.4) and the
 unobserved media/preventivo feed shapes (0.1). GeoRef address matching is sparse and reverse
@@ -218,6 +219,33 @@ CU01 and CU09 remain covered by their existing E2E suites. The implementation re
 decisions and original-scope traceability are in the
 [CU02 engineering record](docs/ai-engineering/implement-scheduled-works-cu02.md).
 
+## CU03 integrated assistant (closed / archived)
+
+The backend assistant ingests the approved guide at `backend/knowledge/guia-oficial-edesur.md`
+(`document_id` `energia-sur-kb-edesur-001`, version `1.0.0`, verified 2026-11-10) into
+PostgreSQL/pgvector at article granularity (53 units, `CA-01`...). It uses OpenAI embeddings
+(`text-embedding-3-small`, 1536) and `gpt-4o-mini` for generation (both configurable via
+`OPENAI_*`). `POST /api/assistant/chat` streams SSE (`text/event-stream`) with
+`conversation`, `delta`, `tool`, `sources`, `error` and `done` events, server-side Origin
+validation, a per-client rate limit and a static fallback/refusal.
+
+Set `CU09_DATABASE_URL` and a server-side `OPENAI_API_KEY` in the ignored root `.env`.
+Ingest once with the CU09 overlay (which supplies `DATABASE_URL`), for example
+`docker compose -f compose.yaml -f compose.cu09.yaml exec backend python -m app.ingest_guide`,
+or set `ASSISTANT_GUIDE_INGEST=true`. The base Compose file forwards the assistant/OpenAI
+variables with empty defaults; never commit a key. Ingestion is idempotent, monotonic by
+version and refuses an older version unless `--force`.
+Migration `0007_cu03` adds the guide and assistant tables. The React assistant lives in
+`frontend/src/features/assistant/` with one root mount, temporary Zustand history and a
+configurable TTL (`VITE_ASSISTANT_TTL_MINUTES`, default 30; set
+`ASSISTANT_VISITOR_TTL_MINUTES` when rebuilding the frontend), cancellation and official
+HTTPS sources. Authenticated users get owner-scoped persisted conversations through
+`GET /api/assistant/conversations`, `GET /api/assistant/conversations/{id}/messages` and
+`DELETE /api/assistant/conversations/{id}` (Origin + CSRF); visitors are never persisted.
+`ASSISTANT_RETENTION_DAYS` documents a proposed 30-day policy; messages remain until the
+owner deletes them and automatic deletion is pending approval. The panel shows a visible
+OpenAI/private-data notice.
+
 ## Local Docker environment
 
 The Docker development environment uses React + TypeScript with Vite, Node 24.22.2 and
@@ -225,7 +253,9 @@ npm 11.19.1; Python 3.13.18 with FastAPI, Uvicorn and uv; and PostgreSQL 18.6 fr
 the first Compose startup. Frontend/backend use loopback ports 5173/8000 with an
 `/api/health` proxy. PostgreSQL has no published host port and persists in `pgdata`.
 Startup does not require an OpenAI key. Base-only Compose remains the health scaffold;
-CU09's overlay adds the backend/database connection. LangChain/OpenAI is still later scope.
+CU09's overlay adds the backend/database connection. LangChain/OpenAI is implemented for
+CU03; a key is optional and absent by default, so the assistant degrades to its static
+fallback.
 
 Compose mounts the private `cu05_photos` volume at `/var/lib/energia-sur/photos`.
 FastAPI publishes and reads confirmed CU05 photos there under PostgreSQL and
@@ -253,6 +283,8 @@ Python, npm and uv installations are not required for the container workflow.
    not already have a local file. Edit ignored `.env` locally and set a non-empty,
    development-only `POSTGRES_PASSWORD`; never share or commit the completed file.
    Alternatively supply the three PostgreSQL values in your process environment.
+   `.env.example` also lists `OPENAI_API_KEY` (CU03, server-side only) and a
+   commented `CU09_DATABASE_URL`; fill them in the ignored `.env`, never in tracked files.
 2. Run:
 
 ```powershell
@@ -383,3 +415,4 @@ Before live checks:
 - [Approved MCP design and tasks](openspec/changes/configure-readonly-development-mcp/design.md)
 - [MCP setup, authentication checkpoint, and redacted checks](docs/ai-engineering/configure-readonly-development-mcp.md)
 - [Docker environment decisions, planning checks, and pending implementation evidence](docs/ai-engineering/docker-development-environment.md)
+- [CU03 integrated assistant proposal, decisions and review evidence](docs/ai-engineering/implement-integrated-assistant-cu03.md) — [archived change](openspec/changes/archive/2026-11-11-implement-integrated-assistant-cu03/proposal.md), [main spec](openspec/specs/assistant/spec.md)

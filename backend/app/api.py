@@ -38,6 +38,7 @@ from app.security import (
     SESSION_SECONDS,
     matches_csrf,
     new_token,
+    origin,
     token_hash,
     verify_password,
 )
@@ -82,12 +83,26 @@ def current(request: Request, db: DB) -> Actor:
 Auth = Annotated[Actor, Depends(current)]
 
 
-def origin(request: Request) -> None:
-    allowed = os.environ.get(
-        "APP_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173",
-    ).split(",")
-    if request.headers.get("origin", "") not in [x.strip() for x in allowed if x.strip()]:
-        raise HTTPException(403, "El origen de la solicitud no está autorizado.")
+def optional_actor(request: Request) -> Actor | None:
+    """Return the owner for a valid cookie; a stale/invalid cookie is anonymous."""
+    raw = request.cookies.get(COOKIE_NAME, "")
+    if not raw:
+        return None
+    try:
+        with Session(get_engine()) as db:
+            session = db.get(WebSession, token_hash(raw))
+            if session is None or session.revoked or session.expires_at <= now():
+                return None
+            account = db.get(Account, session.account_id)
+    except Exception:
+        # Public chat must keep working when optional identity cannot be read.
+        return None
+    if account is None:
+        return None
+    return Actor(account, session)
+
+
+OptionalAuth = Annotated[Actor | None, Depends(optional_actor)]
 
 
 def mutation(request: Request, actor: Auth) -> Actor:

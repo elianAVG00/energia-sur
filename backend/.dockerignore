@@ -7,6 +7,8 @@
 !migrations/
 !migrations/versions/
 !migrations/**/*.py
+!knowledge/
+!knowledge/*.md
 !pyproject.toml
 !uv.lock
 !.python-version

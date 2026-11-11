@@ -7,7 +7,8 @@ this foundation is not a second app, backend framework, router or query cache.
 
 | Concern | Location | Ownership |
 | --- | --- | --- |
-| Root shell and deferred chat | `frontend/src/layouts/` and `src/components/` | One layout and one unavailable chat mount, independent of account/domicile feature keys. |
+| Root shell and chat mount | `frontend/src/layouts/` and `src/components/` | One layout and one functional assistant mount, independent of account/domicile feature keys. |
+| CU03 assistant | `frontend/src/features/assistant/` | SSE client, temporary Zustand conversation with TTL, owner-scoped authenticated persistence, safe sources and fallback states. |
 | Local shadcn/ui primitives | `frontend/src/components/ui/` | Repository-owned accessible presentation, Tailwind tokens and upstream license/provenance. |
 | Memory session and selection | `frontend/src/stores/session.ts` | Validated account/session CSRF, selected domicile, generation and lifecycle actions only. |
 | HTTP policy | `frontend/src/lib/http.ts`, `httpError.ts` | Fixed same-origin `/api`, cookie credentials, interceptors, cancellation and safe typed errors. |
@@ -33,6 +34,9 @@ and [tasks](../openspec/changes/archive/2026-11-08-establish-frontend-foundation
 4. Write a typed adapter over the shared `http.request` function. Treat response
    data as `unknown` and validate status, content type, fields and resource identity.
    Do not create an Axios instance inside a component or log raw Axios errors.
+   Streaming endpoints are the documented exception: use the feature's
+   `fetch` + `ReadableStream` client with `apiPath`, credentials, cancellation and no
+   auto-retry, as `features/assistant/api.ts` does.
 5. Select only required session/selection values with `useSessionStore`. Keep
    drafts, server rows and pending/error states in the feature, not a global cache.
    Use request lanes and session generation checks so old responses cannot update
@@ -107,19 +111,24 @@ the Docker copy list and `.dockerignore` allowlist. No service exposure changes.
 
 ## Chat ownership
 
-The layout owns exactly one reserved floating-chat mount across login, logout and
-domicile transitions. It visibly indicates that CU03 is unavailable. Other CUs
-must not mount their own chat or start provider/streaming connections. CU03 later
-adds messaging, LangChain, streaming, provider credentials and any approved memory
-policy as separate backend/runtime work; no such capability is claimed here.
+The layout owns exactly one functional floating-assistant mount across login, logout and
+domicile transitions. It streams through the dedicated `features/assistant` client,
+renders official HTTPS sources and keeps the visitor conversation in Zustand with a
+configurable TTL. Authenticated users get owner-scoped persisted conversations (the chat
+sends the conversation id and the server keeps bounded history); logout/account changes
+abort in-flight streams and reset the panel. It never exposes provider credentials, never
+persists anonymous conversations and never mounts a second chat. A visible notice explains
+OpenAI processing and authenticated storage.
 
 ## Verification (PowerShell, repository root)
 
 ```powershell
-docker build --target verification -t energia-sur-frontend-checks:cu09 frontend
-docker run --rm energia-sur-frontend-checks:cu09 npm test
-docker run --rm energia-sur-frontend-checks:cu09 npm run lint
-docker run --rm energia-sur-frontend-checks:cu09 npm run build
+docker build --target verification -t energia-sur-frontend-checks:cu03 frontend
+docker run --rm energia-sur-frontend-checks:cu03 npm test
+docker run --rm energia-sur-frontend-checks:cu03 npm run lint
+docker run --rm energia-sur-frontend-checks:cu03 npm run build
+# With a dev server reachable from the Playwright container:
+npx playwright test e2e/cu03.spec.ts e2e/cu03-auth.spec.ts
 openspec validate --all --strict --no-interactive
 ```
 

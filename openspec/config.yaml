@@ -22,7 +22,8 @@ context: |
   CU09 explicitly approves SQLAlchemy/psycopg/Alembic, opaque server sessions and
   ReportLab; U07-T approves Playwright/pypdf/Ruff/mypy and compatible ESLint tooling.
   Preserve installed stack pins; do not bypass incompatible tool peer requirements.
-  Hosting and persistent chatbot memory remain unresolved.
+  Hosting remains unresolved; persistent chatbot memory is decided by U23 (mechanism),
+  and the Edesur guide is delivered (v1.0.0, 2026-11-10).
   Development MCP integrations are separate from application chatbot capabilities.
   Preserve source provenance, timestamps and uncertainty; never infer live outages
   or successful automatic refreshes from technical scaffold or mock evidence.
