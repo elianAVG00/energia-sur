@@ -9,15 +9,21 @@ import { LoginForm } from './features/diary/forms.tsx';
 import { Workspace } from './features/diary/Workspace.tsx';
 import { OutagesPanel } from './features/outages/OutagesPanel.tsx';
 import { ScheduledWorksPanel } from './features/scheduled-works/ScheduledWorksPanel.tsx';
+import { AdminPanel } from './features/admin/AdminPanel.tsx';
 
 export default function App() {
   const scope = useRequestScope();
-  const [view, setView] = useState<'outages' | 'works' | 'account'>('account');
+  const [view, setView] = useState<'outages' | 'works' | 'admin' | 'account'>('account');
   const session = useSessionStore(state => state.session);
+  const isAdmin = session?.account.role === 'admin';
   const generation = useSessionStore(state => state.generation);
   const expired = useSessionStore(state => state.expired);
   const [pending, setPending] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (view === 'admin' && !isAdmin) setView('account');
+  }, [view, isAdmin]);
 
   useEffect(() => {
     const request = scope.begin('session');
@@ -54,7 +60,7 @@ export default function App() {
     } finally { if (request.isCurrent()) setPending(false); }
   }
 
-  return <AppLayout title={view === 'outages' ? 'Cortes eléctricos' : view === 'works' ? 'Trabajos programados' : 'Diario de interrupciones'}>
+  return <AppLayout title={view === 'outages' ? 'Cortes eléctricos' : view === 'works' ? 'Trabajos programados' : view === 'admin' ? 'Administración de fuentes' : 'Diario de interrupciones'}>
     <nav aria-label="Secciones" className="flex flex-wrap gap-2">
       <Button type="button" variant={view === 'outages' ? 'default' : 'outline'}
         aria-current={view === 'outages' ? 'page' : undefined}
@@ -62,12 +68,16 @@ export default function App() {
       <Button type="button" variant={view === 'works' ? 'default' : 'outline'}
         aria-current={view === 'works' ? 'page' : undefined}
         onClick={() => setView('works')}>Trabajos</Button>
+      {isAdmin && <Button type="button" variant={view === 'admin' ? 'default' : 'outline'}
+        aria-current={view === 'admin' ? 'page' : undefined}
+        onClick={() => setView('admin')}>Administración</Button>}
       <Button type="button" variant={view === 'account' ? 'default' : 'outline'}
         aria-current={view === 'account' ? 'page' : undefined}
         onClick={() => setView('account')}>Mi cuenta</Button>
     </nav>
     {view === 'outages' && <OutagesPanel />}
     {view === 'works' && <ScheduledWorksPanel />}
+    {view === 'admin' && isAdmin && <AdminPanel />}
     {view === 'account' && <>
       {error && <Alert>{error}</Alert>}
       {expired && !session && <Alert>La sesión venció. Ingresá nuevamente.</Alert>}

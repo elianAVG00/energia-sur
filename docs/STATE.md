@@ -1,6 +1,6 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-11 (CU03 CLOSED / ARCHIVED; CU01/CU02 archived; CU05 red-fraction block open).
+Updated: 2026-11-13 (CU10 implemented, verified and archived; CU03 archived; CU01/CU02 archived; CU05 red-fraction block open).
 
 ## CU03 - CLOSED / ARCHIVED
 - [Archived change](../openspec/changes/archive/2026-11-11-implement-integrated-assistant-cu03/proposal.md), [assistant spec](../openspec/specs/assistant/spec.md) (17 requirements), [engineering record](ai-engineering/implement-integrated-assistant-cu03.md); [U23](use-cases/decisions.md#u23---cu03-integrated-assistant-decisions-and-propose-authorization).
@@ -20,6 +20,13 @@ Updated: 2026-11-11 (CU03 CLOSED / ARCHIVED; CU01/CU02 archived; CU05 red-fracti
 ## CU02 - COMPLETED / ARCHIVED (U22 definitive scope)
 - [Archived change](../openspec/changes/archive/2026-11-10-implement-scheduled-works-cu02/proposal.md), [main spec](../openspec/specs/scheduled-works/spec.md) (13 requirements); U21/U22. ENRE `cortesProgramados` only; dates/reason/distance out of scope. PASS: 30 tests, additive `0006_cu02`, `openspec validate --strict`. No push.
 
+## CU10 - CLOSED / ARCHIVED
+- [Archived change](../openspec/changes/archive/2026-11-13-supervise-source-refresh-cu10/proposal.md), [main spec](../openspec/specs/source-refresh-administration/spec.md) (12 requirements), [engineering record](ai-engineering/supervise-source-refresh-cu10.md); [U24/25](use-cases/decisions.md#u24---cu10-source-supervision-decisions-and-propose-authorization). Admin-only supervision of the two existing ENRE sources, reusing the CU01/CU02 schedulers, advisory locks (`0x43553031`/`0x43553032`), fetch runs and snapshots.
+- Backend: additive `0008_cu10` (`es_accounts.role` default `user`; `es_source_config` seeded 300/300); `app/source_config.py`; `app/admin_api.py`; `app/promote.py`; `refresh_now()` → 409 `SOURCE_BUSY`; atomic versioning → 409 `VERSION_CONFLICT`; per-cycle `next_interval`/`run_cycle` with safe `300` fallback.
+- Frontend: `features/admin/{api,state,AdminPanel}`; conditional "Administración" nav; two cards; 25 s timeout only for the retry; 401/403/409/422/timeout handling; interval persistence; additive `role` in the session contract.
+- PASS: backend Ruff/mypy, 30/30 CU10 tests, 190-test regression set (6 skipped); frontend typecheck, 142/142 tests, lint, build; mocked CU10 Playwright 9/9; real-backend admin flow 1/1 (synthetic QA admin/user); mocked CU01/CU02/CU03 regressions; `openspec validate --all --strict` 15/15.
+- Sync/Archive: 12 requirements added (`source-refresh-administration`), 2 modified (`current-outages`/`scheduled-works` cadence only); archived with 32/32 tasks. No commit/push. Pre-existing, not CU10: 6 CU05/CU06 backend environment failures and 1 CU05 history E2E failure reproduced on the pre-CU10 image; CU04/CU09 real specs need external QA state.
+
 ## Other CUs
 - CU08, CU07, CU06, CU04 and CU09 are implemented, verified and archived; CU05 is implemented with the red-fraction Sync/Archive block.
 
@@ -31,9 +38,10 @@ Updated: 2026-11-11 (CU03 CLOSED / ARCHIVED; CU01/CU02 archived; CU05 red-fracti
 - CU03: automated retention deletion remains pending approval (policy documented at 30 days); closure is complete.
 - Guide delivered (v1.0.0, 2026-11-10); time-sensitive data still requires periodic revalidation.
 - CU05 red-fraction contract conflict still blocks its Sync/Archive.
-- Hosting remains unresolved; unrelated catalog TBDs (Q21/Q22 and others) remain.
+- Hosting remains unresolved; Q21/Q22 are resolved for the CU10 scope by U24, while other catalog TBDs remain.
 
 ## Next actions
-1. Resolve the CU05 red-fraction conflict before its Sync/Archive.
-2. Keep synthetic DEV data and retained artifacts until deletion is explicitly authorized.
+1. Review the archived CU10 result and decide the next commit (no push was performed).
+2. Resolve the CU05 red-fraction conflict before its Sync/Archive.
 3. Await approval before implementing the 30-day automatic retention deletion.
+4. Re-run CU04/CU09 real Chromium specs when their external QA state is provisioned.

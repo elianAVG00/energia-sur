@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-11
+goal: Add an admin-only panel to inspect source refresh status, trigger a
+  synchronous retry, and configure persisted refresh intervals, reusing
+  CU01/CU02 schedulers, advisory locks and run history.

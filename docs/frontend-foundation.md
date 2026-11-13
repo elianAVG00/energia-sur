@@ -78,14 +78,17 @@ const body: unknown = response.data;
 
 ## Transport and PDFs
 
-`createHttpClient` accepts a store, an optional Axios adapter and a test-only
-deadline-signal factory for isolated deterministic tests. Production uses 10 seconds;
-individual feature requests cannot override it.
+`createHttpClient` accepts a store, an optional Axios adapter, an optional per-client
+timeout (default 10 seconds) and a test-only deadline-signal factory for isolated
+deterministic tests. Production stays at 10 seconds except for the CU10 admin retry,
+which uses a documented 25-second client timeout because the synchronous ENRE retry can
+outlast the normal deadline; that exception is scoped to the single retry request.
 Feature requests cannot override auth, headers, base URL, adapter or credentials.
 External/protocol-relative URLs, traversal and unsafe normalized destinations are
 rejected before network dispatch. `baseURL` alone is not a security boundary.
 
-Pass an AbortSignal on every request. Timeout is 10 seconds. Typed errors preserve
+Pass an AbortSignal on every request. Default timeout is 10 seconds (25 seconds only for
+the CU10 retry). Typed errors preserve
 401/403/404/409/422/503 and distinguish cancellation, timeout, network and malformed
 responses. Do not catch and expose raw request configs/cookies/passwords/CSRF.
 409 requires explicit user recovery, never an automatic write retry.

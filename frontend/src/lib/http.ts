@@ -106,7 +106,8 @@ async function errorDetail(response: AxiosResponse<unknown>, context: Context): 
       typeof body.detail === 'string' && body.detail.trim() && body.detail.length <= 2048) {
     const code = response.status === 409 && 'code' in body &&
        (body.code === 'DUPLICATE_METER' || body.code === 'DUPLICATE_READING' || body.code === 'DUPLICATE_BILL' || body.code === 'OVERLAP_CONFIRMATION_REQUIRED' ||
-       body.code === 'IDEMPOTENCY_KEY_REUSED' || body.code === 'VERSION_CONFLICT' || body.code === 'CONFIRMATION_REQUIRED') ? body.code : null;
+       body.code === 'IDEMPOTENCY_KEY_REUSED' || body.code === 'VERSION_CONFLICT' || body.code === 'CONFIRMATION_REQUIRED' ||
+       body.code === 'SOURCE_BUSY') ? body.code : null;
     const warning = code === 'OVERLAP_CONFIRMATION_REQUIRED' ? billWarning(body) : null;
     const confirmation = code === 'CONFIRMATION_REQUIRED' ? comparisonConfirmation(body) : null;
     return { detail: body.detail, code, warning, confirmation, retryAfter };
@@ -114,11 +115,12 @@ async function errorDetail(response: AxiosResponse<unknown>, context: Context): 
   return fallback;
 }
 
-export function createHttpClient(options: { store?: SessionStore; adapter?: AxiosAdapter; deadlineSignal?: () => AbortSignal } = {}) {
+export function createHttpClient(options: { store?: SessionStore; adapter?: AxiosAdapter; deadlineSignal?: () => AbortSignal; timeout?: number } = {}) {
   const store = options.store ?? sessionStore;
   const contexts = new WeakMap<GenericAbortSignal, Context>();
   const instance = axios.create({
-    timeout: 10000, withCredentials: true, withXSRFToken: false,
+    timeout: options.timeout ?? 10000,
+    withCredentials: true, withXSRFToken: false,
     xsrfCookieName: '', validateStatus: () => true,
     ...(options.adapter ? { adapter: options.adapter } : {}),
   });

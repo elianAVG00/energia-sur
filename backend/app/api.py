@@ -4,7 +4,7 @@ import os
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
@@ -116,8 +116,13 @@ Writer = Annotated[Actor, Depends(mutation)]
 
 
 def session_out(actor: Actor) -> SessionOut:
+    role: Literal["user", "admin"] = (
+        "admin" if actor.account.role == "admin" else "user"
+    )
     return SessionOut(
-        account=AccountOut(id=actor.account.id, username=actor.account.username),
+        account=AccountOut(
+            id=actor.account.id, username=actor.account.username, role=role,
+        ),
         csrf_token=actor.session.csrf_token,
     )
 

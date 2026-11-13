@@ -12,6 +12,9 @@ test('validates private DTOs without unchecked casts', () => {
   assert.equal(isCut({ ...cut, status: 'closed' }), false);
   assert.equal(isCut({ ...cut, start_at: 'bad' }), false);
   assert.equal(isSession({ account: { id: 'a', username: 'name' }, csrf_token: 'token' }), true);
+  assert.equal(isSession({ account: { id: 'a', username: 'name', role: 'admin' }, csrf_token: 'token' }), true);
+  assert.equal(isSession({ account: { id: 'a', username: 'name', role: 'user' }, csrf_token: 'token' }), true);
+  assert.equal(isSession({ account: { id: 'a', username: 'name', role: 'root' }, csrf_token: 'token' }), false);
   assert.equal(isSession({ account: { id: 'a' }, csrf_token: 'token' }), false);
   assert.equal(isSummary({}), false);
 });

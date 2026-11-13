@@ -3,7 +3,8 @@ import type { HttpClient } from './lib/http.ts';
 import { DiaryError, invalidResponse } from './lib/httpError.ts';
 export { DiaryError, errorMessage } from './lib/httpError.ts';
 
-export interface Account { id: string; username: string }
+export type Role = 'user' | 'admin';
+export interface Account { id: string; username: string; role?: Role }
 export interface Session { account: Account; csrf_token: string }
 export interface Domicile { id: string; display_address: string }
 export interface Cut {
@@ -45,7 +46,10 @@ function timestamp(value: unknown): value is string {
 }
 export function isSession(value: unknown): value is Session {
   return record(value) && record(value.account) && identifier(value.account.id) &&
-    identifier(value.account.username) && identifier(value.csrf_token);
+    identifier(value.account.username) &&
+    (value.account.role === undefined || value.account.role === 'user' ||
+      value.account.role === 'admin') &&
+    identifier(value.csrf_token);
 }
 export function isDomicile(value: unknown): value is Domicile {
   return record(value) && identifier(value.id) && identifier(value.display_address);

@@ -48,7 +48,7 @@ export function comparisonConfirmation(body: unknown): ComparisonConfirmation | 
 export class DiaryError extends Error {
   readonly status: number | null;
   readonly kind: 'http' | 'network' | 'invalid-response' | 'aborted' | 'timeout';
-  readonly code: 'DUPLICATE_METER' | 'DUPLICATE_READING' | 'DUPLICATE_BILL' | 'OVERLAP_CONFIRMATION_REQUIRED' | 'IDEMPOTENCY_KEY_REUSED' | 'VERSION_CONFLICT' | 'CONFIRMATION_REQUIRED' | null;
+  readonly code: 'DUPLICATE_METER' | 'DUPLICATE_READING' | 'DUPLICATE_BILL' | 'OVERLAP_CONFIRMATION_REQUIRED' | 'IDEMPOTENCY_KEY_REUSED' | 'VERSION_CONFLICT' | 'CONFIRMATION_REQUIRED' | 'SOURCE_BUSY' | null;
   readonly billWarning: BillWarning | null;
   readonly comparisonWarning: ComparisonConfirmation | null;
   readonly retryAfter: number | null;

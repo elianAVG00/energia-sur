@@ -36,9 +36,15 @@ class Base(DeclarativeBase):
 
 class Account(Base):
     __tablename__ = "es_accounts"
+    __table_args__ = (
+        CheckConstraint("role IN ('user','admin')", name="ck_account_role"),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=identifier)
     username: Mapped[str] = mapped_column(String(80), unique=True)
     password_hash: Mapped[str] = mapped_column(String(512))
+    role: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="user", server_default="user",
+    )
 
 
 class WebSession(Base):
@@ -431,3 +437,19 @@ class AssistantMessage(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     sources: Mapped[list[dict[str, str]]] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SourceConfig(Base):
+    """Persisted per-source refresh interval with an optimistic version."""
+
+    __tablename__ = "es_source_config"
+    __table_args__ = (
+        CheckConstraint(
+            "interval_seconds IN (300,600,900,1800,3600)",
+            name="ck_source_config_interval",
+        ),
+        CheckConstraint("version > 0", name="ck_source_config_version"),
+    )
+    source_key: Mapped[str] = mapped_column(String(32), primary_key=True)
+    interval_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))

@@ -54,7 +54,7 @@ not a source for this product. Q00 is approved on the user's U06 teacher-approva
 | CU07 | [Compare recorded consumption with a bill](cu07.md) | Account holder | P + U05/U14 / implemented, verified and archived on 2026-11-09 |
 | CU08 | [View consumption trends and estimates](cu08.md) | Account holder | P + U05 / approved base and grouping; projection formula TBD |
 | CU09 | [Record and query an interruption diary](cu09.md) | Account holder | P + U05-U10 / implemented, verified and archived; bounded CU04 prerequisite only |
-| CU10 | [Supervise automatic source refresh](cu10.md) | Administrator | P / accepted documentary baseline; implementation planned |
+| CU10 | [Supervise automatic source refresh](cu10.md) | Administrator | P + U24 / **implemented, verified and archived** (`2026-11-13-supervise-source-refresh-cu10`) |
 
 Each fiche contains source/status, actor, preconditions, main flow, alternatives,
 local rules, dependencies and traceable Given/When/Then scenarios. Shared rules

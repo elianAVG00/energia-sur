@@ -46,9 +46,11 @@ external transfer is approved. Other evidence types remain unaffected.
 
 **P:** public data acquisition is automatic; CU10 supervises/retries/configures
 enabled sources rather than replacing acquisition with manual business-data entry.
-Exact sources, interval/retry limits, administrator authorization and concurrency
-remain [Q04](decisions.md#q04), [Q21](decisions.md#q21) and
-[Q22](decisions.md#q22). No scheduler or connector is implemented by this catalog.
+[U24](decisions.md#u24---cu10-source-supervision-decisions-and-propose-authorization)
+resolves the CU10 scope: the two existing ENRE sources, 5/10/15/30/60-minute intervals,
+server-checked `admin` authorization, 409 retry concurrency and synchronous retry; Q22
+backoff and per-source enable/disable remain out of scope. No scheduler or connector is
+implemented by this catalog.
 
 ## SR06 - Approval and delivery boundary
 

@@ -11,6 +11,7 @@ from app.db import get_engine
 from app.enre_client import FEED_URL, EnreError, fetch_feed
 from app.enre_parser import EnreFeed, EnreParseError, EnreSchemaError, parse_feed
 from app.models import OutageFetchRun, OutageReport, OutageSnapshot
+from app.source_config import SourceBusy
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,14 +50,25 @@ def record_run(
 
 
 def refresh_once() -> str:
-    """Run one refresh under a dedicated-connection advisory lock."""
-    started_at = _now()
+    """Run one automatic refresh, recording a skip when the lock is held."""
+    return _lock_and_refresh(_now(), busy_raises=False)
+
+
+def refresh_now() -> str:
+    """Run one manual refresh, raising SourceBusy when the lock is held."""
+    return _lock_and_refresh(_now(), busy_raises=True)
+
+
+def _lock_and_refresh(started_at: datetime, *, busy_raises: bool) -> str:
+    """Acquire the CU01 advisory lock on a dedicated connection and refresh once."""
     with get_engine().connect() as lock_connection:
         acquired = lock_connection.execute(
             text("SELECT pg_try_advisory_lock(:key)"), {"key": LOCK_KEY},
         ).scalar_one()
         lock_connection.commit()
         if not acquired:
+            if busy_raises:
+                raise SourceBusy("La fuente ya se está actualizando.")
             record_run("skipped_locked", started_at=started_at)
             return "skipped_locked"
         try:

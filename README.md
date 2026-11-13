@@ -8,7 +8,8 @@ domicile-registration slice. CU09 and the shared frontend foundation were verifi
 and archived on 2026-11-08; CU04, CU06, CU07 and CU08 are implemented and
 archived. CU05 is implemented with a red-fraction Sync/Archive block, CU01 and CU02
 are implemented, verified and archived (CU02 under its U22 definitive scope), and
-CU03 is closed and archived (BUILD 1-3, real OpenAI query passed) and CU10 remains planned.
+CU03 is closed and archived (BUILD 1-3, real OpenAI query passed) and CU10 is implemented,
+verified and archived.
 
 CU04 domicile and meter management is implemented, verified and archived;
 Git staging, commits and pushes are managed by the user:
@@ -80,9 +81,12 @@ docker compose -f compose.yaml -f compose.cu09.yaml build
 docker compose -f compose.yaml -f compose.cu09.yaml run --rm --no-deps backend alembic upgrade head
 docker compose -f compose.yaml -f compose.cu09.yaml up -d --no-deps --wait backend frontend
 docker compose -f compose.yaml -f compose.cu09.yaml exec backend python -m app.provision --username your-local-account
+docker compose -f compose.yaml -f compose.cu09.yaml exec backend python -m app.promote --username your-local-account
 ```
 
-The provisioning command prompts privately for a password. The migration is additive;
+The provisioning command prompts privately for a password. Promote an existing account
+to the CU10 `admin` role with `python -m app.promote --username ...`; this CLI never
+accepts a role from an argument and there is no role-management UI or self-assignment. The migration is additive;
 destructive downgrade is intentionally refused. Never remove `pgdata` or assume
 changing `.env` rotates an existing database password. Keep the overlay for CU09
 recreation; the base-only scaffold has no application database configuration.
@@ -143,8 +147,10 @@ The public, read-only outage API is backed by a cached ENRE snapshot:
 (coordinates in the body). Backend paths are `/outages`, `/outages/areas`, `/outages/resolve`
 and `/outages/resolve-location`; no session is required and responses use
 `Cache-Control: no-store`. Addresses and coordinates are body-only, rate-limited and never logged.
-The backend refreshes `data_EDS.js` every five minutes under a PostgreSQL advisory lock when
-`OUTAGE_SCHEDULER_ENABLED=true` (Compose default); `OUTAGE_REFRESH_SECONDS` defaults to `300`.
+The backend refreshes `data_EDS.js` at a persisted interval under a PostgreSQL advisory lock when
+`OUTAGE_SCHEDULER_ENABLED=true` (Compose default). The interval (`300`/`600`/`900`/`1800`/`3600`
+seconds) is stored in `es_source_config` and read each cycle, so CU10 changes apply without a
+restart; the seeded default is `300`. `OUTAGE_REFRESH_SECONDS` is no longer read.
 Migration `0005_cu01` adds `es_outage_snapshots`, `es_outage_reports` and `es_outage_fetch_runs`.
 
 Coverage uses the versioned catalog `backend/app/data/edesur_coverage.2026-11-10.json` with
@@ -201,9 +207,10 @@ scope. `planned_start_at`, `planned_end_at` and `reason_text` are returned as nu
 the response lists `limitations`; `normalizacion` is the ENRE estimated-restoration
 text, never a planned end.
 
-The backend refreshes the feed every five minutes under its own advisory lock when
-`SCHEDULED_WORKS_SCHEDULER_ENABLED=true` (Compose default);
-`SCHEDULED_WORKS_REFRESH_SECONDS` defaults to `300`. Migration `0006_cu02` adds
+The backend refreshes the feed at the persisted CU10 interval under its own advisory lock
+when `SCHEDULED_WORKS_SCHEDULER_ENABLED=true` (Compose default). The interval is stored in
+`es_source_config` and read each cycle; the seeded default is `300`.
+`SCHEDULED_WORKS_REFRESH_SECONDS` is no longer read. Migration `0006_cu02` adds
 `es_scheduled_snapshots`, `es_scheduled_works` and `es_scheduled_fetch_runs` and does
 not alter CU01 tables. The public "Trabajos" shell view offers partido/localidad
 selection, address search and consented geolocation, provenance, coverage and every
@@ -245,6 +252,26 @@ HTTPS sources. Authenticated users get owner-scoped persisted conversations thro
 `ASSISTANT_RETENTION_DAYS` documents a proposed 30-day policy; messages remain until the
 owner deletes them and automatic deletion is pending approval. The panel shows a visible
 OpenAI/private-data notice.
+
+## CU10 source supervision (implemented and archived)
+
+The CU10 admin view lives at `frontend/src/features/admin/` and is visible only to
+accounts with the `admin` role. It shows one card per ENRE source (current outages and
+scheduled works) with the last real attempt, outcome, last successful check, last error,
+lock-contention time, the persisted interval and whether automatic scheduling is
+configured. It allows a synchronous "Actualizar ahora" retry and a 5/10/15/30/60-minute
+interval selector.
+
+`GET /api/admin/sources`, `POST /api/admin/sources/{key}/refresh` and
+`PATCH /api/admin/sources/{key}/interval` enforce the stored admin role on the server and
+require Origin + CSRF for mutations. A retry returns 409 `SOURCE_BUSY` while the source
+lock is held and 409 `VERSION_CONFLICT` on a stale interval version. The retry is the
+only request with a 25-second client deadline; a client timeout is treated as an
+unconfirmed result and followed by a real status read. Promote an existing account with
+`python -m app.promote --username <account>`; the nav appears after the session is
+reloaded. Roles are `user` and `admin`; no role-management UI or self-assignment exists.
+Archived change:
+[`2026-11-13-supervise-source-refresh-cu10`](openspec/changes/archive/2026-11-13-supervise-source-refresh-cu10/proposal.md).
 
 ## Local Docker environment
 

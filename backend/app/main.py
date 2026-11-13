@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager, suppress
 from typing import Literal
 
@@ -16,7 +16,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app import management, outage_store, scheduled_store
+from app import admin_api, management, outage_store, scheduled_store, source_config
 from app.api import router
 from app.assistant_api import router as assistant_router
 from app.assistant_limits import max_body_bytes
@@ -32,6 +32,8 @@ from app.reading_api import DuplicateReading
 from app.reading_api import router as reading_router
 from app.reading_store import IdempotencyKeyReused, ReadingVersionConflict
 from app.scheduled_api import router as scheduled_router
+from app.source_config import InvalidInterval, SourceBusy
+from app.source_config import VersionConflict as SourceVersionConflict
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,33 +89,39 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 
 async def _outage_scheduler() -> None:
-    try:
-        interval = float(os.environ.get("OUTAGE_REFRESH_SECONDS", "300"))
-    except ValueError:
-        interval = 300.0
-    interval = max(interval, 30.0)
     while True:
-        try:
-            await run_in_threadpool(outage_store.refresh_once)
-        except Exception as error:
-            # No payload, URL or database detail is logged.
-            _LOGGER.warning("Outage refresh failed (%s).", type(error).__name__)
-        await asyncio.sleep(interval)
+        interval = await run_cycle("outages", outage_store.refresh_once)
+        # The interval is read again on the next cycle; a change is not instant.
+        await asyncio.sleep(float(max(interval, 30)))
 
 
 async def _scheduled_works_scheduler() -> None:
-    try:
-        interval = float(os.environ.get("SCHEDULED_WORKS_REFRESH_SECONDS", "300"))
-    except ValueError:
-        interval = 300.0
-    interval = max(interval, 30.0)
     while True:
-        try:
-            await run_in_threadpool(scheduled_store.refresh_once)
-        except Exception as error:
-            # No payload, URL or database detail is logged.
-            _LOGGER.warning("Scheduled-works refresh failed (%s).", type(error).__name__)
-        await asyncio.sleep(interval)
+        interval = await run_cycle(
+            "scheduled_works", scheduled_store.refresh_once,
+        )
+        # The interval is read again on the next cycle; a change is not instant.
+        await asyncio.sleep(float(max(interval, 30)))
+
+
+async def run_cycle(source_key: str, refresh: Callable[[], str]) -> int:
+    """Run one scheduler cycle and return the interval to sleep for."""
+    interval = await run_in_threadpool(next_interval, source_key)
+    try:
+        await run_in_threadpool(refresh)
+    except Exception as error:
+        # No payload, URL or database detail is logged.
+        _LOGGER.warning("%s refresh failed (%s).", source_key, type(error).__name__)
+    return interval
+
+
+def next_interval(source_key: str) -> int:
+    """Read the persisted interval for one cycle, falling back safely."""
+    try:
+        return source_config.get_interval(source_key)
+    except Exception as error:
+        _LOGGER.warning("Source interval read failed (%s).", type(error).__name__)
+        return source_config.DEFAULT_INTERVAL
 
 
 class AssistantBodyLimitMiddleware:
@@ -183,6 +191,7 @@ app.include_router(comparison_router)
 app.include_router(consumption_router)
 app.include_router(outage_router)
 app.include_router(scheduled_router)
+app.include_router(admin_api.router)
 app.include_router(assistant_router)
 
 
@@ -211,6 +220,32 @@ async def management_conflict(request: Request, error: Exception) -> JSONRespons
     return JSONResponse({"detail": "El registro fue modificado; actualizá antes de reintentar.",
                          "code": "VERSION_CONFLICT"}, status_code=409,
                         headers={"Cache-Control": "no-store"})
+
+
+@app.exception_handler(SourceBusy)
+async def source_busy(request: Request, error: Exception) -> JSONResponse:
+    return JSONResponse(
+        {"detail": "La fuente se está actualizando; esperá y reintentá.",
+         "code": "SOURCE_BUSY"},
+        status_code=409, headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.exception_handler(SourceVersionConflict)
+async def source_version_conflict(request: Request, error: Exception) -> JSONResponse:
+    return JSONResponse(
+        {"detail": "La configuración fue modificada; recargá e intentá nuevamente.",
+         "code": "VERSION_CONFLICT"},
+        status_code=409, headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.exception_handler(InvalidInterval)
+async def invalid_interval(request: Request, error: Exception) -> JSONResponse:
+    return JSONResponse(
+        {"detail": "El intervalo de actualización no está permitido."},
+        status_code=422, headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.exception_handler(management.DuplicateMeter)

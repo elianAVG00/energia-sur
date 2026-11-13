@@ -436,6 +436,72 @@ version `1.0.0`, `last_verified_at` `2026-11-10`). It resolves the content-pendi
 Q06; revalidation of time-sensitive data and the procedures the guide marks incomplete
 remain pending. The guide content is not modified.
 
+## U24 - CU10 source-supervision decisions and propose authorization
+
+Recorded from the user's 2026-11-11 instruction beginning "Continuá con **CU10 —
+Supervisar la actualización automática de fuentes**". The user approves for **CU10
+only** the seven decisions below and authorizes the `supervise-source-refresh-cu10`
+OpenSpec proposal (proposal, design, specs, tasks) for human review; this is not Apply,
+code, migration, dependency, Docker-config, commit, push, Sync or Archive authorization.
+
+- **D1 - Promotion:** an existing account is promoted to `admin` only through a
+  controlled backend CLI command, with no user/role management UI, no self-assignment
+  and no hardcoded credentials.
+- **D2 - Authorization:** only `admin` accounts may read source status, trigger a retry
+  or change an interval; FastAPI enforces authentication (401) and role (403) from the
+  stored account, never from a client-supplied role, and mutations keep the existing
+  Origin and CSRF checks.
+- **D3 - Persistence:** each source's interval is stored in PostgreSQL, applied by the
+  existing scheduler without restarting the backend, and preserved across restarts;
+  only a minimal additive migration is introduced.
+- **D4 - Allowed intervals:** exactly 5, 10, 15, 30 and 60 minutes, independent per
+  source, validated on the server and in the database; the five-minute default
+  preserves the current cadence.
+- **D5 - Retry concurrency:** a retry while the same source is already updating returns
+  HTTP 409, is not queued, does not interrupt the running acquisition and reuses the
+  existing PostgreSQL advisory locks, so it also holds across processes/instances; the
+  two sources remain independent.
+- **D6 - Optimistic configuration:** an interval change carries a configuration version
+  and is applied atomically; a stale version returns HTTP 409 and never overwrites the
+  newer value.
+- **D7 - Status:** each source reports its last attempt, outcome, last successful
+  update, last-attempt error when present and configured interval, derived from the
+  existing fetch-run and snapshot records; a failed attempt never erases the last
+  success.
+
+**Confirmed wording:** roles are stored and compared as lowercase `user`/`admin`; the
+60-minute option is kept and its interaction with the CU01/CU02 freshness thresholds is
+documented without changing those thresholds or public contracts; the manual retry is
+synchronous and reuses the existing acquisition, with no queues or new workers.
+
+**BUILD 2 confirmation (2026-11-13):** the user approved a ~25-second client deadline
+exclusively for the manual retry, with the shared client keeping its 10-second default;
+a client timeout is treated as an unconfirmed result and followed by a real status GET,
+never as a successful or failed acquisition.
+
+**Scope note:** CU10 adds no MCP integration. The academic minimum of two MCP servers
+including an external one is already met by the verified development integrations
+(GitHub and Context7, both external); U23's deferral of an external MCP to CU10 is
+therefore read as satisfied by those integrations, and this reading is flagged for human
+confirmation. CU10 does not implement Q22 backoff or per-source enable/disable.
+
+This authorization covers the CU10 proposal only. It does not authorize implementation,
+migrations, user promotion, Docker or dependency changes, Sync, Archive, commit or push.
+
+## U25 - CU10 Apply, BUILD 2 and closure authorization
+
+Recorded from the user's CU10 instructions. The 2026-11-11 BUILD 1 instruction authorized
+the backend implementation, additive migration, synthetic promotion and focused tests. The
+2026-11-13 BUILD 2 instruction authorized the frontend admin view, the 25-second retry-only
+client deadline, the no-new-MCP reading, the 60-minute interval and the synchronous retry,
+including a synthetic QA account for E2E. The final 2026-11-13 closure instruction
+authorizes the final review, OpenSpec Sync and Archive of `supervise-source-refresh-cu10`
+and the necessary documentation updates.
+
+It does not authorize commit, push, deployment, changes to CU01/CU02 public contracts or
+unrelated CU05/CU06/CU04/CU09 fixes. The pre-existing CU05/CU06 backend failures and the
+CU05 history E2E failure remain separate debt.
+
 ## Confirmed facts versus inferences
 
 ### CU05 subsequent OCR BUILD instruction
@@ -509,8 +575,8 @@ the provisional CU01 primary source; provenance exposes the source URL, a `Last-
 source update time, the UTC fetch time, a freshness class and an internal fetch-run history reserved for CU10; coverage
 provenance is part of the versioned catalog. **U22, CU02:** ENRE `cortesProgramados` is the
 approved source for the definitive CU02 scope; `cortesComunicados` is counted but not displayed,
-and Edesur is out of scope. **Pending:** CU03/CU10 sources and terms remain open; CU02 has no
-pending source decision.
+and Edesur is out of scope. **Pending:** CU03 terms remain open; CU10 (U24) supervises the two existing
+ENRE sources and adds none. CU02 has no pending source decision.
 
 ### Q05
 **CLOSED for CU02 - U22:** the definitive scope excludes the future agenda, temporal
@@ -665,13 +731,20 @@ fractional-minute guard remains defense in depth for stored or out-of-band data.
 never closes the cut. Q17 separately authorizes owner closure/correction.
 
 ### Q21
-**TBD - CU10:** How is the administrator role assigned and checked, and which actions
-are allowed? Blocks CU10-S03 and access preconditions for CU10-S01/S02. Public chat
-must not gain privileged development or administration tools.
+**PARTIAL - CU10, U24 (resolves the CU10 scope):** an existing account is promoted
+through a controlled backend CLI, `admin` is checked server-side from the stored role,
+and only `admin` may read status, retry or change intervals; unauthenticated and
+non-admin requests are rejected, and the administrative surface is not exposed to the
+assistant/chatbot. **Pending:** no action-matrix alternative remains for CU10; broader
+role policy for other CUs stays unspecified. **Impact:** CU10-S01/S02/S03 have a
+determinate authorization oracle.
 
 ### Q22
-**TBD - CU10:** Which sources are enabled and what interval bounds, retry/backoff and
-concurrent-run rules are permitted? Blocks CU10-S02's precise reconfiguration/retry oracle.
+**PARTIAL - CU10, U24 (resolves the supervised scope):** the two existing ENRE sources
+are supervised; intervals are 5/10/15/30/60 minutes; a concurrent retry returns 409
+without queueing; the manual retry is synchronous. **Pending/out of scope:** a backoff
+policy and per-source enable/disable are not implemented by CU10. **Impact:** CU10-S02
+has a determinate interval/retry/concurrency oracle for the two existing sources.
 
 ### Q23
 **PARTIAL - CU09, U05 + U06. Approved:** the PDF includes domicile, period, dates, times

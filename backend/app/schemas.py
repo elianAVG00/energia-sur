@@ -22,6 +22,7 @@ class Login(Schema):
 class AccountOut(Schema):
     id: str
     username: str
+    role: Literal["user", "admin"]
 
 
 class SessionOut(Schema):
