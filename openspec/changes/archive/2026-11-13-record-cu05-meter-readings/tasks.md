@@ -6,6 +6,8 @@ Checkpoint (2026-11-08): 14/15 tasks verified, with only 2.4 open. Photo create/
 
 Latest BUILD instruction supersedes the earlier closure decision: M1 permits abstention on uncertainty but requires a real Tesseract attempt when safe admission permits. Clearly separable red fractions are excluded. The prior 14/15 checkpoint is historical; OCR and verification tasks were reopened. The endpoint now invokes a bounded worker and Tesseract on suitable crops; remaining safety and accuracy limitations are recorded below.
 
+Contract resolution (2026-11-13): the open red-fraction conflict is closed by explicit human decision (task 4.1), so all 15 tasks are complete and the change is ready for Sync/Archive. Product code, tests and resource limits were not modified by this documentation-only resolution.
+
 ## 1. Review and contract gates
 
 - [x] 1.1 Review the specified timestamp, lower-reading comparator and API contract; verify boundary, duplicate and ownership scenarios are unambiguous.
@@ -28,7 +30,7 @@ Latest BUILD instruction supersedes the earlier closure decision: M1 permits abs
 
 ## 4. Integration and closure evidence
 
-- [ ] 4.1 Resolve the independent review's conflict between the unconditional red-fraction prohibition in the delta and heuristic detection in the design/implementation; user decision required before syncing.
+- [x] 4.1 Resolved 2026-11-13 by explicit human decision, recorded in `design.md` ("Red-fraction contract resolution"): the delta requires masking clearly separable red fractions, abstaining when the boundary is uncertain, mandatory review and confirmation, and no absolute detection guarantee. OCR behavior, fallback text, resource limits and tests are unchanged; `openspec validate record-cu05-meter-readings --strict` PASS.
 - [x] 4.2 Rerun applicable checks after OCR integration; record evidence. Backend 207, frontend 75, focused Chromium, lint and type checks passed; see engineering record.
 - [x] 4.3 Exercise real frontend/backend OCR success and abstention, photo, history and confirmation in authenticated DEV. Both synthetic browser flows passed after the review fixes; real-photo abstention remains an accepted limitation.
-- [x] 4.4 Conduct one focused independent security/data-isolation review. Reviewer session `ses_e3f74ea88ffeULFU1uKGs5P3sK` reported three findings; decode admission and crop status were corrected and tested, while the red-fraction contract conflict remains open under 4.1. No second review was requested.
+- [x] 4.4 Conduct one focused independent security/data-isolation review. Reviewer session `ses_e3f74ea88ffeULFU1uKGs5P3sK` reported three findings; decode admission and crop status were corrected and tested, while the red-fraction contract conflict remained open under 4.1 at that checkpoint (resolved later on 2026-11-13; see 4.1). No second review was requested.

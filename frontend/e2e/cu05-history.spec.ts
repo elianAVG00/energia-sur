@@ -10,7 +10,213 @@ async function selectSyntheticMeter(page: Page): Promise<void> {
   await page.getByLabel('Medidor para consultar lecturas').selectOption('m1');
 }
 
+// Duplicate sibling keys make React reconciliation unsupported and were the root cause of
+// the stale meter history. Fail any scenario that reintroduces that warning.
+let duplicateKeyWarnings: string[] = [];
+test.beforeEach(({ page }) => {
+  duplicateKeyWarnings = [];
+  page.on('console', message => {
+    if (message.text().includes('Encountered two children with the same key')) duplicateKeyWarnings.push(message.text());
+  });
+});
+test.afterEach(() => { expect(duplicateKeyWarnings).toEqual([]); });
+
 test('reading history is scoped to the selected meter and displays Buenos Aires time', async ({ page }) => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/meters/m1/readings/r1/photo') {
+      await route.fulfill({ status: 200, contentType: 'image/png', body: png }); return;
+    }
+    const responses: Record<string, unknown> = {
+      '/api/session': { account: { id: 'a', username: 'synthetic' }, csrf_token: 'synthetic' },
+      '/api/domiciles': [{ id: 'd', display_address: 'Synthetic domicile' }],
+      '/api/domiciles/d/management': { id: 'd', display_address: 'Synthetic domicile', version: 1 },
+      '/api/domiciles/d/meters': [
+        { id: 'm1', domicile_id: 'd', meter_number: 'ONE', alias: null, version: 1 },
+        { id: 'm2', domicile_id: 'd', meter_number: 'TWO', alias: null, version: 1 },
+      ],
+      '/api/domiciles/d/interruptions': [],
+      '/api/meters/m1/readings': [{ id: 'r1', meter_id: 'm1', recorded_at: '2026-11-07T15:00:00Z', value_kwh: '9007199254740993', has_photo: true, version: 1 }],
+      '/api/meters/m2/readings': [],
+    };
+    if (!(path in responses)) { await route.fulfill({ status: 404, json: { detail: 'Not found' } }); return; }
+    await route.fulfill({ json: responses[path] });
+  });
+  await page.goto('/');
+  await selectSyntheticMeter(page);
+  await expect(page.getByText(/9007199254740993 kWh/)).toBeVisible();
+  await expect(page.getByText(/07\/11\/2026.*12:00:00/)).toBeVisible();
+  // A photo and an open edit form from the previous meter must not survive the switch.
+  await page.getByRole('button', { name: 'Ver foto' }).click();
+  await expect(page.getByRole('img', { name: 'Foto de la lectura seleccionada' })).toBeVisible();
+  await page.getByRole('button', { name: 'Corregir lectura' }).click();
+  await expect(page.getByRole('form', { name: 'Corregir lectura' })).toBeVisible();
+  await page.getByLabel('Medidor para consultar lecturas').selectOption('m2');
+  await expect(page.getByText('No hay lecturas registradas.')).toBeVisible();
+  await expect(page.getByText(/9007199254740993 kWh/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Corregir lectura' })).toHaveCount(0);
+  await expect(page.getByRole('form', { name: 'Corregir lectura' })).toHaveCount(0);
+  await expect(page.getByRole('img', { name: 'Foto de la lectura seleccionada' })).toHaveCount(0);
+});
+
+test('a pending previous-meter request is cancelled and never shows stale data', async ({ page }) => {
+  const m1Row = { id: 'r1', meter_id: 'm1', recorded_at: '2026-11-07T15:00:00Z', value_kwh: '111', has_photo: false, version: 1 };
+  let m1RefreshStarted: () => void = () => undefined;
+  let releaseM1Refresh: () => void = () => undefined;
+  let gateNextM1 = false;
+  const m1RefreshStartedPromise = new Promise<void>(resolve => { m1RefreshStarted = resolve; });
+  const m1RefreshGate = new Promise<void>(resolve => { releaseM1Refresh = resolve; });
+  const failures: string[] = [];
+  page.on('requestfailed', request => {
+    if (new URL(request.url()).pathname === '/api/meters/m1/readings') failures.push(request.failure()?.errorText ?? '');
+  });
+  await page.route('**/api/**', async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === '/api/meters/m1/readings' && request.method() === 'GET') {
+      if (gateNextM1) {
+        // Hold the manual refresh so the meter switch happens while it is still pending.
+        gateNextM1 = false;
+        m1RefreshStarted();
+        await m1RefreshGate;
+      }
+      try { await route.fulfill({ json: [m1Row] }); } catch { /* request aborted by the meter switch */ }
+      return;
+    }
+    if (path === '/api/meters/m2/readings' && request.method() === 'GET') {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      await route.fulfill({ json: [] }); return;
+    }
+    const responses: Record<string, unknown> = {
+      '/api/session': { account: { id: 'a', username: 'synthetic' }, csrf_token: 'synthetic' },
+      '/api/domiciles': [{ id: 'd', display_address: 'Synthetic domicile' }],
+      '/api/domiciles/d/management': { id: 'd', display_address: 'Synthetic domicile', version: 1 },
+      '/api/domiciles/d/meters': [
+        { id: 'm1', domicile_id: 'd', meter_number: 'ONE', alias: null, version: 1 },
+        { id: 'm2', domicile_id: 'd', meter_number: 'TWO', alias: null, version: 1 },
+      ],
+      '/api/domiciles/d/interruptions': [],
+    };
+    if (!(path in responses)) { await route.fulfill({ status: 404, json: { detail: 'Not found' } }); return; }
+    await route.fulfill({ json: responses[path] });
+  });
+  await page.goto('/');
+  await selectSyntheticMeter(page);
+  await expect(page.getByText(/111 kWh/)).toBeVisible();
+  gateNextM1 = true;
+  await page.getByRole('button', { name: 'Actualizar lecturas' }).click();
+  await m1RefreshStartedPromise;
+  await page.getByLabel('Medidor para consultar lecturas').selectOption('m2');
+  // While the new history loads, the previous meter's visible reading must already be gone.
+  await expect(page.getByText(/111 kWh/)).toHaveCount(0);
+  await expect(page.getByText('No hay lecturas registradas.')).toBeVisible();
+  await expect.poll(() => failures.length).toBeGreaterThan(0);
+  releaseM1Refresh();
+  await expect(page.getByText(/111 kWh/)).toHaveCount(0);
+});
+
+test('rapid meter switching keeps only the last selected history and the exact kWh value', async ({ page }) => {
+  function gate() {
+    let start: () => void = () => undefined;
+    let release: () => void = () => undefined;
+    const started = new Promise<void>(resolve => { start = resolve; });
+    const wait = new Promise<void>(resolve => { release = resolve; });
+    return { start, release, started, wait };
+  }
+  const m1Gates = [gate(), gate()];
+  const m2Gate = gate();
+  let m1Index = 0;
+  await page.route('**/api/**', async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === '/api/meters/m1/readings' && request.method() === 'GET') {
+      const current = m1Gates[m1Index++];
+      current?.start();
+      await current?.wait;
+      try {
+        await route.fulfill({ json: [{ id: 'r1', meter_id: 'm1', recorded_at: '2026-11-07T15:00:00Z', value_kwh: '9007199254740993', has_photo: false, version: 1 }] });
+      } catch { /* superseded request */ }
+      return;
+    }
+    if (path === '/api/meters/m2/readings' && request.method() === 'GET') {
+      m2Gate.start();
+      await m2Gate.wait;
+      try {
+        await route.fulfill({ json: [{ id: 'r2', meter_id: 'm2', recorded_at: '2026-11-08T15:00:00Z', value_kwh: '42', has_photo: false, version: 1 }] });
+      } catch { /* superseded request */ }
+      return;
+    }
+    const responses: Record<string, unknown> = {
+      '/api/session': { account: { id: 'a', username: 'synthetic' }, csrf_token: 'synthetic' },
+      '/api/domiciles': [{ id: 'd', display_address: 'Synthetic domicile' }],
+      '/api/domiciles/d/management': { id: 'd', display_address: 'Synthetic domicile', version: 1 },
+      '/api/domiciles/d/meters': [
+        { id: 'm1', domicile_id: 'd', meter_number: 'ONE', alias: null, version: 1 },
+        { id: 'm2', domicile_id: 'd', meter_number: 'TWO', alias: null, version: 1 },
+      ],
+      '/api/domiciles/d/interruptions': [],
+    };
+    if (!(path in responses)) { await route.fulfill({ status: 404, json: { detail: 'Not found' } }); return; }
+    await route.fulfill({ json: responses[path] });
+  });
+  await page.goto('/');
+  const selector = page.getByLabel('Medidor para consultar lecturas');
+  await selectSyntheticMeter(page);
+  await m1Gates[0]?.started;
+  await selector.selectOption('m2');
+  await m2Gate.started;
+  // Release the newest request first, then the superseded one: the final view must stay on m2.
+  m2Gate.release();
+  await expect(page.getByText(/42 kWh/)).toBeVisible();
+  m1Gates[0]?.release();
+  await expect(page.getByText(/42 kWh/)).toBeVisible();
+  await expect(page.getByText(/9007199254740993 kWh/)).toHaveCount(0);
+  await selector.selectOption('m1');
+  await m1Gates[1]?.started;
+  m1Gates[1]?.release();
+  await expect(page.getByText(/9007199254740993 kWh/)).toBeVisible();
+  await expect(page.getByText(/9007199254740992/)).toHaveCount(0);
+  await expect(page.getByText(/42 kWh/)).toHaveCount(0);
+});
+
+test('an HTTP error for the selected meter does not resurrect the previous reading', async ({ page }) => {
+  const m1Row = { id: 'r1', meter_id: 'm1', recorded_at: '2026-11-07T15:00:00Z', value_kwh: '111', has_photo: false, version: 1 };
+  await page.route('**/api/**', async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === '/api/meters/m2/readings' && request.method() === 'GET') {
+      await route.fulfill({ status: 503, json: { detail: 'Servicio no disponible.' } }); return;
+    }
+    const responses: Record<string, unknown> = {
+      '/api/session': { account: { id: 'a', username: 'synthetic' }, csrf_token: 'synthetic' },
+      '/api/domiciles': [{ id: 'd', display_address: 'Synthetic domicile' }],
+      '/api/domiciles/d/management': { id: 'd', display_address: 'Synthetic domicile', version: 1 },
+      '/api/domiciles/d/meters': [
+        { id: 'm1', domicile_id: 'd', meter_number: 'ONE', alias: null, version: 1 },
+        { id: 'm2', domicile_id: 'd', meter_number: 'TWO', alias: null, version: 1 },
+      ],
+      '/api/domiciles/d/interruptions': [],
+      '/api/meters/m1/readings': [m1Row],
+    };
+    if (!(path in responses)) { await route.fulfill({ status: 404, json: { detail: 'Not found' } }); return; }
+    await route.fulfill({ json: responses[path] });
+  });
+  await page.goto('/');
+  await selectSyntheticMeter(page);
+  await expect(page.getByText(/111 kWh/)).toBeVisible();
+  await page.getByLabel('Medidor para consultar lecturas').selectOption('m2');
+  await expect(page.getByText('Servicio no disponible.')).toBeVisible();
+  await expect(page.getByText(/111 kWh/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Corregir lectura' })).toHaveCount(0);
+});
+
+test('meter selection also isolates the bill and consumption panels', async ({ page }) => {
+  const interval = (id: string, start: string, end: string, consumption: string) => ({
+    start_reading_id: `s-${id}`, end_reading_id: `e-${id}`, start_at: `${start}T00:00:00Z`, end_at: `${end}T00:00:00Z`,
+    start_local_date: start, end_local_date: end, start_value_kwh: '1000', end_value_kwh: '2000',
+    consumption_kwh: consumption, daily_average_kwh_day: consumption, calculable: true, sub_day: false, below_minimum: false,
+  });
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const responses: Record<string, unknown> = {
@@ -22,19 +228,44 @@ test('reading history is scoped to the selected meter and displays Buenos Aires 
         { id: 'm2', domicile_id: 'd', meter_number: 'TWO', alias: null, version: 1 },
       ],
       '/api/domiciles/d/interruptions': [],
-      '/api/meters/m1/readings': [{ id: 'r1', meter_id: 'm1', recorded_at: '2026-11-07T15:00:00Z', value_kwh: '9007199254740993', has_photo: false, version: 1 }],
+      '/api/meters/m1/readings': [],
       '/api/meters/m2/readings': [],
+      '/api/meters/m1/bills': [{ id: 'b1', meter_id: 'm1', period_start: '2026-01-01', period_end: '2026-01-31', value_kwh: '100', amount_ars: null, file_type: 'application/pdf', version: 1 }],
+      '/api/meters/m2/bills': [{ id: 'b2', meter_id: 'm2', period_start: '2026-02-01', period_end: '2026-02-28', value_kwh: '200', amount_ars: null, file_type: 'application/pdf', version: 1 }],
+      '/api/meters/m1/consumption-evolution': { meter_id: 'm1', intervals: [interval('m1', '2026-01-01', '2026-01-31', '517')] },
+      '/api/meters/m2/consumption-evolution': { meter_id: 'm2', intervals: [interval('m2', '2026-02-01', '2026-02-28', '731')] },
+      '/api/meters/m1/bills/b1/comparison-candidates': { bill_id: 'b1', meter_id: 'm1', period_start: '2026-01-01', period_end: '2026-01-31', billed_kwh: '100', start_candidates: [], end_candidates: [] },
+      '/api/meters/m1/consumption-estimate': {
+        meter_id: 'm1', status: 'available', days: 30, daily_average_kwh_day: '17.233', estimate_kwh: '517',
+        orientative: true, below_minimum: false, daily_average_below_minimum: false, sub_day: false,
+        base_start_reading_id: 's-m1', base_end_reading_id: 'e-m1',
+        base_start_at: '2026-01-01T00:00:00Z', base_end_at: '2026-01-31T00:00:00Z',
+      },
     };
     if (!(path in responses)) { await route.fulfill({ status: 404, json: { detail: 'Not found' } }); return; }
     await route.fulfill({ json: responses[path] });
   });
   await page.goto('/');
   await selectSyntheticMeter(page);
-  await expect(page.getByText(/9007199254740993 kWh/)).toBeVisible();
-  await expect(page.getByText(/07\/11\/2026.*12:00:00/)).toBeVisible();
+  await expect(page.getByText(/2026-01-01 — 2026-01-31/)).toBeVisible();
+  await expect(page.getByText(/517 kWh/).first()).toBeVisible();
+  const billForm = page.locator('form').filter({ hasText: 'Registrar factura' });
+  await billForm.getByLabel('Inicio del período').fill('2026-03-01');
+  await billForm.getByLabel('Consumo facturado (kWh)').fill('999');
+  await page.getByRole('button', { name: 'Comparar', exact: true }).click();
+  await expect(page.getByText('No hay lecturas compatibles dentro de ±7 días de cada extremo del período. No se puede calcular la comparación.')).toBeVisible();
+  await page.getByRole('button', { name: 'Estimar', exact: true }).click();
+  await expect(page.getByText(/Estimación a 30 días: 517\.00 kWh/)).toBeVisible();
   await page.getByLabel('Medidor para consultar lecturas').selectOption('m2');
-  await expect(page.getByText('No hay lecturas registradas.')).toBeVisible();
-  await expect(page.getByText(/9007199254740993 kWh/)).toHaveCount(0);
+  await expect(page.getByText(/2026-02-01 — 2026-02-28/)).toBeVisible();
+  await expect(page.getByText(/731 kWh/).first()).toBeVisible();
+  await expect(page.getByText(/2026-01-01 — 2026-01-31/)).toHaveCount(0);
+  await expect(page.getByText(/517 kWh/)).toHaveCount(0);
+  // The CU06 draft, CU07 comparison and CU08 estimate from m1 do not survive the switch.
+  await expect(billForm.getByLabel('Inicio del período')).toHaveValue('');
+  await expect(billForm.getByLabel('Consumo facturado (kWh)')).toHaveValue('');
+  await expect(page.getByRole('region', { name: 'Comparación con la factura' })).toHaveCount(0);
+  await expect(page.getByText(/Estimación a 30 días/)).toHaveCount(0);
 });
 
 test('manual confirmation, stable create retry and edit reconciliation', async ({ page }) => {

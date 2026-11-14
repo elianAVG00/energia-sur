@@ -1,10 +1,10 @@
-# CU05 meter readings
+# meter-readings Specification
 
 ## Purpose
 
 Enable account holders to maintain private confirmed kWh readings for their own meters, with optional photo and cautious OCR assistance.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Confirm valid readings before saving
 The system SHALL require explicit confirmation before saving a reading. Its accumulated kWh SHALL be a nonnegative integer represented as a decimal string in API requests, responses and OCR suggestions and stored exactly. Inputs SHALL contain 1–131072 ASCII digits; longer strings SHALL return 422. Trace: CU05-R1, U13, D14 and technical limit approval.
@@ -159,17 +159,22 @@ On request, local Tesseract SHALL attempt OCR on the user's intended kWh crop wh
 - **THEN** a suggestion may be incorrect and the owner must review and confirm the actual kWh reading
 
 #### Scenario: Insufficient confidence or unavailable evaluation
-- **GIVEN** a crop whose digit segmentation, detected red-fraction boundary or engine result fails the implemented checks
+- **GIVEN** a crop whose digit segmentation or engine result fails the implemented checks
 - **WHEN** the owner requests OCR
 - **THEN** no value is suggested, the exact fallback message is displayed, and manual entry and confirmation remain available
 
-### Requirement: Exclude red fractional digits
-OCR SHALL exclude clearly separable red fractional digits from the integer suggestion and SHALL abstain when the fractional boundary is uncertain; it SHALL never include fractional digits in a suggestion. Trace: U13 and subsequent BUILD instruction superseding the earlier red-digit clarification.
+### Requirement: Mask clearly separable red fractional digits
+OCR SHALL mask clearly separable red fractional digits and suggest only the integer value when that boundary is unambiguous; when it is uncertain, OCR SHALL abstain with the exact fallback. A suggestion SHALL NOT be saved without explicit owner confirmation. Red-ink detection is heuristic, so no absolute exclusion guarantee is claimed. Trace: U13 and the 2026-11-13 human decision superseding the earlier absolute prohibition and the always-abstain clarification.
 
 #### Scenario: Red fractional digit
 - **GIVEN** a register showing black integer digits 12345 and a red fractional digit 6
 - **WHEN** the owner requests OCR and the red digit is clearly separable
-- **THEN** OCR may suggest the integer 12345 if recognition is sufficiently reliable, never 123456
+- **THEN** OCR may suggest 12345 from the integer digits, the fractional digit is excluded from the suggested value, and the suggestion is not saved before the owner confirms it
+
+#### Scenario: Indistinguishable fractional digit
+- **GIVEN** a fractional digit whose colour is faded or close to the integer ink and is therefore not classified as red by the mask
+- **WHEN** OCR does not detect that the digits include a fractional part and produces a suggestion
+- **THEN** the suggestion may include that digit, remains editable, is not saved automatically and requires the owner's explicit confirmation
 
 #### Scenario: Uncertain fractional boundary
 - **WHEN** OCR cannot reliably separate the red fraction from integer digits
@@ -229,3 +234,41 @@ The system SHALL atomically associate the creation attempt's stable idempotency 
 - **GIVEN** an owner has created a reading using an idempotency key
 - **WHEN** that owner reuses the key for the same meter with a different payload
 - **THEN** the system returns 409 `IDEMPOTENCY_KEY_REUSED` and does not mutate readings
+
+### Requirement: Isolate visible history by selected meter
+When the owner changes the selected meter in the CU04 management view, the frontend SHALL NOT display any reading history, photo or editable reading data belonging to the previously selected meter. It SHALL present only the selected meter's data and SHALL show the empty-history state when that meter has no readings. Trace: CU05, U13 and the reproduced `frontend/e2e/cu05-history.spec.ts` regression.
+
+#### Scenario: Switch between meters with different histories
+- **GIVEN** meter `m1` has a reading and meter `m2` has a different reading
+- **WHEN** the owner selects `m2` after viewing `m1`
+- **THEN** only `m2`'s reading is visible and no `m1` reading remains
+
+#### Scenario: Switch to a meter without readings
+- **GIVEN** meter `m1` has a visible reading and meter `m2` has none
+- **WHEN** the owner selects `m2`
+- **THEN** the empty-history state is shown and no `m1` reading or editable value remains visible
+
+#### Scenario: Rapid meter switching
+- **WHEN** the owner changes the selected meter several times in quick succession
+- **THEN** the final visible history corresponds only to the meter selected last and contains no data from intermediate meters
+
+### Requirement: Reject stale meter history responses
+A response for a previously selected meter, including a delayed, out-of-order or failed response, SHALL NOT replace, resurrect or blend into the visible history of the currently selected meter. Trace: CU05, U13 and reproduced regression.
+
+#### Scenario: Pending or late request for the previous meter
+- **GIVEN** the history request for `m1` is pending or delayed and the owner selects `m2`
+- **WHEN** `m2`'s history is loading and any delayed `m1` response is discarded or cancelled
+- **THEN** no `m1` reading appears and the visible history remains `m2`'s
+
+#### Scenario: HTTP error after switching meters
+- **GIVEN** meter `m1` has a visible reading
+- **WHEN** the owner selects `m2` and its history request fails
+- **THEN** the error state is shown without the `m1` reading or its editable data
+
+### Requirement: Preserve exact kWh in selected history
+Reading values SHALL remain exact decimal strings while a meter is selected and after switching meters, without changing the existing CU05 decimal-string contract. The value `9007199254740993` SHALL be displayed exactly and SHALL NOT be converted to a JavaScript number. Trace: CU05 D14 and numeric-contract preservation.
+
+#### Scenario: Exact kWh preservation
+- **GIVEN** the selected meter has a reading recorded as `9007199254740993` kWh
+- **WHEN** the history is displayed, including after switching meters and back
+- **THEN** the value is displayed exactly as `9007199254740993`

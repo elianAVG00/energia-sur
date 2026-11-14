@@ -11,7 +11,7 @@ product code or fixing the separate CU05 history E2E bug.
 - [Change proposal](../openspec/changes/stabilize-cu05-cu06-backend-test-runtime/proposal.md)
 - [Change design](../openspec/changes/stabilize-cu05-cu06-backend-test-runtime/design.md)
 - [Change tasks](../openspec/changes/stabilize-cu05-cu06-backend-test-runtime/tasks.md)
-- [CU05 change](../openspec/changes/record-cu05-meter-readings/proposal.md)
+- [CU05 change](../openspec/changes/archive/2026-11-13-record-cu05-meter-readings/proposal.md)
 - [CU06 archived change](../openspec/changes/archive/2026-11-09-record-cu06-electricity-bills/proposal.md)
 
 ## What was built

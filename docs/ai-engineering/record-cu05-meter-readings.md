@@ -60,7 +60,7 @@ The user requires a real Tesseract attempt and exclusion of clearly separable re
 
 ## Scope and approvals
 
-The user requested documentation-only PROPOSE for `record-cu05-meter-readings`, confirmed the functional and storage rules recorded in [U13](../use-cases/decisions.md#u13---cu05-functional-decisions-and-propose-authorization), and prohibited application-code changes, dependency installation, migrations, tests, Apply, Sync, Archive, commit and push. [Proposal](../../openspec/changes/record-cu05-meter-readings/proposal.md), [design](../../openspec/changes/record-cu05-meter-readings/design.md), [delta](../../openspec/changes/record-cu05-meter-readings/specs/meter-readings/spec.md), [tasks](../../openspec/changes/record-cu05-meter-readings/tasks.md). Human Review and a subsequent Apply request are not yet granted.
+The user requested documentation-only PROPOSE for `record-cu05-meter-readings`, confirmed the functional and storage rules recorded in [U13](../use-cases/decisions.md#u13---cu05-functional-decisions-and-propose-authorization), and prohibited application-code changes, dependency installation, migrations, tests, Apply, Sync, Archive, commit and push. [Proposal](../../openspec/changes/archive/2026-11-13-record-cu05-meter-readings/proposal.md), [design](../../openspec/changes/archive/2026-11-13-record-cu05-meter-readings/design.md), [delta](../../openspec/changes/archive/2026-11-13-record-cu05-meter-readings/specs/meter-readings/spec.md), [tasks](../../openspec/changes/archive/2026-11-13-record-cu05-meter-readings/tasks.md). Human Review and a subsequent Apply request are not yet granted.
 
 ## Actual work and decisions
 
@@ -83,7 +83,7 @@ Independent reviewer `ses_e43c81f5bffdK4tbzUP8uMzVuL` found three correctable do
 
 ## Subsequent technical design review
 
-The user clarified that detected red fractional digits always require OCR abstention and confirmed the proposed operational package (5,000,000 bytes, 20 MP OCR limit, 5 s, 256 MiB per engine, one deployment-wide job; immutable photos, versioned DB association, paused-write backup, meter-scoped API and offset-aware seconds). See [decision record](../use-cases/decisions.md#cu05-technical-review-clarification) and [design](../../openspec/changes/record-cu05-meter-readings/design.md). This is documentary review, not Apply authorization.
+The user clarified that detected red fractional digits always require OCR abstention and confirmed the proposed operational package (5,000,000 bytes, 20 MP OCR limit, 5 s, 256 MiB per engine, one deployment-wide job; immutable photos, versioned DB association, paused-write backup, meter-scoped API and offset-aware seconds). See [decision record](../use-cases/decisions.md#cu05-technical-review-clarification) and [design](../../openspec/changes/archive/2026-11-13-record-cu05-meter-readings/design.md). This is documentary review, not Apply authorization.
 
 Independent reviewer `ses_e43b41b98ffe5JqTxAL0f9EUGD` identified uncertain DB commit, coordination/backup, limits, OCR and transport gaps. Primary agent revised the protocol and requested two read-only rechecks. The last recheck found OCR supervision and read lock order addressed in design, but **BLOCKED** create commit reconciliation and JavaScript-safe number versus decimal string; OCR success remains blocked without a defensible identification oracle and adequate evidence. Runtime behavior is not established by these revisions.
 
@@ -195,3 +195,39 @@ Added real-browser coverage `frontend/e2e/cu05-real.spec.ts` using a synthetic 1
 - **Tasks:** 14/15 checked. Only **2.4** remains open for the matched photo-volume backup/restore drill and a production-like restart.
 - **Still BLOCKED / not approved:** OCR success and Tesseract invocation, a real meter photo and representative accuracy. These are documented as pending; no accuracy rate or successful real-photo read is claimed. Archive, Sync, commit and push were not performed.
 - **Cleanup:** removed the untracked test-only `.tmp-e2e-artifacts/` directory. Retained synthetic databases, containers, volumes and acceptance artifacts were not deleted.
+
+## Red-fraction contract resolution, Sync and Archive (2026-11-13)
+
+**Conflict.** The independent review (H2) and task 4.1 recorded that the delta promised OCR would never include a fractional digit, while `backend/app/ocr_worker.py` masks red ink with fixed thresholds and abstains when the red region is not strictly to the right of all integer ink. Fixed thresholds cannot prove exhaustive detection, so the absolute promise was unverifiable and blocked Sync/Archive.
+
+**Human decision (approved 2026-11-13).** OCR may mask clearly separable red fractional digits and suggest only the integer reading when the boundary is unambiguous; when it is uncertain it must abstain with the exact U13 fallback. A suggestion is never saved automatically; explicit manual review and confirmation are mandatory. No guarantee of detecting every fractional digit is claimed, especially for ambiguous, faded or indistinguishable colour. The decision supersedes the absolute prohibition and the earlier always-abstain clarification; it preserves U13 and M1 and does not change the nonnegative-integer kWh storage rule or the CU07/CU08 contracts that consume confirmed readings. Formal entry: [decision register](../use-cases/decisions.md#cu05-red-fraction-contract-resolution-2026-11-13).
+
+**Documentation changes (no product code).**
+- Delta requirement "Exclude red fractional digits" reformulated and renamed "Mask clearly separable red fractional digits": conditional masking, abstention on an uncertain boundary, no automatic save above explicit confirmation, and no absolute exclusion guarantee. The existing "Red fractional digit" scenario now avoids the absolute "never 123456" wording, and a "Indistinguishable fractional digit" scenario records the documented limitation (38 base scenarios instead of 37).
+- `design.md`: new "Red-fraction contract resolution" section, resolution pointers in the OCR decision and closure gates, and the focused-review paragraph no longer forbids syncing.
+- `tasks.md`: 4.1 resolved (15/15 tasks) and a resolution checkpoint added.
+- `docs/use-cases/decisions.md`: new resolution entry plus a supersession marker on the historical always-abstain clarification; `docs/use-cases/cu05.md` CU05-R3 aligned.
+- Requirement/scenario counts otherwise unchanged: 18 requirements in both the delta and the created main spec.
+
+**Coherence with software and tests.** `_red_mask` (channel thresholds plus `MaxFilter(3)`) and `_prepare` (abstain when `red_box[0] < ink_box[2]`) implement exactly this conditional rule. `backend/tests/test_ocr_worker.py`: `test_separable_red_fraction`, `test_white_digits_on_black_with_red_fraction` and `test_red_to_left_is_not_assumed_to_be_fraction` cover separable exclusion and boundary abstention. No test asserts exhaustive fractional detection, so nothing contradicts the approved wording. No backend, frontend or test file was modified.
+
+**Sync/Archive result.** `openspec validate record-cu05-meter-readings --strict` PASS (after shortening the requirement text below the 500-character limit that strict mode enforces). Main spec created at [openspec/specs/meter-readings/spec.md](../../openspec/specs/meter-readings/spec.md) from the delta's 18 requirements / 38 scenarios, with the delta's Purpose copied verbatim, no delta headers and no TBD Purpose. `openspec validate --all --strict` PASS. Change archived as [2026-11-13-record-cu05-meter-readings](../../openspec/changes/archive/2026-11-13-record-cu05-meter-readings/proposal.md) with 15/15 tasks. The isolation change was then synced into the same capability and archived. No commit or push.
+
+**Open items.** No product regression was re-run because no logic changed; prior evidence in this record remains the latest executed evidence. **QA-INT-CU04-08** (seeded CU04/CU06/CU07/CU08 real Chromium specs) is still deferred and not PASS. Real-photo OCR abstention remains an accepted limitation and no accuracy is claimed.
+
+## Independent reviews and corrections (2026-11-13)
+
+**`spec-analyst` (read-only contract review, session `ses_e281f1f6effe3Fk9YoKFdGFIut`): INCONSISTENT as first written, one MAJOR and four MINOR/SMALL findings.** It confirmed the 21/44 and 18/38 counts, byte-identical base requirements, the exact fallback text, the supersession preservation and that no accuracy is overclaimed. Corrections applied:
+- MAJOR: the new "Indistinguishable fractional digit" scenario contradicted the abstention rule (it described "OCR cannot establish separability" but allowed a suggestion). Rewritten to the detectable-failure case: a faded fraction is not classified as red, OCR therefore does not detect a fractional part, and any suggestion may include that digit, stays editable, is never auto-saved and requires explicit confirmation. The requirement body already states that abstention applies when uncertainty is detected; the canonical spec and the archived delta were kept identical.
+- Requirement renamed "Exclude red fractional digits" → "Mask clearly separable red fractional digits", and the scenario no longer asserts an absolute "never 123456"; it states that the fractional digit is excluded from the suggested value.
+- Duplicate trigger narrowed: "Insufficient confidence or unavailable evaluation" no longer lists the red-fraction boundary, which the dedicated scenario owns.
+- Supersession chain order corrected to U13 → technical-review always-abstain → M1 → subsequent OCR BUILD instruction → resolution, and U13/M1 now carry explicit supersession markers in the decision register.
+No product or test change was required by any finding.
+
+**`reviewer` (read-only archive audit, session `ses_e281f1f6effd4d6WqXagMcWDbn`): APPROVED for the audited artifacts, no BLOCKER or MAJOR, four MINOR/NIT documentation items.** Its shell access was denied, so it could not run git or `openspec`; the primary agent executed those checks instead. Verified by the reviewer: 21/44 canonical, 18/38 base delta, 3/6 isolation delta, no dropped or duplicated requirement, title/Purpose correct, no delta headers, preserved ownership/CSRF/limits/idempotency/decimal-string contracts, decision history preserved and QA-INT-CU04-08 still NOT PASS. Corrections applied:
+- `docs/STATE.md` trimmed from 61 to 60 lines (AGENTS.md cap).
+- Decision register now records the explicit Sync/Archive authorization and scope instead of citing an authorization record that did not exist there.
+- Stale pre-resolution notes in archived tasks (5.2, 6.1, 4.4) were reconciled with dated pointers, and the archived base proposal received a CLOSED/ARCHIVED status line.
+- The decision-history wording issue shared with the `spec-analyst` findings was fixed once, in both places.
+
+After the corrections, the primary agent re-ran `openspec validate --all --strict`: 15/15 PASS, and confirmed the canonical base requirements still match the archived delta (non-empty line comparison). No commit or push.

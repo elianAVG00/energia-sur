@@ -39,6 +39,8 @@ export function ReadingHistory({ generation, domicileId, meterId }: {
   const [createAttempt, setCreate] = useState(() => getCreateAttempt(meterId));
   const [editAttempt, setEdit] = useState(() => getEditAttempt(meterId));
   const active = useCallback(() => {
+    // The parent keys this component by meter; this instance never switches meters.
+    // The session store knows generation/domicile only, not the reading-meter selection.
     const state = sessionStore.getState();
     return state.generation === generation && state.selectedDomicileId === domicileId;
   }, [generation, domicileId]);

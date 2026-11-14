@@ -1,6 +1,6 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-13 (CU10 archived; CU05/CU06 backend test runtime change archived; six historical backend tests PASS with isolated runner; CU05 history E2E bug queued for next change).
+Updated: 2026-11-13 (CU05 red-fraction contract resolved by human decision; `record-cu05-meter-readings` and `isolate-cu05-reading-history-by-meter` synced and archived; `meter-readings` 21 requirements / 44 scenarios; QA-INT-CU04-08 deferred).
 
 ## CU03 - CLOSED / ARCHIVED
 - [Archived change](../openspec/changes/archive/2026-11-11-implement-integrated-assistant-cu03/proposal.md), [assistant spec](../openspec/specs/assistant/spec.md) (17 requirements), [engineering record](ai-engineering/implement-integrated-assistant-cu03.md); [U23](use-cases/decisions.md#u23---cu03-integrated-assistant-decisions-and-propose-authorization).
@@ -27,6 +27,12 @@ Updated: 2026-11-13 (CU10 archived; CU05/CU06 backend test runtime change archiv
 - PASS: backend Ruff/mypy, 30/30 CU10 tests, 190-test regression set (6 skipped); frontend typecheck, 142/142 tests, lint, build; mocked CU10 Playwright 9/9; real-backend admin flow 1/1 (synthetic QA admin/user); mocked CU01/CU02/CU03 regressions; `openspec validate --all --strict` 15/15.
 - Sync/Archive: 12 requirements added (`source-refresh-administration`), 2 modified (`current-outages`/`scheduled-works` cadence only); archived with 32/32 tasks. No commit/push. Pre-existing, not CU10: 6 CU05/CU06 backend environment failures and 1 CU05 history E2E failure reproduced on the pre-CU10 image; CU04/CU09 real specs need external QA state.
 
+## CU05 - CLOSED / ARCHIVED (red-fraction contract resolved 2026-11-13)
+- [Archived base change](../openspec/changes/archive/2026-11-13-record-cu05-meter-readings/proposal.md), [archived isolation change](../openspec/changes/archive/2026-11-13-isolate-cu05-reading-history-by-meter/proposal.md), [main spec](../openspec/specs/meter-readings/spec.md) (21 requirements / 44 scenarios), [engineering records](ai-engineering/record-cu05-meter-readings.md) and [isolation record](ai-engineering/isolate-cu05-reading-history-by-meter.md); [resolution](use-cases/decisions.md#cu05-red-fraction-contract-resolution-2026-11-13).
+- Contract resolution (documentation-only): OCR may mask clearly separable red fractional digits and suggest only the integer when the boundary is unambiguous, abstains with the exact fallback when it is uncertain, never saves without explicit owner confirmation, and claims no absolute detection guarantee, superseding the absolute prohibition and always-abstain clarification; behavior, limits and tests unchanged. Sync: the base delta created the canonical spec (18/38), the isolation delta appended 3/6 (21/44), and `openspec validate --all --strict` PASS after each step with no requirement, contract or security control dropped.
+- Isolation fix (already verified): distinct React keys for `ReadingHistory`/`BillHistory`/`ConsumptionPanel`; `cu05-history.spec.ts` 9/9, red proof 5 failed / 4 passed with keys reverted, typecheck/142 node tests/lint/build PASS. No backend/API/numeric-contract change. Independent 2026-11-13 reviews: `spec-analyst` 1 MAJOR wording finding (corrected) and `reviewer` APPROVED with MINOR/NIT documentation items (corrected); `openspec validate --all --strict` 15/15 PASS after corrections.
+- Deferred QA: **QA-INT-CU04-08** — seeded CU04/CU06/CU07/CU08 real Chromium specs not executed; deferred to integral regression. Not PASS.
+
 ## CU05/CU06 backend test runtime stabilization - CLOSED / ARCHIVED
 - [Archived change](../openspec/changes/archive/2026-11-13-stabilize-cu05-cu06-backend-test-runtime/proposal.md), [engineering record](ai-engineering/stabilize-cu05-cu06-backend-test-runtime.md). Added `scripts/Test-Cu05Cu06BackendRuntime.ps1`: isolated PostgreSQL role/database, per-run tmpfs CU5/CU6 storage, synthetic CU6 confirmation secret, OCR privacy precondition checks, per-test logs.
 - Six historical failures reproduced and classified as environmental: 3x `test_bill_postgres` (missing `CU06_BILL_DIR`/`CU06_CONFIRMATION_SECRET`), 2x OCR (`private_ocr_runtime` fail-closed without cgroup swap=0), 1x reconciliation log count (second warning from `reconcile_bills()` when CU6 config missing). All six now **PASS** with the runner.
@@ -34,7 +40,7 @@ Updated: 2026-11-13 (CU10 archived; CU05/CU06 backend test runtime change archiv
 - Sync/Archive (2026-11-13): archived with 10/10 tasks; no spec deltas. No commit/push.
 
 ## Other CUs
-- CU08, CU07, CU06, CU04 and CU09 are implemented, verified and archived; CU05 is implemented with the red-fraction Sync/Archive block.
+- CU08, CU07, CU06, CU04, CU09 and CU05 are implemented, verified and archived.
 
 ## Approved stack and existing implementation
 - React/TS/Vite/npm and Python/FastAPI/uv/PostgreSQL 18.6 with SQLAlchemy/psycopg/Alembic; pinned images and dependencies. Implemented: CU09 auth/diary, CU04, CU05, CU06, CU07, CU08, CU09, CU01, CU02 and CU03.
@@ -43,12 +49,12 @@ Updated: 2026-11-13 (CU10 archived; CU05/CU06 backend test runtime change archiv
 ## Blockers and unresolved decisions
 - CU03: automated retention deletion remains pending approval (policy documented at 30 days); closure is complete.
 - Guide delivered (v1.0.0, 2026-11-10); time-sensitive data still requires periodic revalidation.
-- CU05 red-fraction contract conflict still blocks its full Sync/Archive; the six backend environmental failures are now reproducibly handled and archived.
-- CU05 history E2E failure is reproduced and queued as the next change `isolate-cu05-reading-history-by-meter`.
+- CU05: no contract blocker remains. OCR accuracy on real photos is not claimed; the supplied real photograph abstains and that limitation is accepted.
+- **QA-INT-CU04-08** pending: CU04/CU06/CU07/CU08 seeded real Chromium specs deferred by the user to integral regression; not executed and not PASS; risk is the meter-scoped remount of bill/comparison/estimate panels.
 - Hosting remains unresolved; Q21/Q22 are resolved for the CU10 scope by U24, while other catalog TBDs remain.
 
 ## Next actions
-1. Create and approve the OpenSpec change `isolate-cu05-reading-history-by-meter` for the E2E history bug.
-2. Resolve the CU05 red-fraction contract conflict before its Sync/Archive.
+1. Run **QA-INT-CU04-08** seeded CU04/CU06/CU07/CU08 regression when QA state is provisioned; it is the only open CU05-related item.
+2. Run the integral CU01–CU10 regression before academic delivery.
 3. Await approval before implementing the 30-day automatic retention deletion.
-4. Re-run CU04/CU09 real Chromium specs when their external QA state is provisioned.
+4. Resolve hosting before any deployment.

@@ -6,10 +6,10 @@ stack is React + TypeScript and Python + FastAPI, developed with OpenCode, Codex
 and OpenSpec. CU09 has a private interruption diary and the minimum CU04
 domicile-registration slice. CU09 and the shared frontend foundation were verified
 and archived on 2026-11-08; CU04, CU06, CU07 and CU08 are implemented and
-archived. CU05 is implemented with a red-fraction Sync/Archive block, CU01 and CU02
-are implemented, verified and archived (CU02 under its U22 definitive scope), and
-CU03 is closed and archived (BUILD 1-3, real OpenAI query passed) and CU10 is implemented,
-verified and archived.
+archived. CU05 is implemented, verified and archived (red-fraction contract resolved
+2026-11-13), CU01 and CU02 are implemented, verified and archived (CU02 under its U22
+definitive scope), and CU03 is closed and archived (BUILD 1-3, real OpenAI query passed)
+and CU10 is implemented, verified and archived.
 
 CU04 domicile and meter management is implemented, verified and archived;
 Git staging, commits and pushes are managed by the user:
@@ -44,13 +44,18 @@ table, migration or dependency was added; independent review and archive are com
 
 CU05 meter readings have manual history, confirmation, private photo attachments and
 photo/OCR endpoints. The OCR endpoint uses local Tesseract and OpenCV in bounded
-workers, with editable suggestions or abstention. Recognition is not guaranteed:
-the supplied real example abstained, and the user must verify suggestions. OCR
-requires cgroup v2 swap disabled, core dumps disabled, and a shared private photo
+workers, with editable suggestions or abstention. Clearly separable red fractional
+digits are masked; an uncertain integer/fraction boundary abstains, and detection is
+heuristic rather than an absolute guarantee, so a suggestion must always be reviewed
+and confirmed. Recognition is not guaranteed: the supplied real example abstained.
+OCR requires cgroup v2 swap disabled, core dumps disabled, and a shared private photo
 volume across backend instances; Compose configures these safeguards. The
-[proposal](openspec/changes/record-cu05-meter-readings/proposal.md) and
+[archived change](openspec/changes/archive/2026-11-13-record-cu05-meter-readings/proposal.md),
+[main specification](openspec/specs/meter-readings/spec.md) and
 [engineering record](docs/ai-engineering/record-cu05-meter-readings.md) record the
-remaining recognition and safety-verification gates.
+delivered contract and its accepted limitations. The meter-scoped history isolation
+fix is archived in
+[isolate-cu05-reading-history-by-meter](openspec/changes/archive/2026-11-13-isolate-cu05-reading-history-by-meter/proposal.md).
 
 ## CU09 - private interruption diary
 
@@ -152,8 +157,8 @@ the shared `db`, `backend` or `frontend` services.
 
 Expected result with a current verification image: all six targeted tests PASS;
 CU06 regression (`test_bill_*.py`) 32/32 OK; CU05 regression (`test_photo_*.py`) 45/45 OK.
-The separate CU05 history E2E failure is tracked independently and is not covered by this
-runner.
+The separate CU05 history E2E failure is fixed and verified by
+`isolate-cu05-reading-history-by-meter`; this backend runner does not cover it.
 
 ## Shared frontend foundation - implemented and archived
 
@@ -472,6 +477,8 @@ Before live checks:
 - [CU09 approved first-development proposal and Apply contract](openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/proposal.md)
 - [CU09 implementation, verification evidence and remaining gates](docs/ai-engineering/record-cu09-interruption-diary.md)
 - [CU07 comparison implementation, verification evidence and archive](docs/ai-engineering/compare-cu07-consumption-with-bill.md)
+- [CU05 readings implementation, OCR contract resolution and archive](docs/ai-engineering/record-cu05-meter-readings.md) — [archived change](openspec/changes/archive/2026-11-13-record-cu05-meter-readings/proposal.md), [main spec](openspec/specs/meter-readings/spec.md)
+- [CU05 reading-history meter isolation: root cause, red/green evidence, review and archive](docs/ai-engineering/isolate-cu05-reading-history-by-meter.md) — [archived change](openspec/changes/archive/2026-11-13-isolate-cu05-reading-history-by-meter/proposal.md)
 - [Approved MCP design and tasks](openspec/changes/configure-readonly-development-mcp/design.md)
 - [MCP setup, authentication checkpoint, and redacted checks](docs/ai-engineering/configure-readonly-development-mcp.md)
 - [Docker environment decisions, planning checks, and pending implementation evidence](docs/ai-engineering/docker-development-environment.md)

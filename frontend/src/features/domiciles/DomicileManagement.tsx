@@ -95,6 +95,7 @@ export function DomicileManagement({ selected, generation, rows, updateRow }: {
   }
 
   const disabled = busy || loading || conflict !== null;
+  const selectedMeter = meters.some(row => row.id === readingMeter) ? readingMeter : '';
   return <Card><CardHeader><CardTitle>Administrar domicilio y medidores</CardTitle></CardHeader><CardContent>
     <div className="space-y-4">
       {error && <Alert>{error}</Alert>}
@@ -114,9 +115,9 @@ export function DomicileManagement({ selected, generation, rows, updateRow }: {
             <option value="">Elegí un medidor</option>{meters.map(row => <option key={row.id} value={row.id}>{row.meter_number}{row.alias ? ` — ${row.alias}` : ''}</option>)}
           </select>
         </div>}
-        {readingMeter && meters.some(row => row.id === readingMeter) && <ReadingHistory key={`${generation}:${selected}:${readingMeter}`} generation={generation} domicileId={selected} meterId={readingMeter} />}
-        {readingMeter && meters.some(row => row.id === readingMeter) && <BillHistory key={`${generation}:${selected}:${readingMeter}`} generation={generation} domicileId={selected} meterId={readingMeter} />}
-        {readingMeter && meters.some(row => row.id === readingMeter) && <ConsumptionPanel key={`${generation}:${selected}:${readingMeter}`} generation={generation} domicileId={selected} meterId={readingMeter} />}
+        {selectedMeter && <ReadingHistory key={`readings:${generation}:${selected}:${selectedMeter}`} generation={generation} domicileId={selected} meterId={selectedMeter} />}
+        {selectedMeter && <BillHistory key={`bills:${generation}:${selected}:${selectedMeter}`} generation={generation} domicileId={selected} meterId={selectedMeter} />}
+        {selectedMeter && <ConsumptionPanel key={`consumption:${generation}:${selected}:${selectedMeter}`} generation={generation} domicileId={selected} meterId={selectedMeter} />}
       </>}
     </div>
   </CardContent></Card>;

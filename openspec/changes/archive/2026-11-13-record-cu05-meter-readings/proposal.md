@@ -1,5 +1,7 @@
 # Proposal: CU05 meter readings
 
+Status: CLOSED / ARCHIVED 2026-11-13. This proposal records the original intended scope; the delivered implementation, the OCR contract resolution and the verification evidence are summarized in [design](design.md), [tasks](tasks.md) and the [engineering record](../../../../docs/ai-engineering/record-cu05-meter-readings.md).
+
 ## Why
 
 Account holders need a private history of confirmed accumulated kWh readings for their own meters. CU05 is planned, not implemented; the user subsequently authorized Apply and D14/D15.
@@ -23,4 +25,4 @@ Account holders need a private history of confirmed accumulated kWh readings for
 
 ## Impact
 
-Future work affects the FastAPI API, React UI, PostgreSQL metadata and Docker persistent storage. The user approved D01–D15 and BUILD; dependencies are not yet installed. See [design](design.md) and [decision register](../../../docs/use-cases/decisions.md). Synthetic image testing is permitted; a real image remains pending and no representative accuracy is implied.
+Future work affects the FastAPI API, React UI, PostgreSQL metadata and Docker persistent storage. The user approved D01–D15 and BUILD; dependencies are not yet installed. See [design](design.md) and [decision register](../../../../docs/use-cases/decisions.md). Synthetic image testing is permitted; a real image remains pending and no representative accuracy is implied.
