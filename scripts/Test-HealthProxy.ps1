@@ -40,4 +40,4 @@ finally {
     }
     finally { Pop-Location }
 }
-Write-Output 'UI ACCEPTANCE PENDING: this script checks HTTP/proxy only. Follow the README browser steps.'
+Write-Output 'PASS: HTTP/proxy verification complete. Health is not an interface contract (U26), so no browser screen is required.'

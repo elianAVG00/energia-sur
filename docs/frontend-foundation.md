@@ -43,7 +43,9 @@ and [tasks](../openspec/changes/archive/2026-11-08-establish-frontend-foundation
    a new account/domicile. Reset forms on account/domicile/editor/revision identity.
 6. Add Node schema/store/adapter regressions and meaningful rendered acceptance.
    Unit adapter tests are not browser/backend acceptance. Preserve the existing
-   health, login, diary conflict/reset and PDF regression checks when adopting a CU.
+   login, diary conflict/reset and PDF regression checks when adopting a CU.
+   Backend health is not a UI contract (U26): verify it through `GET /health` and
+   the `/api/health` proxy, not through a screen or a layout request.
 
 Example adapter shape (illustrative until a new CU contract is accepted):
 

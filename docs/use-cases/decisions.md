@@ -773,3 +773,38 @@ PDF inspection is verification evidence, not a repeated stack decision.
 **Impact:** CU09-S06/S07/S15 define content/order/ongoing text; U07-T approved the
 technical generation stack recorded in the contract, not a new permission matrix.
 A report supports a complaint; it does not submit it or guarantee utility acceptance.
+
+## U26 - Public API health panel removal and frontend visual decisions
+
+Recorded from the user's 2026-11-14 instruction. U25 was already assigned to CU10,
+so this decision uses the next available identifier. The user approved D1-D7:
+D1 removes the visible API health panel while keeping `GET /health`, the Vite
+`/api/health` proxy and the technical verification scripts; D2 keeps
+`<button>`-based navigation without a router; D3 keeps the system font stack with
+no new dependencies; D4 moves the assistant to a collapsed FAB in a later change;
+D5 implements the visual work incrementally, shell plus CU01 first and the
+remaining screens in a separate change; D6 moves "Cerrar sesión" to the header
+later; D7 leaves the initial landing view unchanged for a separate change.
+
+**Product rule:** backend technical status is not displayed in public,
+authenticated or administrative screens. Health remains available for HTTP
+verification, Docker infrastructure and technical diagnosis.
+
+**Conflict resolved:** the accepted `frontend-shell` requirement demanded a
+visible health panel, and the still-active `docker-development-environment`
+delta required a technical screen showing success and failure states. Both were
+reconciled: `frontend-shell` no longer requires a panel, and the Docker delta now
+expresses the same real-verification intent over HTTP. No Docker task was marked
+complete, and neither `docker-development-environment` nor
+`configure-readonly-development-mcp` was archived.
+
+It does not authorize the deferred redesign (header, navigation, chat, CU01
+layout) or backend/contract changes.
+
+**Closure (2026-11-14):** the change was reviewed, its two stale documentation
+references (README Acceptance A and the `Test-HealthProxy.ps1` closing message)
+were reconciled, and it was archived as
+`2026-11-14-remove-public-api-health-panel` after typecheck, lint, 117/117 unit
+tests, 16/16 focused Playwright tests, the HTTP health checks and strict OpenSpec
+validation passed. Only the `frontend-shell` requirement was replaced; the Docker
+change keeps its tasks 7.1/7.2 open and no other change was archived.

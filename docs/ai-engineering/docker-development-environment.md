@@ -300,6 +300,12 @@ included and is not presented as a uniquely identified human browser session.
 Together with the user's explicit manual acceptance and existing real proxy
 checks, this completes tasks 5.1/5.2 without claiming fabricated browser details.
 
+> Later note (2026-11-14, U26): the visible health panel described above was removed
+> from the application. This section remains historical evidence of what was built and
+> verified at the time; the active Docker delta now expresses health acceptance over
+> HTTP, and its open tasks 7.1/7.2 must re-verify that wording. See the
+> [removal record](remove-public-api-health-panel.md).
+
 ### Evidence reuse instead of repeated runtime tests
 
 Source/manifests/locks/tests/configuration were inspected. Read-only, network-none,

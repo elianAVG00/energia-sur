@@ -54,19 +54,28 @@ data, or assertions about external service availability.
 
 ### Requirement: Real frontend health display and failure state
 
-The technical screen SHALL request same-origin `/api/health`, proxied to backend
-`GET /health`, and show success only after validating the real response. A new
-check that fails due to network error, timeout, non-success HTTP status, or
-unexpected response SHALL replace any previous success with a visible error.
+The health check SHALL be verified through real HTTP requests, not a user-facing
+technical screen. Same-origin `/api/health` SHALL proxy to backend `GET /health`,
+and success SHALL only be reported after validating the real response. Network,
+timeout, non-success status or unexpected-response failures SHALL surface as
+verification failures, never masked by a fixture or cached success. No application
+view SHALL display health status (U26).
 
-#### Scenario: Acceptance A - real API success followed by backend failure
+#### Scenario: Acceptance A - real proxy success followed by backend failure
 - **GIVEN** the three-service environment is running without OpenAI credentials
-- **WHEN** the developer opens `http://127.0.0.1:5173` and requests a health check
-- **THEN** browser network evidence shows `/api/health` returning HTTP 200 and the expected JSON through the real proxy and backend
-- **AND** the screen displays the verified backend success rather than a fixture
-- **WHEN** the developer stops only `backend` and requests another check on the same screen
-- **THEN** the screen shows a visible error within its documented request timeout
-- **AND** previous success is cleared and no mock or cached response masks failure
+- **WHEN** the developer requests same-origin `/api/health` with an HTTP client
+- **THEN** the response is backend HTTP 200 with the expected JSON through the real proxy and backend
+- **AND** the result comes from the real backend rather than a fixture
+- **WHEN** the developer stops only `backend` and repeats the request
+- **THEN** the request fails within its documented timeout or returns a non-success status
+- **AND** no mock or cached response masks the failure
+- **AND** no application screen is required to observe either result
+
+#### Scenario: Technical health status stays out of every application view
+- **GIVEN** the three-service environment is running
+- **WHEN** the developer opens the frontend at any public, authenticated or administrative view
+- **THEN** no health panel, health-check JSON or manual re-check control is rendered
+- **AND** the layout does not request `/api/health` on its own
 
 ### Requirement: Database query and persistence across recreation
 

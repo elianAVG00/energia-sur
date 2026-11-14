@@ -256,3 +256,47 @@ test('authenticated shell still renders the private diary after the public view'
   await expect(page.getByRole('heading', { name: 'Domicilios' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
 });
+
+async function expectNoHealthPanel(page: Page): Promise<void> {
+  await expect(page.getByRole('heading', { name: 'Conexión con la API' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Volver a comprobar' })).toHaveCount(0);
+  await expect(page.getByText('Conexión con la API')).toHaveCount(0);
+  await expect(page.getByText('Esta pantalla comprueba únicamente que el servicio HTTP responde.')).toHaveCount(0);
+}
+
+test('public shell renders every section without the technical API panel', async ({ page }) => {
+  const healthRequests: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/health') healthRequests.push(request.url());
+  });
+  await mockApi(page);
+  await page.goto('/');
+  await expectNoHealthPanel(page);
+  for (const [section, heading] of [
+    ['Cortes', 'Cortes eléctricos'],
+    ['Trabajos', 'Trabajos programados'],
+    ['Mi cuenta', 'Diario de interrupciones'],
+  ] as const) {
+    await page.getByRole('button', { name: section }).click();
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    await expectNoHealthPanel(page);
+  }
+  expect(healthRequests).toEqual([]);
+});
+
+test('authenticated shell renders the diary without the technical API panel', async ({ page }) => {
+  const healthRequests: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/health') healthRequests.push(request.url());
+  });
+  await mockApi(page, { authenticated: true });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Domicilios' })).toBeVisible();
+  await expectNoHealthPanel(page);
+  await page.getByRole('button', { name: 'Cortes' }).click();
+  await expectNoHealthPanel(page);
+  await page.getByRole('button', { name: 'Mi cuenta' }).click();
+  await expect(page.getByRole('heading', { name: 'Domicilios' })).toBeVisible();
+  await expectNoHealthPanel(page);
+  expect(healthRequests).toEqual([]);
+});

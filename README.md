@@ -405,23 +405,28 @@ ordinary technical-only table, recreates only `db`, checks a different container
 with the same named volume, and retrieves that exact marker without reinserting.
 It retains the marker and volume and installs no database driver in FastAPI.
 
-### Acceptance A - manual browser verification
+### Acceptance A - real proxy verification (HTTP)
 
-1. Open `http://127.0.0.1:5173` with Developer Tools → Network. Click **Volver a
-   comprobar** and confirm `/api/health` returns HTTP 200, `{"status":"ok"}`,
-   and the screen shows **API disponible** with that JSON.
-2. Run `docker compose stop backend`, then click **Volver a comprobar** in the
-   same screen. Verify previous success disappears and a visible error appears
-   within five seconds. Record the failed request and screen state.
+Health is an infrastructure check, not interface content (U26), so this acceptance
+is exercised over HTTP. No application screen displays health status.
+
+1. With the three services running and no OpenAI credentials, request
+   `http://127.0.0.1:5173/api/health` (same-origin proxy) and
+   `http://127.0.0.1:8000/health` directly. Confirm HTTP 200 and
+   `{"status":"ok"}` from the real backend, not a fixture.
+2. Run `docker compose stop backend` and repeat the proxied request. Confirm it
+   fails within the documented timeout or returns a non-success status, with no
+   cached success masking the failure.
 3. Restore the same container with `docker compose start backend` and wait for
-   health, then retry in the browser. This preserves CU09's existing overlay
-   environment; do not recreate a CU09 backend with base-only Compose. Do not
-   stop or remove `db` here.
+   health, then confirm the proxied request succeeds again. This preserves CU09's
+   existing overlay environment; do not recreate a CU09 backend with base-only
+   Compose. Do not stop or remove `db` here.
 
-A terminal-only proxy success/failure does not complete this browser acceptance.
-Record human browser evidence in the AI Engineering record before checking the
-two browser tasks complete. This session's exact evidence and remaining blockers
-are in that record, not implied by the instructions above.
+`pwsh -File scripts/Test-HealthProxy.ps1` performs steps 1-3 automatically and
+restores `backend` in `finally`. Record the commands and redacted output in the AI
+Engineering record. The Docker change's historical browser evidence is preserved
+in its record, but its open tasks 7.1/7.2 must re-verify this amended HTTP wording
+before that change is archived.
 
 Historical Docker-scaffold Apply evidence: both images build, all three services run healthy, four
 backend tests and 25 frontend tests pass, and real proxy success/failure/recovery
@@ -482,4 +487,5 @@ Before live checks:
 - [Approved MCP design and tasks](openspec/changes/configure-readonly-development-mcp/design.md)
 - [MCP setup, authentication checkpoint, and redacted checks](docs/ai-engineering/configure-readonly-development-mcp.md)
 - [Docker environment decisions, planning checks, and pending implementation evidence](docs/ai-engineering/docker-development-environment.md)
+- [Public API health panel removal: spec reconciliation, implementation and focused checks](docs/ai-engineering/remove-public-api-health-panel.md) — [archived change](openspec/changes/archive/2026-11-14-remove-public-api-health-panel/proposal.md)
 - [CU03 integrated assistant proposal, decisions and review evidence](docs/ai-engineering/implement-integrated-assistant-cu03.md) — [archived change](openspec/changes/archive/2026-11-11-implement-integrated-assistant-cu03/proposal.md), [main spec](openspec/specs/assistant/spec.md)

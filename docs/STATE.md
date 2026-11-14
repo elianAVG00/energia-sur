@@ -1,12 +1,15 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-13 (CU05 red-fraction contract resolved by human decision; `record-cu05-meter-readings` and `isolate-cu05-reading-history-by-meter` synced and archived; `meter-readings` 21 requirements / 44 scenarios; QA-INT-CU04-08 deferred).
+Updated: 2026-11-14 (public "Conexión con la API" panel removed; `remove-public-api-health-panel` archived and committed locally; QA-INT-CU04-08 still deferred).
+
+## Public API health panel - CLOSED / ARCHIVED
+- [Archived change](../openspec/changes/archive/2026-11-14-remove-public-api-health-panel/proposal.md), [record](ai-engineering/remove-public-api-health-panel.md), [U26](use-cases/decisions.md#u26---public-api-health-panel-removal-and-frontend-visual-decisions), [spec](../openspec/specs/frontend-shell/spec.md). Panel unmounted; `HealthPanel.tsx`/`health.ts`/`healthState.ts`, 13 unit tests and `.health-panel` CSS removed. `/health`, `/api/health`, the Vite proxy and script checks unchanged. Archive replaced only `Shared accessible application layout` (+2 scenarios); README Acceptance A and the `Test-HealthProxy.ps1` closing message were reconciled.
+- PASS (closure, 2026-11-14): typecheck, lint (91 files), 117/117 unit tests, build, mocked CU01+CU02 Playwright 16/16, `GET /health` + `/api/health` `{"status":"ok"}`, strict OpenSpec 16/16 before and 15/15 after archive. Not executed: integral CU01–CU10 regression, real-backend flows, CU09, `Test-HealthProxy.ps1` run.
+- Docker change keeps tasks 7.1/7.2 open and nothing else was archived; commit `refactor(frontend): remove public API health panel` is local only (no push).
 
 ## CU03 - CLOSED / ARCHIVED
 - [Archived change](../openspec/changes/archive/2026-11-11-implement-integrated-assistant-cu03/proposal.md), [assistant spec](../openspec/specs/assistant/spec.md) (17 requirements), [engineering record](ai-engineering/implement-integrated-assistant-cu03.md); [U23](use-cases/decisions.md#u23---cu03-integrated-assistant-decisions-and-propose-authorization).
-- BUILD 1 backend: guide ingestion (`guide_parser`/`guide_store`), pgvector 0.8.7 on PostgreSQL 18.6, LangChain + OpenAI (`gpt-4o-mini`, `text-embedding-3-small`), `POST /assistant/chat` SSE, Origin/rate-limit, static fallback. Migration `0007_cu03` (4 additive tables). Docker includes `knowledge/` in both stages.
-- BUILD 2: read-only CU01/CU02 LangChain tools and deterministic RAG/current/scheduled routing in `assistant_tools`; frontend `features/assistant` (fetch/ReadableStream SSE, temporary Zustand history, cancel, safe HTTPS sources) inside the single `ChatMount`; `optional_actor` and concurrency slots.
-- BUILD 3: owner-scoped persistent conversations (`assistant_memory`), bounded history injected into LangChain, `GET /assistant/conversations`, `GET .../{id}/messages` and CSRF-protected `DELETE .../{id}`; visitor TTL in Zustand; reset on session generation change; retention documented (30 days proposed, messages kept until owner delete, auto-delete pending approval); visible OpenAI/privacy notice.
+- BUILD 1-3: guide ingestion (pgvector 0.8.7 / PostgreSQL 18.6, `gpt-4o-mini`/`text-embedding-3-small`), `POST /assistant/chat` SSE, read-only CU01/CU02 LangChain tools with deterministic routing, the single `ChatMount` streaming client, owner-scoped memory plus CSRF-protected delete; automatic 30-day deletion remains pending approval.
 - PASS: Ruff, mypy (50 files), 54 CU03 backend tests (offline + PostgreSQL/pgvector + tools/routing + memory/isolation/CSRF), 134 frontend tests, 81 CU01/CU02 regressions (6 skipped live), 7 health/security, 3/3 mocked Playwright flows + 1 real-backend flow, migration upgrade/downgrade, `openspec validate --strict`, PostgreSQL 18.6 + pgvector 0.8.7.
 - Real OpenAI PASS (2026-11-11): 53 articles indexed with `text-embedding-3-small` (53 active chunks, 1536 dims, no duplicates); question about a vencida bill retrieved **PA-02** and returned an SSE answer with official `edesur.com.ar` sources and `done ok:true`.
 - Infrastructure: Compose `energia-sur` (`compose.yaml` + `compose.cu09.yaml`), db `energia-sur-db-1`, volume `energia-sur_pgdata`; app connection reused the existing `energia_sur` database/role. `alembic upgrade head` → `0007_cu03 (head)`, vector 0.8.7, 19 `es_*` tables; backend rebuilt and healthy; guide SHA-256 unchanged. Task 2.1 PASS (marker survived db recreation; volume preserved).
@@ -34,10 +37,7 @@ Updated: 2026-11-13 (CU05 red-fraction contract resolved by human decision; `rec
 - Deferred QA: **QA-INT-CU04-08** — seeded CU04/CU06/CU07/CU08 real Chromium specs not executed; deferred to integral regression. Not PASS.
 
 ## CU05/CU06 backend test runtime stabilization - CLOSED / ARCHIVED
-- [Archived change](../openspec/changes/archive/2026-11-13-stabilize-cu05-cu06-backend-test-runtime/proposal.md), [engineering record](ai-engineering/stabilize-cu05-cu06-backend-test-runtime.md). Added `scripts/Test-Cu05Cu06BackendRuntime.ps1`: isolated PostgreSQL role/database, per-run tmpfs CU5/CU6 storage, synthetic CU6 confirmation secret, OCR privacy precondition checks, per-test logs.
-- Six historical failures reproduced and classified as environmental: 3x `test_bill_postgres` (missing `CU06_BILL_DIR`/`CU06_CONFIRMATION_SECRET`), 2x OCR (`private_ocr_runtime` fail-closed without cgroup swap=0), 1x reconciliation log count (second warning from `reconcile_bills()` when CU6 config missing). All six now **PASS** with the runner.
-- Regression: 32/32 CU06 backend tests OK (1 skipped dedicated reconcile URL), 45/45 CU05 backend tests OK, Ruff/mypy OK, `openspec validate --all --strict` 16/16 PASS.
-- Sync/Archive (2026-11-13): archived with 10/10 tasks; no spec deltas. No commit/push.
+- [Archived change](../openspec/changes/archive/2026-11-13-stabilize-cu05-cu06-backend-test-runtime/proposal.md), [engineering record](ai-engineering/stabilize-cu05-cu06-backend-test-runtime.md). `scripts/Test-Cu05Cu06BackendRuntime.ps1` (isolated role/database, tmpfs storage, synthetic secret, privacy preconditions) resolved 6 environmental failures; 32/32 CU06, 45/45 CU05, Ruff/mypy and `openspec validate --all --strict` PASS; no spec deltas.
 
 ## Other CUs
 - CU08, CU07, CU06, CU04, CU09 and CU05 are implemented, verified and archived.
@@ -49,12 +49,12 @@ Updated: 2026-11-13 (CU05 red-fraction contract resolved by human decision; `rec
 ## Blockers and unresolved decisions
 - CU03: automated retention deletion remains pending approval (policy documented at 30 days); closure is complete.
 - Guide delivered (v1.0.0, 2026-11-10); time-sensitive data still requires periodic revalidation.
-- CU05: no contract blocker remains. OCR accuracy on real photos is not claimed; the supplied real photograph abstains and that limitation is accepted.
-- **QA-INT-CU04-08** pending: CU04/CU06/CU07/CU08 seeded real Chromium specs deferred by the user to integral regression; not executed and not PASS; risk is the meter-scoped remount of bill/comparison/estimate panels.
+- CU05: no contract blocker remains; OCR accuracy on real photos is not claimed and the supplied real photograph abstains (accepted). **QA-INT-CU04-08** pending: CU04/CU06/CU07/CU08 seeded real Chromium specs deferred by the user to integral regression; not executed, not PASS.
 - Hosting remains unresolved; Q21/Q22 are resolved for the CU10 scope by U24, while other catalog TBDs remain.
 
 ## Next actions
-1. Run **QA-INT-CU04-08** seeded CU04/CU06/CU07/CU08 regression when QA state is provisioned; it is the only open CU05-related item.
-2. Run the integral CU01–CU10 regression before academic delivery.
-3. Await approval before implementing the 30-day automatic retention deletion.
-4. Resolve hosting before any deployment.
+1. Begin the deferred visual change (shell + CU01, D5) under a new OpenSpec change; the removal is closed.
+2. Run **QA-INT-CU04-08** seeded CU04/CU06/CU07/CU08 regression when QA state is provisioned; it is the only open CU05-related item.
+3. Run the integral CU01–CU10 regression before academic delivery.
+4. Await approval before implementing the 30-day automatic retention deletion.
+5. Resolve hosting before any deployment.
