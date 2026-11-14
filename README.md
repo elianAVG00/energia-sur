@@ -122,6 +122,39 @@ alternative instead of force-installing or downgrading. Detailed actual outcomes
 date-floor decision and independent review:
 [CU09 engineering evidence](docs/ai-engineering/record-cu09-interruption-diary.md).
 
+## CU05/CU06 focused backend runtime checks
+
+Run the six historical CU05/CU06 backend tests against an isolated synthetic database
+and private temporary storage without touching shared services or persistent volumes:
+
+```powershell
+pwsh -NoProfile -File scripts/Test-Cu05Cu06BackendRuntime.ps1
+```
+
+Prerequisites: a running `energia-sur-db-1` container and an available backend
+verification image (`energia-sur-backend-checks:cu10` by default). Build the image with:
+
+```powershell
+docker build --target verification -t energia-sur-backend-checks:cu10 backend
+```
+
+The runner creates a unique role/database, migrates it, generates a synthetic 32-byte
+`CU06_CONFIRMATION_SECRET`, mounts per-run tmpfs directories for CU05 photos and CU06
+bills, verifies OCR privacy preconditions (`RLIMIT_CORE == 0` and cgroup v2
+`memory.swap.max == 0`), and runs each test individually. Results and per-test logs are
+written to `$env:LOCALAPPDATA\Temp\opencode\cu05-cu06-runtime`.
+
+Pass `-Cleanup` to drop the synthetic role/database after the run; without it they are
+retained for inspection. Use `-MemoryLimit 2g` (default) or adjust if your Docker host
+needs more headroom for the bounded OCR/photo workers. Pass `-Rebuild` to rebuild the
+backend verification image before running. The runner does not recreate, restart or prune
+the shared `db`, `backend` or `frontend` services.
+
+Expected result with a current verification image: all six targeted tests PASS;
+CU06 regression (`test_bill_*.py`) 32/32 OK; CU05 regression (`test_photo_*.py`) 45/45 OK.
+The separate CU05 history E2E failure is tracked independently and is not covered by this
+runner.
+
 ## Shared frontend foundation - implemented and archived
 
 The user approved the direction in U09 and explicitly authorized Apply in U10. The separate

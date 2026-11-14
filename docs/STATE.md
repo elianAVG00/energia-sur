@@ -1,6 +1,6 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-13 (CU10 implemented, verified and archived; CU03 archived; CU01/CU02 archived; CU05 red-fraction block open).
+Updated: 2026-11-13 (CU10 archived; CU05/CU06 backend test runtime change archived; six historical backend tests PASS with isolated runner; CU05 history E2E bug queued for next change).
 
 ## CU03 - CLOSED / ARCHIVED
 - [Archived change](../openspec/changes/archive/2026-11-11-implement-integrated-assistant-cu03/proposal.md), [assistant spec](../openspec/specs/assistant/spec.md) (17 requirements), [engineering record](ai-engineering/implement-integrated-assistant-cu03.md); [U23](use-cases/decisions.md#u23---cu03-integrated-assistant-decisions-and-propose-authorization).
@@ -27,6 +27,12 @@ Updated: 2026-11-13 (CU10 implemented, verified and archived; CU03 archived; CU0
 - PASS: backend Ruff/mypy, 30/30 CU10 tests, 190-test regression set (6 skipped); frontend typecheck, 142/142 tests, lint, build; mocked CU10 Playwright 9/9; real-backend admin flow 1/1 (synthetic QA admin/user); mocked CU01/CU02/CU03 regressions; `openspec validate --all --strict` 15/15.
 - Sync/Archive: 12 requirements added (`source-refresh-administration`), 2 modified (`current-outages`/`scheduled-works` cadence only); archived with 32/32 tasks. No commit/push. Pre-existing, not CU10: 6 CU05/CU06 backend environment failures and 1 CU05 history E2E failure reproduced on the pre-CU10 image; CU04/CU09 real specs need external QA state.
 
+## CU05/CU06 backend test runtime stabilization - CLOSED / ARCHIVED
+- [Archived change](../openspec/changes/archive/2026-11-13-stabilize-cu05-cu06-backend-test-runtime/proposal.md), [engineering record](ai-engineering/stabilize-cu05-cu06-backend-test-runtime.md). Added `scripts/Test-Cu05Cu06BackendRuntime.ps1`: isolated PostgreSQL role/database, per-run tmpfs CU5/CU6 storage, synthetic CU6 confirmation secret, OCR privacy precondition checks, per-test logs.
+- Six historical failures reproduced and classified as environmental: 3x `test_bill_postgres` (missing `CU06_BILL_DIR`/`CU06_CONFIRMATION_SECRET`), 2x OCR (`private_ocr_runtime` fail-closed without cgroup swap=0), 1x reconciliation log count (second warning from `reconcile_bills()` when CU6 config missing). All six now **PASS** with the runner.
+- Regression: 32/32 CU06 backend tests OK (1 skipped dedicated reconcile URL), 45/45 CU05 backend tests OK, Ruff/mypy OK, `openspec validate --all --strict` 16/16 PASS.
+- Sync/Archive (2026-11-13): archived with 10/10 tasks; no spec deltas. No commit/push.
+
 ## Other CUs
 - CU08, CU07, CU06, CU04 and CU09 are implemented, verified and archived; CU05 is implemented with the red-fraction Sync/Archive block.
 
@@ -37,11 +43,12 @@ Updated: 2026-11-13 (CU10 implemented, verified and archived; CU03 archived; CU0
 ## Blockers and unresolved decisions
 - CU03: automated retention deletion remains pending approval (policy documented at 30 days); closure is complete.
 - Guide delivered (v1.0.0, 2026-11-10); time-sensitive data still requires periodic revalidation.
-- CU05 red-fraction contract conflict still blocks its Sync/Archive.
+- CU05 red-fraction contract conflict still blocks its full Sync/Archive; the six backend environmental failures are now reproducibly handled and archived.
+- CU05 history E2E failure is reproduced and queued as the next change `isolate-cu05-reading-history-by-meter`.
 - Hosting remains unresolved; Q21/Q22 are resolved for the CU10 scope by U24, while other catalog TBDs remain.
 
 ## Next actions
-1. Review the archived CU10 result and decide the next commit (no push was performed).
-2. Resolve the CU05 red-fraction conflict before its Sync/Archive.
+1. Create and approve the OpenSpec change `isolate-cu05-reading-history-by-meter` for the E2E history bug.
+2. Resolve the CU05 red-fraction contract conflict before its Sync/Archive.
 3. Await approval before implementing the 30-day automatic retention deletion.
 4. Re-run CU04/CU09 real Chromium specs when their external QA state is provisioned.
