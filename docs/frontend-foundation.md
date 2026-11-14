@@ -7,7 +7,7 @@ this foundation is not a second app, backend framework, router or query cache.
 
 | Concern | Location | Ownership |
 | --- | --- | --- |
-| Root shell and chat mount | `frontend/src/layouts/` and `src/components/` | One layout and one functional assistant mount, independent of account/domicile feature keys. |
+| Root shell and chat mount | `frontend/src/layouts/`, `src/components/layout/` and `src/components/` | One layout with identity header, horizontal navigation, focused main, footer and one functional assistant mount, independent of account/domicile feature keys. |
 | CU03 assistant | `frontend/src/features/assistant/` | SSE client, temporary Zustand conversation with TTL, owner-scoped authenticated persistence, safe sources and fallback states. |
 | Local shadcn/ui primitives | `frontend/src/components/ui/` | Repository-owned accessible presentation, Tailwind tokens and upstream license/provenance. |
 | Memory session and selection | `frontend/src/stores/session.ts` | Validated account/session CSRF, selected domicile, generation and lifecycle actions only. |
@@ -108,6 +108,14 @@ Tailwind is integrated with the existing Vite configuration and stylesheet.
 relative `.ts` imports. Do not overwrite existing files through an unreviewed CLI
 initializer or add a whole registry. Retain upstream license/provenance when
 adapting local component source. No shadcn runtime library is required.
+
+The approved light palette and focus styles live in `frontend/src/styles.css`
+(primary `#0D6177`, background `#F8FAFC`, surface `#FFFFFF`, foreground `#0F172A`;
+system typography, no dark variants or external fonts). Shared views render inside
+`frontend/src/layouts/AppLayout.tsx` with the header/footer components in
+`frontend/src/components/layout/`, a centred container of about 1200 px and one
+`h1` per view. Navigation and the single `Cerrar sesión` control live in the header;
+authentication behavior and handlers stay unchanged.
 
 Preserve the approved React/TS/Vite/Node/npm pins and strict TypeScript settings.
 Add only approved exact dependencies and regenerate `package-lock.json`; never

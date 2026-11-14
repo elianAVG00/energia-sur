@@ -64,6 +64,12 @@ async function openPublic(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Cortes' }).click();
 }
 
+// The secondary form is its own card; its feedback must stay next to it.
+function addressCard(page: Page) {
+  return page.locator('section[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Buscar por dirección', exact: true }) });
+}
+
 async function mockApi(page: Page, options: MockOptions = {}): Promise<void> {
   await page.route('**/api/**', async (route: Route) => {
     const request = route.request();
@@ -146,7 +152,8 @@ test('ambiguous address shows candidates and posts the address without CSRF', as
   await openPublic(page);
   await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calchaqui 100');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
-  await expect(page.getByText('La dirección es ambigua. Elegí una de las zonas encontradas.')).toBeVisible();
+  await expect(addressCard(page).getByRole('status'))
+    .toHaveText('La dirección es ambigua. Elegí una de las zonas encontradas.');
   await page.getByRole('button', { name: /QUILMES · QUILMES/ }).click();
   await expect(page.getByRole('heading', { name: 'Cortes reportados' })).toBeVisible();
   expect(body).toEqual({ address: 'calchaqui 100' });
@@ -166,17 +173,24 @@ test('consented browser location resolves a partido and degrades the search', as
 test('stale, unverified coverage and unavailable source are distinct states', async ({ page }) => {
   const unverified = result({
     state: 'coverage_unverified',
+    granularity: 'partido',
     coverage: { partido: 'SAN VICENTE', localidad: null, status: 'coverage_unverified' },
     outages: undefined,
   });
   const unavailable = result({
     state: 'unavailable',
     freshness: 'unavailable',
+    granularity: 'partido',
     coverage: { partido: 'CAPITAL', localidad: null, status: 'coverage_unverified' },
     outages: undefined,
   });
   await mockApi(page, { byPartido: {
-    'LOMAS DE ZAMORA': result({ state: 'stale', freshness: 'stale' }),
+    'LOMAS DE ZAMORA': result({
+      state: 'stale',
+      freshness: 'stale',
+      granularity: 'partido',
+      coverage: { partido: 'LOMAS DE ZAMORA', localidad: null, status: 'coverage_unverified' },
+    }),
     'SAN VICENTE': unverified,
     'CAPITAL': unavailable,
   } });
@@ -199,12 +213,49 @@ test('stale, unverified coverage and unavailable source are distinct states', as
   await expect(page.getByText('No podemos confirmar cortes ni ausencia de cortes.').first()).toBeVisible();
 });
 
+test('a covered zone with no reports never claims supply', async ({ page }) => {
+  await mockApi(page, { byPartido: { 'SAN VICENTE': result({
+    state: 'no_reports',
+    granularity: 'partido',
+    coverage: { partido: 'SAN VICENTE', localidad: null, status: 'covered' },
+    outages: [],
+  }) } });
+  await openPublic(page);
+  await page.getByLabel('Partido', { exact: true }).selectOption('SAN VICENTE');
+  await page.getByRole('button', { name: 'Consultar cortes' }).click();
+  await expect(page.getByRole('heading', { name: 'Sin cortes reportados' })).toBeVisible();
+  await expect(page.getByText('No hay cortes reportados para esta zona en la última actualización. Esto no garantiza el suministro eléctrico.')).toBeVisible();
+  await expect(page.getByText('Cobertura verificada')).toBeVisible();
+  await expect(page.getByRole('table')).toHaveCount(0);
+  await expect(page.getByText('Detalle de cortes informados')).toHaveCount(0);
+});
+
+test('the loading state is announced while the query is in flight', async ({ page }) => {
+  await mockApi(page);
+  let release: () => void = () => {};
+  const gate = new Promise<void>(resolve => { release = () => resolve(); });
+  await page.route(url => url.pathname === '/api/outages', async route => {
+    await gate;
+    await route.fulfill({ status: 200, json: result() });
+  });
+  await openPublic(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel('Partido', { exact: true }).selectOption('LOMAS DE ZAMORA');
+  await page.getByRole('button', { name: 'Consultar cortes' }).click();
+  const status = page.getByRole('status').filter({ hasText: 'Consultando cortes…' });
+  await expect(status).toBeVisible();
+  await expect(status).toBeInViewport();
+  release();
+  await expect(page.getByRole('heading', { name: 'Cortes reportados' })).toBeVisible();
+});
+
 test('rate limiting is explained with Retry-After', async ({ page }) => {
   await mockApi(page, { rateLimited: true });
   await openPublic(page);
   await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calchaqui 100');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
-  await expect(page.getByText('Demasiadas solicitudes. Reintentá en 30 segundos.')).toBeVisible();
+  await expect(addressCard(page).getByRole('alert'))
+    .toHaveText('Demasiadas solicitudes. Reintentá en 30 segundos.');
 });
 
 test('degraded source is not presented as updated', async ({ page }) => {
@@ -212,6 +263,7 @@ test('degraded source is not presented as updated', async ({ page }) => {
     state: 'unavailable',
     freshness: 'fresh',
     source_status: 'degraded',
+    granularity: 'partido',
     coverage: { partido: 'SAN VICENTE', localidad: null, status: 'covered' },
     outages: undefined,
   });
@@ -240,9 +292,13 @@ test('unresolved address shows the geographic error without an outage list', asy
     json: { detail: 'No pudimos ubicar la dirección. Probá con partido y localidad.' },
   }));
   await openPublic(page);
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calle inexistente 99999');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
-  await expect(page.getByText('No pudimos ubicar la dirección. Probá con partido y localidad.')).toBeVisible();
+  await expect(addressCard(page).getByRole('alert'))
+    .toHaveText('No pudimos ubicar la dirección. Probá con partido y localidad.');
+  await expect(page.getByRole('alert')).toHaveCount(1);
+  await expect(addressCard(page).getByRole('alert')).toBeInViewport();
   await expect(page.getByRole('heading', { name: 'Cortes reportados' })).toHaveCount(0);
 });
 
@@ -255,6 +311,55 @@ test('authenticated shell still renders the private diary after the public view'
   await page.getByRole('button', { name: 'Mi cuenta' }).click();
   await expect(page.getByRole('heading', { name: 'Domicilios' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
+});
+
+test('outage states stay readable and scroll internally at every width', async ({ page }) => {
+  await mockApi(page, { byPartido: {
+    'LOMAS DE ZAMORA': result({ state: 'reported' }),
+    'SAN VICENTE': result({
+      state: 'coverage_unverified',
+      granularity: 'partido',
+      coverage: { partido: 'SAN VICENTE', localidad: null, status: 'coverage_unverified' },
+      outages: undefined,
+    }),
+    'CAPITAL': result({
+      state: 'unavailable',
+      freshness: 'unavailable',
+      granularity: 'partido',
+      coverage: { partido: 'CAPITAL', localidad: null, status: 'coverage_unverified' },
+      outages: undefined,
+    }),
+  } });
+  await openPublic(page);
+
+  for (const width of [390, 820, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const [partido, heading] of [
+      ['LOMAS DE ZAMORA', 'Cortes reportados'],
+      ['SAN VICENTE', 'Cobertura no verificada'],
+      ['CAPITAL', 'Fuente no disponible'],
+    ] as const) {
+      await page.getByLabel('Partido', { exact: true }).selectOption(partido);
+      await page.getByRole('button', { name: 'Consultar cortes' }).click();
+      await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, `${heading} at ${width}px`).toBe(0);
+    }
+  }
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.getByLabel('Partido', { exact: true }).selectOption('LOMAS DE ZAMORA');
+  await page.getByRole('button', { name: 'Consultar cortes' }).click();
+  const region = page.getByRole('region', { name: 'Cortes registrados' });
+  await expect(region).toBeVisible();
+  await region.focus();
+  await expect(region).toBeFocused();
+  expect(await region.evaluate(element => element.scrollWidth > element.clientWidth),
+    'the result table scrolls inside its own container at 390 px').toBe(true);
+  await expect(page.getByText('Total Edesur (todos los partidos, no la zona consultada)')).toBeVisible();
+  await expect(page.getByText('Los totales corresponden a Edesur en general y no necesariamente a la zona consultada.')).toBeVisible();
 });
 
 async function expectNoHealthPanel(page: Page): Promise<void> {

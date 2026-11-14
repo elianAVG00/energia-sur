@@ -177,6 +177,38 @@ next CU, reset/security rules and documented checks. Actual verification and the
 independent source review are in the [engineering record](docs/ai-engineering/establish-frontend-foundation.md).
 Both changes were archived with main specs synchronized; no closure commit, push or deployment performed.
 
+## Public shell and visual system (implemented and archived)
+
+U26 D5 split the deferred redesign into stages; U27 approved Stage A and U28 the
+CU01 redesign in Stage B. The shared shell now renders an Energía Sur identity
+header with horizontal navigation (`Cortes`, `Trabajos`, `Mi cuenta` and
+conditional `Administración`) and a visible, accessible active section; a skip
+link, a centred main of about 1200 px with one `h1` and a description; and an
+informational footer. `Cerrar sesión` is a single header control that reuses the
+existing handler and is absent from the account view, which keeps the
+`Cuenta: {username}` text used by tests. The HTML title is `Energía Sur`.
+
+The approved light palette lives in `frontend/src/styles.css` (`#0D6177` primary,
+`#F8FAFC` background, `#FFFFFF` surface, `#0F172A` foreground) with system typography
+and visible focus. Components: `frontend/src/components/layout/SiteHeader.tsx` and
+`SiteFooter.tsx`; shell: `frontend/src/layouts/AppLayout.tsx`; navigation and logout
+wiring: `frontend/src/App.tsx`. Stage B reorganizes the "Cortes" view into a
+"Consultar cortes" card and a "Buscar por dirección" card, and adds the
+presentational `frontend/src/features/outages/OutagesResultCard.tsx` for state
+chips, Edesur-wide totals, the outage table and provenance. Existing ids, labels,
+messages and handler behaviour are unchanged (the panel only adds two
+presentation-only flags that choose where existing feedback renders); Stage B adds
+presentational guidance text only (initial-state panel, totals caveat, small-screen
+table hint) and does not reword any functional message. No API, `state.ts`,
+geolocation, store or backend file was touched. No dependency, router, sidebar or primitive interface was added,
+and the single `ChatMount` is unchanged. See the
+[engineering record](docs/ai-engineering/redesign-public-shell-cu01.md) for evidence,
+before/after captures and results (typecheck, lint, 117 unit tests, build, 47 focused
+Playwright tests, strict OpenSpec 16/16). The change was archived on 2026-11-14 as
+`2026-11-14-redesign-public-shell-cu01`; `frontend-shell` was synchronized (3
+requirements added, 1 modified, none removed) and strict validation passes 15/15 after
+the archive. Both stages are in one local commit; nothing was pushed.
+
 ## CU01 public outage queries and UI (BUILD 3)
 
 The public, read-only outage API is backed by a cached ENRE snapshot:
@@ -209,7 +241,7 @@ from `/outages/areas`, a normalized "Buscar zona" filter, GeoRef address search 
 selection, consented browser geolocation, granularity messaging, category rows, Edesur-scope totals
 and the source provenance. Every normative availability/coverage state is presented, including
 "coverage unverified" (never "out of coverage" or "no outages" without evidence). The public view
-calls only `/api/outages/*` plus the shared `/api/session` and `/api/health` probes; the two public
+calls only `/api/outages/*` plus the shared `/api/session` probe; the two public
 resolve POSTs and the public assistant chat are the only CSRF-free unsafe endpoints besides
 login, and 429 responses surface `Retry-After`.
 

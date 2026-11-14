@@ -808,3 +808,64 @@ were reconciled, and it was archived as
 tests, 16/16 focused Playwright tests, the HTTP health checks and strict OpenSpec
 validation passed. Only the `frontend-shell` requirement was replaced; the Docker
 change keeps its tasks 7.1/7.2 open and no other change was archived.
+
+## U27 - Public shell and visual system Stage A authorization
+
+Recorded from the user's 2026-11-14 approval of the `redesign-public-shell-cu01`
+plan, with the explicit adjustment that only Stage A (visual system and shared
+layout) is implemented now.
+
+**Scope split:** Stage A adopts the approved light palette (primary `#0D6177`,
+background `#F8FAFC`, surface `#FFFFFF`, foreground `#0F172A`), system typography,
+visible focus and a centred container of about 1200 px; it adds an identity header
+with horizontal navigation, a visible and accessible active section, conditional
+Administración, a skip link, a titled main, an informational footer and the HTML
+title "Energía Sur". Stage B, the visual redesign of the CU01 search form, results
+and states, is specified and task-planned but starts only under a new explicit
+authorization.
+
+**Logout:** the single "Cerrar sesión" control moves from the account view to the
+header and reuses the existing handler; authentication, cookies, CSRF and session
+state do not change. The account view keeps the exact `Cuenta: {username}` text
+used by existing tests and the header does not duplicate it.
+
+**Unchanged:** the initial landing, CU02, CU04-CU10, the floating chat, the single
+`ChatMount`, backend endpoints, HTTP services, Zustand stores, validation and
+business rules. No dependency, registry reinstall, router, sidebar or external
+font is introduced. The public API health panel stays removed (U26 D1).
+
+**Evidence:** before/after captures use synthetic data only; no credentials or
+real bills, addresses or photos. This decision does not authorize commit, push or
+archive.
+
+## U28 - CU01 visual redesign Stage B authorization
+
+Recorded from the user's 2026-11-14 Stage B instruction, which authorized the
+CU01 visual redesign inside the existing `redesign-public-shell-cu01` change.
+No new OpenSpec change was created and Stage A was preserved unchanged.
+
+**Scope:** `frontend/src/features/outages/OutagesPanel.tsx` is reorganized into a
+primary "Consultar cortes" card (zone filter, partido, optional localidad,
+`Consultar cortes`, `Usar mi ubicación`) and a secondary "Buscar por dirección"
+card (address, `Buscar dirección`, existing privacy note, candidate zones). A
+presentational `OutagesResultCard.tsx` renders the validated result: state
+heading, granularity/coverage/freshness chips, the existing alerts, Edesur-wide
+totals as tiles, the outage table and the source/provenance panel.
+
+**Preserved contracts:** ids `outage-filter`, `outage-partido`,
+`outage-localidad` and `outage-address`; labels and accessible names; every
+functional message; validation; handlers; geolocation; requests and data
+structures. `api.ts`, `state.ts`, `lib/http*`, stores, authentication, backend
+and CU02-CU10 are untouched, and no dependency was added.
+
+**Visual rules:** the approved Stage A tokens are reused through the local
+primitives. No success/green indicator asserts the absence of outages: unknown or
+unverified coverage stays neutral, and only a verified dimension uses the accent
+tone. Totals remain explicitly labelled as Edesur-wide and not local. Tables use
+an accessible, focusable horizontal scroll region on small screens with all
+columns kept.
+
+**Evidence and limits:** captures use synthetic data only and are stored under
+`docs/ai-engineering/evidence/redesign-public-shell-cu01/stage-b/`, keeping the
+Stage A `before/` and `after/` sets intact. The floating assistant is not
+redesigned. This decision does not authorize commit, push or archive.
