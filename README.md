@@ -207,7 +207,28 @@ before/after captures and results (typecheck, lint, 117 unit tests, build, 47 fo
 Playwright tests, strict OpenSpec 16/16). The change was archived on 2026-11-14 as
 `2026-11-14-redesign-public-shell-cu01`; `frontend-shell` was synchronized (3
 requirements added, 1 modified, none removed) and strict validation passes 15/15 after
-the archive. Both stages are in one local commit; nothing was pushed.
+the archive. Both stages are in one local commit; a later read-only remote check showed
+that commit already on `origin/main`, despite the earlier "nothing pushed" wording.
+
+## CU02 works and CU10 admin redesign
+
+`redesign-public-works-admin` (U29/U30) applied the same visual system to the public
+"Trabajos" view and the administrator-only source view as presentation only. It was
+archived as
+[`2026-11-14-redesign-public-works-admin`](openspec/changes/archive/2026-11-14-redesign-public-works-admin/proposal.md).
+CU02 now
+has a "Consultar trabajos" card, a separate "Buscar por dirección" card, an
+initial-state panel and a presentational
+`frontend/src/features/scheduled-works/ScheduledWorksResultCard.tsx` with state chips, a
+zone/scope panel, the existing five-column table and provenance. Planned start/end are
+shown as "No publicado" and the source limitation remains explicit; there are no date
+filters. CU10 uses a presentational
+`frontend/src/features/admin/SourceCard.tsx` with "Estado", "Configuración" and
+"Acciones" sections, status chips and the existing retry/interval controls. Ids, labels,
+messages, handlers, geolocation, requests, admin-only visibility, authorization and
+concurrency behavior are unchanged; no new administrative capability or polling was
+added. See the
+[engineering record](docs/ai-engineering/redesign-public-works-admin.md).
 
 ## CU01 public outage queries and UI (BUILD 3)
 

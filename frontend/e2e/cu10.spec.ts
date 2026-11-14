@@ -41,6 +41,7 @@ interface MockOptions {
   initial?: MockSources;
   getStatus?: number;
   conflictOnce?: boolean;
+  invalidIntervalOnce?: boolean;
   busyOnce?: boolean;
   outcome?: string;
   delayMs?: number;
@@ -95,6 +96,10 @@ async function mockApi(page: Page, options: MockOptions = {}) {
         ? raw as Record<string, unknown> : {};
       options.onPatch?.(body, headers);
       const key = interval[1] as MockSource['key'];
+      if (options.invalidIntervalOnce && patchCalls === 1) {
+        await route.fulfill({ status: 422, json: { detail: 'invalid interval' } });
+        return;
+      }
       if (options.conflictOnce && patchCalls === 1) {
         await route.fulfill({ status: 409, json: { detail: 'conflict', code: 'VERSION_CONFLICT' } });
         return;
@@ -153,6 +158,12 @@ async function openAdmin(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: 'Administración' })).toBeVisible();
   await page.getByRole('button', { name: 'Administración' }).click();
   await expect(page.getByRole('heading', { name: 'Administración de fuentes' })).toBeVisible();
+}
+
+function adminCard(page: Page, title: string) {
+  return page.locator('section').filter({
+    has: page.getByRole('heading', { name: title }),
+  });
 }
 
 test('admin sees both ENRE cards with real status fields', async ({ page }) => {
@@ -259,4 +270,138 @@ test('backend denial is reported even when the frontend role is admin', async ({
   await mockApi(page, { getStatus: 403 });
   await openAdmin(page);
   await expect(page.getByText('No tenés autorización para administrar las fuentes.')).toBeVisible();
+});
+
+test('admin cards expose state, configuration and actions with only existing controls', async ({ page }) => {
+  const calls = await mockApi(page);
+  await openAdmin(page);
+  const card = adminCard(page, 'ENRE — Cortes actuales');
+  const initialLoads = calls.getCalls();
+  await page.waitForTimeout(300);
+  expect(calls.getCalls(), 'no polling after the initial load').toBe(initialLoads);
+
+  await expect(card.getByRole('heading', { name: 'Estado', level: 3 })).toBeVisible();
+  await expect(card.getByRole('heading', { name: 'Configuración', level: 3 })).toBeVisible();
+  await expect(card.getByRole('heading', { name: 'Acciones', level: 3 })).toBeVisible();
+  const automation = card.getByText('Actualización automática habilitada');
+  await expect(automation).toBeVisible();
+  await expect(automation).toHaveClass(/bg-muted/);
+  await expect(automation).not.toHaveClass(/bg-accent/);
+  await expect(card.getByText('Último intento exitoso')).toBeVisible();
+  await expect(card.getByRole('button')).toHaveCount(2);
+  await expect(card.getByRole('link')).toHaveCount(0);
+
+  const options = await card.locator('#interval-outages option').evaluateAll(
+    elements => elements.map(element => (element as HTMLOptionElement).value),
+  );
+  expect(options).toEqual(['300', '600', '900', '1800', '3600']);
+
+  const save = card.getByRole('button', { name: /Guardar intervalo/ });
+  await expect(save).toBeDisabled();
+  await card.locator('#interval-outages').selectOption('600');
+  await expect(save).toBeEnabled();
+  await card.locator('#interval-outages').selectOption('300');
+  await expect(save).toBeDisabled();
+});
+
+test('a failed retry keeps the previous success visible and never shows success', async ({ page }) => {
+  const calls = await mockApi(page, {
+    initial: sources({ outages: { last_success_at: '2026-11-13T11:00:00Z' } }),
+    outcome: 'timeout',
+  });
+  await openAdmin(page);
+  const card = adminCard(page, 'ENRE — Cortes actuales');
+  await expect(card.getByText('13/11/2026 08:00')).toBeVisible();
+
+  await card.getByRole('button', { name: /Actualizar ahora/ }).click();
+  await expect(card.getByText('Último intento con error')).toBeVisible();
+  await expect(card.getByText('Último error: EnreTimeout')).toBeVisible();
+  await expect(card.getByText('13/11/2026 08:00')).toBeVisible();
+  await expect(card.getByText('Último intento exitoso')).toHaveCount(0);
+  await expect(page.getByText('Actualización completada: Actualización exitosa.')).toHaveCount(0);
+  expect(calls.postCalls()).toBe(1);
+  expect(calls.getCalls()).toBeGreaterThan(1);
+});
+
+test('a source without attempts and with lock contention is reported without inventing success', async ({ page }) => {
+  await mockApi(page, { initial: sources({
+    scheduled: {
+      scheduler_enabled: false,
+      last_attempt_at: null,
+      last_attempt_outcome: null,
+      last_attempt_error: null,
+      last_success_at: null,
+      last_skipped_locked_at: '2026-11-13T12:10:00Z',
+    },
+  }) });
+  await openAdmin(page);
+  const card = adminCard(page, 'ENRE — Trabajos programados');
+
+  await expect(card.getByText('Actualización automática deshabilitada')).toBeVisible();
+  await expect(card.getByText('Sin intentos', { exact: true })).toBeVisible();
+  await expect(card.getByText('Sin intentos registrados').first()).toBeVisible();
+  await expect(card.getByText('Sin actualización exitosa registrada')).toBeVisible();
+  await expect(card.getByText('Última ejecución omitida por bloqueo: 13/11/2026 09:10')).toBeVisible();
+  await expect(card.getByText('Último intento exitoso')).toHaveCount(0);
+});
+
+test('conflict feedback stays in the section that produced it', async ({ page }) => {
+  await mockApi(page, { conflictOnce: true, busyOnce: true });
+  await openAdmin(page);
+  const card = adminCard(page, 'ENRE — Cortes actuales');
+  const config = card.getByRole('heading', { name: 'Configuración' }).locator('..');
+  const actions = card.getByRole('heading', { name: 'Acciones' }).locator('..');
+
+  await card.locator('#interval-outages').selectOption('900');
+  await card.getByRole('button', { name: /Guardar intervalo/ }).click();
+  await expect(config.getByText(/La configuración fue modificada por otro administrador/)).toBeVisible();
+  await expect(actions.getByText(/La configuración fue modificada por otro administrador/)).toHaveCount(0);
+
+  await card.getByRole('button', { name: /Actualizar ahora/ }).click();
+  await expect(actions.getByText(/La fuente ya se está actualizando/)).toBeVisible();
+  await expect(config.getByText(/La fuente ya se está actualizando/)).toHaveCount(0);
+});
+
+test('an invalid interval is reported in the configuration section', async ({ page }) => {
+  await mockApi(page, { invalidIntervalOnce: true });
+  await openAdmin(page);
+  const card = adminCard(page, 'ENRE — Cortes actuales');
+  const config = card.getByRole('heading', { name: 'Configuración' }).locator('..');
+  await card.locator('#interval-outages').selectOption('600');
+  await card.getByRole('button', { name: /Guardar intervalo/ }).click();
+  await expect(config.getByText('El intervalo seleccionado no es válido.')).toBeVisible();
+});
+
+test('admin cards stack on mobile and stay inside the page at three widths', async ({ page }) => {
+  await mockApi(page);
+  await openAdmin(page);
+  const cards = page.locator('[data-slot="card"]');
+  await expect(cards).toHaveCount(2);
+
+  for (const width of [390, 820, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, `no horizontal overflow at ${width}px`).toBe(0);
+    const boxes = await cards.evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width };
+    }));
+    const first = boxes[0];
+    const second = boxes[1];
+    if (!first || !second) throw new Error('expected two source cards');
+    if (width < 1024) {
+      expect(second.y, `cards stack at ${width}px`).toBeGreaterThan(first.y);
+    } else {
+      expect(Math.abs(second.y - first.y), 'cards sit side by side at 1440px').toBeLessThan(20);
+      expect(second.x).toBeGreaterThan(first.x);
+    }
+  }
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  const select = await page.locator('#interval-outages').boundingBox();
+  const retry = await page.getByRole('button', { name: /Actualizar ahora/ }).first().boundingBox();
+  expect(select?.width ?? 0).toBeGreaterThan(250);
+  expect(retry?.width ?? 0).toBeGreaterThan(250);
 });

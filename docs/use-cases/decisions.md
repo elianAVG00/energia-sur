@@ -869,3 +869,89 @@ columns kept.
 `docs/ai-engineering/evidence/redesign-public-shell-cu01/stage-b/`, keeping the
 Stage A `before/` and `after/` sets intact. The floating assistant is not
 redesigned. This decision does not authorize commit, push or archive.
+
+## U29 - CU02 visual redesign Stage A and Stage B proposal authorization
+
+Recorded from the user's 2026-11-14 approval of the `redesign-public-works-admin`
+plan. The user approved **interpretation A: presentation-only redesign** and
+authorized Stage 0 (preparation) and Stage A (CU02) for implementation. Stage B
+(CU10) is specified in the same change but remains pending explicit U30
+authorization after Stage A is verified.
+
+**Approved interpretation (A):** the change adds no date filters, no planned
+start/end values and no reasons. CU02 keeps the definitive U22 scope: the ENRE
+does not publish an agenda, planned dates or reasons; the UI identifies them as
+"No publicado" / "No publicado por la fuente" and preserves the existing
+limitation messages. Query, address and device-location behavior is unchanged.
+
+**Scope:** `ScheduledWorksPanel.tsx` is reorganized into a "Consultar trabajos"
+card, a "Buscar por dirección" card and an initial-state panel; a presentational
+`ScheduledWorksResultCard.tsx` renders state chips, the zone/scope panel, the
+existing five-column table and provenance. The shared shell, CU01, backend,
+`features/*/api.ts`, `features/*/state.ts`, `lib/http*`, Zustand, authentication,
+CSRF, CU03-CU10 and dependencies are untouched. M2, M3, the assistant overlay
+and stale/unavailable totals remain out of scope.
+
+**Stage B (specified, not authorized):** `AdminPanel.tsx` and a presentational
+`SourceCard.tsx` will apply the same visual hierarchy to CU10 while preserving
+admin-only visibility, authorization, retry, intervals and 401/403/409 behavior.
+No CU10 file is modified under U29.
+
+**Repository state:** `main` at `223a61c351a64cc63fca5c8659fa6415752b7bbb`
+with a clean working tree. A read-only `git ls-remote origin refs/heads/main`
+returned the same commit, so the remote already contains it despite the earlier
+"nothing pushed" note; this decision records the discrepancy and performs no
+push or history change. The active `docker-development-environment` and
+`configure-readonly-development-mcp` changes are untouched.
+
+**Stage A result (2026-11-14):** Stage 0 and CU02 were implemented. Typecheck, lint,
+117/117 unit tests, build, CU02 14/14, focused Playwright 61/61 and strict OpenSpec
+16/16 passed at Stage A close. Evidence contains 24 `before/` captures (CU02 and CU10
+baseline) and 18 `etapa-a/` CU02 captures across 1440/820/390 px. The independent
+reviewer result and corrections are recorded in the engineering record. CU10 was not
+implemented in that stage.
+
+**Evidence and limits:** before/after captures use synthetic data only. This
+decision does not authorize commit, push, archive, deployment or CU10
+implementation.
+
+## U30 - CU10 visual redesign Stage B authorization
+
+Recorded from the user's 2026-11-14 Stage B instruction. The user authorizes the
+CU10 presentation redesign inside the existing `redesign-public-works-admin`
+change; no new change is created and Stage A is preserved unchanged.
+
+**Scope:** `frontend/src/features/admin/AdminPanel.tsx` and a presentational
+`frontend/src/features/admin/SourceCard.tsx`. Each source card is organized into
+"Estado", "Configuración" and "Acciones" with status chips and compact fields for
+the last attempt, outcome, last successful update, current interval, last error
+and lock contention. The existing interval selector, save control and retry
+control keep their validation, optimistic version, 25-second retry, 401/403,
+409 `SOURCE_BUSY`/`VERSION_CONFLICT`, 422 and timeout behavior.
+
+**Preserved:** admin-only visibility, authorization, CSRF and session handling,
+`interval-outages`/`interval-scheduled_works`, accessible names, feedback texts,
+allowed intervals, existing reloads and no polling. No new administrative tool,
+endpoint, role management or enablement control is added.
+
+**Unchanged:** backend, `admin/api.ts`, `admin/state.ts`, `lib/http*`, stores,
+authentication, CU01-CU09, the shell, shared primitives, dependencies and active
+OpenSpec changes. M2, M3, the assistant overlay and totals remain out of scope.
+
+**Stage B result (2026-11-14):** `AdminPanel.tsx` now delegates presentation to
+`SourceCard.tsx`; typecheck, lint (101 files), 117/117 unit, build (333 modules),
+CU10 15/15, focused Playwright 68/68 and strict OpenSpec 16/16 passed. Evidence
+contains six `etapa-b/` CU10 captures across 1440/820/390 px. The independent
+reviewer found no BLOCKER/HIGH; its Stage B findings were corrected and are recorded in
+the engineering record.
+
+**Evidence:** Stage B captures use synthetic data in
+`docs/ai-engineering/evidence/redesign-public-works-admin/etapa-b/`; the mandatory
+independent review and affected gates are recorded in the engineering record.
+This decision does not authorize push or deployment.
+
+**Closure (2026-11-14):** the combined change was archived as
+`2026-11-14-redesign-public-works-admin`; `scheduled-works` and
+`source-refresh-administration` were synchronized (0 added, 2 modified, 0 removed)
+and strict validation passes 15/15 after archive. A single local commit contains the
+implementation, tests, evidence and documentation; nothing was pushed.

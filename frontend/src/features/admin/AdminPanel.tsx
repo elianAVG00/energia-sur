@@ -1,19 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Alert } from '../../components/ui/alert.tsx';
 import { Button } from '../../components/ui/button.tsx';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.tsx';
-import { Label } from '../../components/ui/label.tsx';
 import { DiaryError, errorMessage } from '../../lib/httpError.ts';
 import { useRequestScope } from '../../useRequestScope.ts';
-import { formatInstant } from '../outages/state.ts';
 import { adminApi } from './api.ts';
-import type { IntervalSeconds, SourceKey, SourceStatus, SourcesResult } from './api.ts';
-import {
-  INTERVAL_OPTIONS, intervalLabel, isSuccessOutcome, outcomeLabel, sourceTitle,
-} from './state.ts';
-
-interface BusyState { retry: boolean; save: boolean }
-interface Feedback { kind: 'success' | 'warning' | 'error'; text: string }
+import type { IntervalSeconds, SourceKey, SourcesResult } from './api.ts';
+import { SourceCard } from './SourceCard.tsx';
+import type { BusyState, Feedback } from './SourceCard.tsx';
+import { INTERVAL_OPTIONS, intervalLabel, isSuccessOutcome, outcomeLabel } from './state.ts';
 
 const KEYS: readonly SourceKey[] = ['outages', 'scheduled_works'];
 const EMPTY_BUSY: Record<SourceKey, BusyState> = {
@@ -54,85 +48,6 @@ function shouldReload(reason: unknown): boolean {
     reason.kind === 'timeout' || reason.code === 'SOURCE_BUSY' ||
     reason.code === 'VERSION_CONFLICT' || reason.status === 503
   );
-}
-
-interface SourceCardProps {
-  source: SourceStatus;
-  selected: IntervalSeconds | '';
-  busy: BusyState;
-  feedback: Feedback | null;
-  onSelect: (value: string) => void;
-  onSave: () => void;
-  onRetry: () => void;
-}
-
-function SourceCard({
-  source, selected, busy, feedback, onSelect, onSave, onRetry,
-}: SourceCardProps) {
-  const changed = selected !== '' && selected !== source.interval_seconds;
-  return <Card>
-    <CardHeader>
-      <CardTitle>{sourceTitle(source.key)}</CardTitle>
-      <p className="text-sm text-muted-foreground">
-        Actualización automática: {source.scheduler_enabled ? 'habilitada' : 'deshabilitada'}
-        {' '}(configuración, no garantiza que el proceso esté ejecutándose)
-      </p>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      <dl className="grid gap-2 text-sm">
-        <div>
-          <dt className="font-medium">Último intento</dt>
-          <dd>{formatInstant(source.last_attempt_at ?? undefined) || 'Sin intentos registrados'}</dd>
-        </div>
-        <div>
-          <dt className="font-medium">Resultado</dt>
-          <dd>{outcomeLabel(source.last_attempt_outcome)}</dd>
-        </div>
-        <div>
-          <dt className="font-medium">Última actualización exitosa</dt>
-          <dd>{formatInstant(source.last_success_at ?? undefined) || 'Sin actualización exitosa registrada'}</dd>
-        </div>
-        <div>
-          <dt className="font-medium">Intervalo actual</dt>
-          <dd>{intervalLabel(source.interval_seconds)}</dd>
-        </div>
-      </dl>
-
-      {source.last_attempt_error && <Alert>Último error: {source.last_attempt_error}</Alert>}
-      {source.last_skipped_locked_at && <p className="text-sm text-muted-foreground">
-        Última ejecución omitida por bloqueo: {formatInstant(source.last_skipped_locked_at ?? undefined)}
-      </p>}
-
-      <div className="space-y-2 border-t border-border pt-4">
-        <Label htmlFor={`interval-${source.key}`}>Intervalo de actualización</Label>
-        <div className="flex flex-wrap items-center gap-3">
-          <select id={`interval-${source.key}`}
-            className="min-h-10 rounded-md border border-input bg-background px-3"
-            value={selected} onChange={event => onSelect(event.target.value)}>
-            {selected === '' && <option value="">Elegí un intervalo</option>}
-            {INTERVAL_OPTIONS.map(option => <option key={option.value} value={option.value}>
-              {option.label}
-            </option>)}
-          </select>
-          <Button type="button" variant="secondary" disabled={busy.save || !changed} onClick={onSave}
-            aria-label={`Guardar intervalo — ${sourceTitle(source.key)}`}>
-            {busy.save ? 'Guardando…' : 'Guardar intervalo'}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" disabled={busy.retry} onClick={onRetry}
-          aria-label={`Actualizar ahora — ${sourceTitle(source.key)}`}>
-          {busy.retry ? 'Actualizando…' : 'Actualizar ahora'}
-        </Button>
-      </div>
-
-      {feedback?.kind === 'success' && <p role="status" className="text-sm">{feedback.text}</p>}
-      {feedback?.kind === 'warning' && <Alert role="status">{feedback.text}</Alert>}
-      {feedback?.kind === 'error' && <Alert>{feedback.text}</Alert>}
-    </CardContent>
-  </Card>;
 }
 
 export function AdminPanel() {
@@ -201,11 +116,12 @@ export function AdminPanel() {
       if (!request.isCurrent()) return;
       if (isSuccessOutcome(data.outcome)) {
         setFeedbackFor(key, {
-          kind: 'success', text: `Actualización completada: ${outcomeLabel(data.outcome)}.`,
+          kind: 'success', action: 'retry',
+          text: `Actualización completada: ${outcomeLabel(data.outcome)}.`,
         });
       } else {
         setFeedbackFor(key, {
-          kind: 'warning',
+          kind: 'warning', action: 'retry',
           text: `La actualización no fue exitosa: ${outcomeLabel(data.outcome)}` +
             `${data.detail_code ? ` (${data.detail_code})` : ''}. Se conserva la última actualización exitosa.`,
         });
@@ -213,7 +129,7 @@ export function AdminPanel() {
       await reloadOne(key, request.signal);
     } catch (reason) {
       if (!request.isCurrent() || quiet(reason)) return;
-      setFeedbackFor(key, { kind: 'warning', text: messageFor(reason) });
+      setFeedbackFor(key, { kind: 'warning', action: 'retry', text: messageFor(reason) });
       if (shouldReload(reason)) await reloadOne(key, request.signal);
     } finally {
       if (request.isCurrent()) {
@@ -240,11 +156,12 @@ export function AdminPanel() {
       });
       setSelected(previous => ({ ...previous, [key]: data.interval_seconds }));
       setFeedbackFor(key, {
-        kind: 'success', text: `Intervalo actualizado a ${intervalLabel(data.interval_seconds)}.`,
+        kind: 'success', action: 'save',
+        text: `Intervalo actualizado a ${intervalLabel(data.interval_seconds)}.`,
       });
     } catch (reason) {
       if (!request.isCurrent() || quiet(reason)) return;
-      setFeedbackFor(key, { kind: 'error', text: messageFor(reason, 'save') });
+      setFeedbackFor(key, { kind: 'error', action: 'save', text: messageFor(reason, 'save') });
       if (shouldReload(reason)) await reloadOne(key, request.signal);
     } finally {
       if (request.isCurrent()) {
@@ -264,8 +181,10 @@ export function AdminPanel() {
       onClick={() => { const request = scope.begin('admin-sources'); void loadAll(request.signal); }}>
       Volver a intentar
     </Button>}
-    {loading && <p role="status">Cargando estado de las fuentes…</p>}
-    {sources && <div className="grid gap-6 lg:grid-cols-2">
+    {loading && <p role="status" className="text-sm text-muted-foreground">
+      Cargando estado de las fuentes…
+    </p>}
+    {sources && <div className="grid items-start gap-6 lg:grid-cols-2">
       {KEYS.map(key => {
         const source = sources.sources.find(item => item.key === key);
         if (!source) return null;

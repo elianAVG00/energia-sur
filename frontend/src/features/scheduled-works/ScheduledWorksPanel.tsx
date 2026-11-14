@@ -3,16 +3,17 @@ import type { FormEvent } from 'react';
 import { Alert } from '../../components/ui/alert.tsx';
 import { Button } from '../../components/ui/button.tsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.tsx';
+import { Input } from '../../components/ui/input.tsx';
 import { Label } from '../../components/ui/label.tsx';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table.tsx';
 import { DiaryError, errorMessage } from '../../lib/httpError.ts';
 import { useRequestScope } from '../../useRequestScope.ts';
 import { scheduledWorksApi } from './api.ts';
-import type { AreasResult, ResolveZone, ScheduledWork, ScheduledWorksResult } from './api.ts';
-import {
-  coverageLabel, formatInstant, formatReportedTime, freshnessLabel, limitationMessage,
-  reasonText, restorationText, retryAfterMessage, stateDetail, stateHeading,
-} from './state.ts';
+import type { AreasResult, ResolveZone, ScheduledWorksResult } from './api.ts';
+import { ScheduledWorksResultCard } from './ScheduledWorksResultCard.tsx';
+import { coverageLabel, retryAfterMessage } from './state.ts';
+
+// Native selects mirror the local Input styling so every field shares one language.
+const SELECT_CLASS = 'min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 text-base shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50';
 
 function quiet(reason: unknown): boolean {
   return reason instanceof DiaryError && reason.kind === 'aborted';
@@ -25,16 +26,8 @@ function messageFor(reason: unknown): string {
   return errorMessage(reason);
 }
 
-function optionalNumber(value: number | null | undefined): string {
-  return value === undefined || value === null ? 'Sin dato' : String(value);
-}
-
 function normalize(value: string): string {
   return value.normalize('NFC').trim().toLocaleLowerCase('es-AR');
-}
-
-function zoneLabel(work: ScheduledWork): string {
-  return work.localidad ? `${work.partido} · ${work.localidad}` : work.partido;
 }
 
 export function ScheduledWorksPanel() {
@@ -52,6 +45,10 @@ export function ScheduledWorksPanel() {
   const [resolving, setResolving] = useState(false);
   const [candidates, setCandidates] = useState<ResolveZone[] | null>(null);
   const [searchMessage, setSearchMessage] = useState('');
+  // Presentation-only routing: the same messages are shown next to the flow that
+  // produced them, so a sighted user does not have to scroll back up to read them.
+  const [errorScope, setErrorScope] = useState<'query' | 'address'>('query');
+  const [messageScope, setMessageScope] = useState<'zone' | 'address'>('zone');
   const [geoMessage, setGeoMessage] = useState('');
   const [geoBusy, setGeoBusy] = useState(false);
 
@@ -69,6 +66,7 @@ export function ScheduledWorksPanel() {
 
   async function load(partidoValue: string, localidadValue: string): Promise<void> {
     if (!partidoValue) {
+      setErrorScope('query');
       setError('Elegí un partido para consultar.');
       return;
     }
@@ -80,13 +78,16 @@ export function ScheduledWorksPanel() {
       const data = await scheduledWorksApi.query(partidoValue, localidadValue, request.signal);
       if (request.isCurrent()) setResult(data);
     } catch (reason: unknown) {
-      if (request.isCurrent() && !quiet(reason)) setError(messageFor(reason));
+      if (request.isCurrent() && !quiet(reason)) {
+        setErrorScope('query');
+        setError(messageFor(reason));
+      }
     } finally {
       if (request.isCurrent()) setLoading(false);
     }
   }
 
-  function applyZone(zone: ResolveZone): void {
+  function applyZone(zone: ResolveZone, origin: 'zone' | 'address' = 'zone'): void {
     setPartido(zone.partido);
     setLocalidad(zone.localidad ?? '');
     setCandidates(null);
@@ -111,6 +112,7 @@ export function ScheduledWorksPanel() {
       }
       return { ...previous, areas };
     });
+    setMessageScope(origin);
     setSearchMessage(zone.granularity === 'partido'
       ? `Búsqueda limitada al partido ${zone.partido}: no se pudo determinar una localidad confiable.`
       : `Zona resuelta: ${zone.partido} · ${zone.localidad ?? ''}.`);
@@ -121,6 +123,7 @@ export function ScheduledWorksPanel() {
     event.preventDefault();
     const value = address.trim();
     if (!value) {
+      setMessageScope('address');
       setSearchMessage('Ingresá una dirección con calle y altura.');
       return;
     }
@@ -136,13 +139,17 @@ export function ScheduledWorksPanel() {
       }, request.signal);
       if (!request.isCurrent()) return;
       if (data.status === 'resolved') {
-        applyZone(data.zone);
+        applyZone(data.zone, 'address');
       } else {
         setCandidates(data.candidates);
+        setMessageScope('address');
         setSearchMessage('La dirección es ambigua. Elegí una de las zonas encontradas.');
       }
     } catch (reason: unknown) {
-      if (request.isCurrent() && !quiet(reason)) setError(messageFor(reason));
+      if (request.isCurrent() && !quiet(reason)) {
+        setErrorScope('address');
+        setError(messageFor(reason));
+      }
     } finally {
       if (request.isCurrent()) setResolving(false);
     }
@@ -189,21 +196,34 @@ export function ScheduledWorksPanel() {
 
   return <div className="space-y-6">
     <Card>
-      <CardHeader><CardTitle>Consultar trabajos</CardTitle></CardHeader>
-      <CardContent className="space-y-5">
+      <CardHeader>
+        <CardTitle>Consultar trabajos</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Elegí un partido y, si querés, una localidad para consultar los trabajos de
+          mantenimiento informados por el ENRE.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
         {areasError && <Alert>{areasError}</Alert>}
-        {areasLoading && <p role="status">Cargando zonas disponibles…</p>}
+        {areasLoading && <p role="status" className="text-sm text-muted-foreground">
+          Cargando zonas disponibles…
+        </p>}
+
         <div className="space-y-2">
           <Label htmlFor="scheduled-filter">Buscar zona</Label>
-          <input id="scheduled-filter" className="min-h-10 w-full rounded-md border border-input bg-background px-3"
-            autoComplete="off" value={areaFilter} placeholder="Partido o localidad"
+          <Input id="scheduled-filter" className="bg-card" autoComplete="off" value={areaFilter}
+            placeholder="Partido o localidad" aria-describedby="scheduled-filter-help"
             onChange={event => setAreaFilter(event.target.value)} />
+          <p id="scheduled-filter-help" className="text-sm text-muted-foreground">
+            Filtrá la lista de partidos y localidades.
+          </p>
         </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="scheduled-partido">Partido</Label>
-            <select id="scheduled-partido" className="min-h-10 w-full rounded-md border border-input bg-background px-3"
-              value={partido} onChange={event => {
+            <select id="scheduled-partido" className={SELECT_CLASS} value={partido}
+              onChange={event => {
                 setPartido(event.target.value);
                 setLocalidad('');
                 setResult(null);
@@ -216,8 +236,8 @@ export function ScheduledWorksPanel() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="scheduled-localidad">Localidad (opcional)</Label>
-            <select id="scheduled-localidad" className="min-h-10 w-full rounded-md border border-input bg-background px-3"
-              value={localidad} disabled={localidadOptions.length === 0}
+            <select id="scheduled-localidad" className={SELECT_CLASS} value={localidad}
+              disabled={localidadOptions.length === 0}
               onChange={event => { setLocalidad(event.target.value); setResult(null); }}>
               <option value="">Todas las localidades del partido</option>
               {localidadOptions.map(option => option.localidad === null || option.localidad === undefined ? null :
@@ -225,108 +245,90 @@ export function ScheduledWorksPanel() {
             </select>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" disabled={!partido || loading} onClick={() => {
-            setSearchMessage(''); setCandidates(null); void load(partido, localidad);
-          }}>Consultar trabajos</Button>
-          <Button type="button" variant="outline" disabled={geoBusy} onClick={useDeviceLocation}>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Button type="button" className="min-h-11 w-full sm:w-auto" disabled={!partido || loading}
+            onClick={() => {
+              setSearchMessage(''); setCandidates(null); setMessageScope('zone');
+              void load(partido, localidad);
+            }}>Consultar trabajos</Button>
+          <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto"
+            disabled={geoBusy} onClick={useDeviceLocation}>
             {geoBusy ? 'Obteniendo ubicación…' : 'Usar mi ubicación'}
           </Button>
         </div>
 
-        <form aria-label="Buscar por dirección" className="space-y-2 border-t border-border pt-4"
+        {loading && <div role="status" className="rounded-lg border border-border bg-muted px-4 py-3">
+          <p className="text-sm font-medium">Consultando trabajos…</p>
+          <p className="text-xs text-muted-foreground">Buscando los últimos datos disponibles para la zona elegida.</p>
+        </div>}
+        {geoMessage && <Alert>{geoMessage}</Alert>}
+        {searchMessage && messageScope === 'zone' && <p role="status"
+          className="rounded-lg border border-border bg-accent px-4 py-3 text-sm text-accent-foreground">
+          {searchMessage}
+        </p>}
+        {error && errorScope === 'query' && <Alert>{error}</Alert>}
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>Buscar por dirección</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Resolvé la zona a partir de una calle y altura.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <form aria-label="Buscar por dirección" className="space-y-3"
           onSubmit={event => { void searchAddress(event); }}>
-          <Label htmlFor="scheduled-address">Dirección (calle y altura)</Label>
-          <div className="flex flex-wrap gap-3">
-            <input id="scheduled-address" className="min-h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3"
-              autoComplete="off" value={address} onChange={event => setAddress(event.target.value)}
-              placeholder="Ej.: Calchaquí 100" />
-            <Button type="submit" variant="secondary" disabled={resolving}>
-              {resolving ? 'Buscando…' : 'Buscar dirección'}
-            </Button>
+          <div className="space-y-2">
+            <Label htmlFor="scheduled-address">Dirección (calle y altura)</Label>
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <Input id="scheduled-address" className="min-w-0 bg-card" autoComplete="off" value={address}
+                placeholder="Ej.: Calchaquí 100" aria-describedby="scheduled-address-privacy"
+                onChange={event => setAddress(event.target.value)} />
+              <Button type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto" disabled={resolving}>
+                {resolving ? 'Buscando…' : 'Buscar dirección'}
+              </Button>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p id="scheduled-address-privacy" className="text-sm text-muted-foreground">
             La dirección y tu ubicación se envían solo al backend de Energía Sur para resolver la zona.
             No se guardan en el navegador ni se envían al ENRE.
           </p>
         </form>
 
-        {searchMessage && <p role="status">{searchMessage}</p>}
-        {geoMessage && <Alert>{geoMessage}</Alert>}
-        {candidates && <ul aria-label="Zonas candidatas" className="space-y-2">
-          {candidates.map(candidate => <li key={`${candidate.partido}-${candidate.localidad ?? ''}`}>
-            <Button type="button" variant="outline" onClick={() => applyZone(candidate)}>
-              {candidate.partido}{candidate.localidad ? ` · ${candidate.localidad}` : ''} — {coverageLabel(candidate.coverage)}
-            </Button>
-          </li>)}
-        </ul>}
-        {error && <Alert>{error}</Alert>}
-        {loading && <p role="status">Consultando trabajos…</p>}
+        {error && errorScope === 'address' && <Alert>{error}</Alert>}
+        {searchMessage && messageScope === 'address' && <p role="status"
+          className="rounded-lg border border-border bg-accent px-4 py-3 text-sm text-accent-foreground">
+          {searchMessage}
+        </p>}
+
+        {candidates && <div className="space-y-3 border-t border-border pt-4">
+          <p id="scheduled-candidates" className="text-sm font-medium">Zonas candidatas</p>
+          <ul aria-labelledby="scheduled-candidates" className="grid gap-2 sm:grid-cols-2">
+            {candidates.map(candidate => <li key={`${candidate.partido}-${candidate.localidad ?? ''}`}
+              className="min-w-0">
+              <Button type="button" variant="outline"
+                className="h-auto min-h-11 w-full justify-start py-2 text-left whitespace-normal"
+                onClick={() => applyZone(candidate, 'address')}>
+                {candidate.partido}{candidate.localidad ? ` · ${candidate.localidad}` : ''} — {coverageLabel(candidate.coverage)}
+              </Button>
+            </li>)}
+          </ul>
+        </div>}
       </CardContent>
     </Card>
 
-    {result && <Card aria-live="polite">
-      <CardHeader>
-        <CardTitle>{stateHeading(result.state)}</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {result.granularity === 'localidad' ? 'Resultado por localidad' : 'Resultado por partido'}
-          {' · '}{coverageLabel(result.coverage.status)}
-          {' · '}{freshnessLabel(result.freshness)}
-          {result.source_status === 'degraded' ? ' · Sincronización con errores' : ''}
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p>{stateDetail(result.state)}</p>
-        {result.source_status === 'degraded' && <Alert>
-          La última sincronización de trabajos no fue exitosa. Se muestran los últimos datos válidos.
-        </Alert>}
-        {result.freshness !== 'fresh' && <Alert>
-          {freshnessLabel(result.freshness)}: {stateDetail(result.freshness === 'stale' ? 'stale' : 'unavailable')}
-        </Alert>}
-        {result.limitations.includes('dates_not_published') && <Alert>
-          {limitationMessage('dates_not_published')}
-        </Alert>}
-        {result.limitations.includes('announced_works_not_displayed') && <Alert>
-          {limitationMessage('announced_works_not_displayed')}
-        </Alert>}
-        {result.limitations.includes('proximity_not_available') && <p className="text-sm text-muted-foreground">
-          {limitationMessage('proximity_not_available')}
-        </p>}
+    {!loading && !result && !error && !candidates && <div
+      className="rounded-xl border border-dashed border-border bg-card px-6 py-8 text-center shadow-sm">
+      <p className="font-medium">Elegí una zona para consultar</p>
+      <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+        Usá el partido y la localidad, buscá una dirección o usá tu ubicación. Los resultados muestran
+        los trabajos informados por el ENRE para la zona, no el estado de un domicilio en particular.
+      </p>
+    </div>}
 
-        <dl className="grid gap-2 text-sm sm:grid-cols-2">
-          <div><dt className="font-medium">Fuente</dt>
-            <dd><a className="underline" href={result.source_url} target="_blank" rel="noreferrer">{result.source}</a></dd></div>
-          <div><dt className="font-medium">Última actualización de la fuente</dt>
-            <dd>{formatInstant(result.source_updated_at) || 'No informada'}</dd></div>
-          <div><dt className="font-medium">Consultado</dt>
-            <dd>{formatInstant(result.fetched_at) || 'No disponible'}</dd></div>
-          <div><dt className="font-medium">Hora informada por la fuente</dt>
-            <dd>{formatReportedTime(result.source_reported_time) || 'No informada'}</dd></div>
-        </dl>
-
-        {(result.works?.length ?? 0) > 0 && <>
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>Zona</TableHead><TableHead>Alimentador</TableHead>
-              <TableHead>Usuarios afectados</TableHead>
-              <TableHead>Normalización estimada</TableHead><TableHead>Motivo</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {result.works?.map((work, index) => <TableRow key={`${work.partido}-${work.localidad ?? ''}-${index}`}>
-                <TableCell>{zoneLabel(work)}</TableCell>
-                <TableCell>{work.subestacion_alimentador ?? 'Sin dato'}</TableCell>
-                <TableCell>{optionalNumber(work.affected_users)}</TableCell>
-                <TableCell>{restorationText(work)}</TableCell>
-                <TableCell>{reasonText(work)}</TableCell>
-              </TableRow>)}
-            </TableBody>
-          </Table>
-          <p className="text-sm text-muted-foreground">
-            La normalización estimada es el texto publicado por el ENRE. No es una fecha de fin
-            programada y puede no estar informada.
-          </p>
-        </>}
-      </CardContent>
-    </Card>}
+    {result && <ScheduledWorksResultCard result={result} />}
   </div>;
 }
