@@ -1183,3 +1183,31 @@ The independent accumulated review found a PDF-action regression; its fix was
 independently rechecked and affected gates rerun. Seeded CU09 and
 QA-INT-CU04-08 remain pending and are not completion criteria for this
 presentation-only archive, nor are they reported as passing.
+
+## U36 - Public account registration authorization
+
+Recorded from the user's 2026-11-16 BUILD instruction for the transversal
+`add-public-account-registration` change. The user authorizes visitors to create
+their own accounts through the application while retaining the existing CLI
+provisioning path. Registration creates only a `user` account; role assignment
+is backend-controlled, and administrator promotion remains restricted to the
+controlled CLI. A successful registration confirms account creation and returns
+to login (preferably with the username retained); it does not establish a session.
+
+**Supersession:** this decision replaces only the earlier prohibition on public
+registration in the accepted CU09 auth design/contract, which stated there was no
+public registration endpoint. The earlier controlled-provisioning-only path is
+no longer exclusive. CLI provisioning remains supported. U09 remains unchanged:
+registration and login require an explicitly allowed Origin without a
+pre-authentication CSRF token; authenticated unsafe operations retain trusted
+Origin plus session-bound CSRF. Opaque HttpOnly cookie sessions, roles,
+authorization, CU04-CU09 account isolation, and public CU01-CU03 access remain
+unchanged.
+
+The user also authorizes simple Pydantic username/password limits, duplicate
+conflict handling backed by PostgreSQL uniqueness, scrypt reuse, a bounded
+process-local registration rate limit with its multi-instance limitation
+documented, and the frontend login/register switch. No migration or dependency
+is authorized or expected. This is a transversal authentication capability,
+not an eleventh use case. It does not authorize Sync, Archive, commit, push or
+deployment.

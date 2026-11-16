@@ -227,6 +227,27 @@ test('public CU01 resolve POSTs skip CSRF without weakening private writes', asy
   await assert.rejects(http.request('/domiciles', signal(), { method: 'POST' }), error => error instanceof DiaryError && error.status === 403);
 });
 
+test('public registration omits CSRF while authenticated unsafe requests still require it', async () => {
+  const store = createSessionStore();
+  let dispatched = 0;
+  const adapter: AxiosAdapter = async config => {
+    dispatched++;
+    assert.equal(config.withCredentials, true);
+    assert.equal(config.headers.get('Origin'), undefined);
+    assert.equal(config.headers.get('X-CSRF-Token') ?? undefined,
+      config.url === '/api/register' ? undefined : 'current-csrf');
+    return { data: { id: 'registered', username: 'synthetic', role: 'user' }, status: 201, statusText: 'Created', headers: new AxiosHeaders({ 'content-type': 'application/json' }), config };
+  };
+  const http = createHttpClient({ store, adapter });
+  await new DiaryClient(http).register('synthetic', 'synthetic password', signal());
+  assert.equal(dispatched, 1);
+  await assert.rejects(http.request('/domiciles', signal(), { method: 'POST' }), error => error instanceof DiaryError && error.status === 403);
+  assert.equal(dispatched, 1);
+  store.getState().setSession(session);
+  await http.request('/domiciles', signal(), { method: 'POST' });
+  assert.equal(dispatched, 2);
+});
+
 test('429 exposes Retry-After without replaying the request', async () => {
   let calls = 0;
   const adapter: AxiosAdapter = async config => {

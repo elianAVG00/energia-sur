@@ -12,7 +12,8 @@ function setting(name: string): string {
 async function login(page: Page, username: string) {
   await page.goto('/');
   await expect(page.locator('[data-chat-mount]')).toHaveCount(1);
-  await expect(page.locator('[data-chat-mount]').getByRole('button')).toBeDisabled();
+  // Public chat is available to visitors; this diary flow must not send a chat request.
+  await expect(page.locator('[data-chat-mount]').getByRole('button', { name: 'Abrir asistente' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Ingresar', exact: true })).toBeEnabled();
   await page.getByLabel('Usuario', { exact: true }).fill(username);
   await page.getByLabel('Contraseña', { exact: true }).fill(setting('QA_PASSWORD'));
@@ -170,7 +171,7 @@ test('real private diary: registration, overlaps, PDF, correction, closure and t
   await expect(page.getByRole('button', { name: 'Ingresar', exact: true })).toBeEnabled();
   await expect(page.locator('tbody tr')).toHaveCount(0);
   await expect(page.locator('[data-chat-mount]')).toHaveCount(1);
-  await expect(page.locator('[data-chat-mount]').getByRole('button')).toBeDisabled();
+  await expect(page.locator('[data-chat-mount]').getByRole('button', { name: 'Abrir asistente' })).toBeEnabled();
   expect(chatRequests).toEqual([]);
   expect((await page.request.get('/api/session')).status()).toBe(401);
 });

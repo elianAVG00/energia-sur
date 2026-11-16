@@ -22,7 +22,7 @@ interface Context {
   combined: AbortSignal;
 }
 
-const PUBLIC_POSTS = new Set(['/api/outages/resolve', '/api/outages/resolve-location']);
+const PUBLIC_POSTS = new Set(['/api/outages/resolve', '/api/outages/resolve-location', '/api/register']);
 
 function isPublicPost(url: string | undefined, method: string | undefined): boolean {
   return method === 'post' && url !== undefined && PUBLIC_POSTS.has(url);

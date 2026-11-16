@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,8 +10,9 @@ import { Input } from '../../components/ui/input.tsx';
 import { Textarea } from '../../components/ui/textarea.tsx';
 import { Label } from '../../components/ui/label.tsx';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.tsx';
-import { loginSchema, domicileSchema, cutSchema, closedCutSchema, closeSchema, periodSchema } from './schemas.ts';
+import { loginSchema, registrationSchema, domicileSchema, cutSchema, closedCutSchema, closeSchema, periodSchema } from './schemas.ts';
 import { duplicateAddress } from '../domiciles/schemas.ts';
+import { DiaryError, errorMessage } from '../../diaryApi.ts';
 
 function Field({ id, label, error, children }: { id: string; label: string; error: string | undefined; children: ReactNode }) {
   return <div className="space-y-2"><Label htmlFor={id}>{label}</Label>{children}{error && <p id={`${id}-error`} role="alert" className="text-sm text-destructive">{error}</p>}</div>;
@@ -21,21 +22,100 @@ function feedback(id: string, error: string | undefined) {
 }
 const actions = 'flex flex-wrap gap-3';
 
-export function LoginForm({ pending, login }: { pending: boolean; login: (values: z.output<typeof loginSchema>) => Promise<void> }) {
+export function RegisterForm({ pending, username, onUsernameChange, registerAccount, onSuccess }: {
+  pending: boolean;
+  username: string;
+  onUsernameChange: (username: string) => void;
+  registerAccount: (values: z.output<typeof registrationSchema>) => Promise<void>;
+  onSuccess: (username: string) => void;
+}) {
   const id = useId();
-  const { register, handleSubmit, resetField, formState: { errors, isSubmitting } } = useForm<z.input<typeof loginSchema>, unknown, z.output<typeof loginSchema>>({ resolver: zodResolver(loginSchema), defaultValues: { username: '', password: '' }, shouldUnregister: true });
-  useEffect(() => () => resetField('password', { defaultValue: '' }), [resetField]);
+  const [serverError, setServerError] = useState('');
+  const { register, handleSubmit, resetField, formState: { errors, isSubmitting } } = useForm<z.input<typeof registrationSchema>, unknown, z.output<typeof registrationSchema>>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: { username, password: '', confirmPassword: '' },
+    shouldUnregister: true,
+  });
+  useEffect(() => () => {
+    resetField('password', { defaultValue: '' });
+    resetField('confirmPassword', { defaultValue: '' });
+  }, [resetField]);
   const disabled = pending || isSubmitting;
-  return <Card><CardHeader><CardTitle>Ingresar</CardTitle></CardHeader><CardContent>
-    <form noValidate aria-label="Ingresar" className="max-w-lg space-y-4" onSubmit={handleSubmit(async values => {
-      try { await login(values); } finally { resetField('password', { defaultValue: '' }); }
-    }, () => resetField('password', { defaultValue: '' }))}>
-      <Field id={`${id}-username`} label="Usuario" error={errors.username?.message}><Input {...register('username')} {...feedback(`${id}-username`, errors.username?.message)} required autoComplete="username" maxLength={80} disabled={disabled} /></Field>
-      <Field id={`${id}-password`} label="Contraseña" error={errors.password?.message}><Input {...register('password')} {...feedback(`${id}-password`, errors.password?.message)} type="password" required autoComplete="current-password" maxLength={1024} disabled={disabled} /></Field>
-      <Button disabled={disabled}>Ingresar</Button>
-      <p className="text-sm text-muted-foreground">Usá una cuenta aprovisionada localmente. No hay registro público de cuentas.</p>
+  async function submit(values: z.output<typeof registrationSchema>) {
+    setServerError('');
+    try {
+      await registerAccount(values);
+      onUsernameChange(values.username);
+      onSuccess(values.username);
+    } catch (reason: unknown) {
+      if (reason instanceof DiaryError && reason.status === 409) {
+        setServerError('Ese usuario ya está registrado. Elegí otro o ingresá con tu cuenta.');
+      } else if (reason instanceof DiaryError && reason.status === 429) {
+        setServerError(reason.retryAfter
+          ? `Se alcanzó el límite de registros. Esperá ${reason.retryAfter} segundos e intentá nuevamente.`
+          : 'Se alcanzó el límite de registros. Esperá un momento e intentá nuevamente.');
+      } else {
+        setServerError(errorMessage(reason));
+      }
+    } finally {
+      resetField('password', { defaultValue: '' });
+      resetField('confirmPassword', { defaultValue: '' });
+    }
+  }
+  return <Card><CardHeader><CardTitle>Crear cuenta</CardTitle></CardHeader><CardContent>
+    <form noValidate aria-label="Crear cuenta" className="max-w-lg space-y-4" onSubmit={handleSubmit(submit, () => {
+      resetField('password', { defaultValue: '' });
+      resetField('confirmPassword', { defaultValue: '' });
+    })}>
+      <Field id={`${id}-username`} label="Usuario" error={errors.username?.message}>
+        <Input {...register('username', { onChange: event => onUsernameChange(event.target.value) })} {...feedback(`${id}-username`, errors.username?.message)} required autoComplete="username" maxLength={32} disabled={disabled} />
+      </Field>
+      <Field id={`${id}-password`} label="Contraseña" error={errors.password?.message}>
+        <Input {...register('password')} {...feedback(`${id}-password`, errors.password?.message)} type="password" required autoComplete="new-password" maxLength={128} disabled={disabled} />
+      </Field>
+      <Field id={`${id}-confirmation`} label="Confirmar contraseña" error={errors.confirmPassword?.message}>
+        <Input {...register('confirmPassword')} {...feedback(`${id}-confirmation`, errors.confirmPassword?.message)} type="password" required autoComplete="new-password" maxLength={128} disabled={disabled} />
+      </Field>
+      {serverError && <p role="alert" className="text-sm text-destructive">{serverError}</p>}
+      <Button disabled={disabled}>Crear cuenta</Button>
     </form>
   </CardContent></Card>;
+}
+
+export function LoginForm({ pending, login, registerAccount, registrationComplete }: {
+  pending: boolean;
+  login: (values: z.output<typeof loginSchema>) => Promise<void>;
+  registerAccount: (values: z.output<typeof registrationSchema>) => Promise<void>;
+  registrationComplete?: string;
+}) {
+  const id = useId();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [username, setUsername] = useState('');
+  const { register, handleSubmit, reset, resetField, formState: { errors, isSubmitting } } = useForm<z.input<typeof loginSchema>, unknown, z.output<typeof loginSchema>>({ resolver: zodResolver(loginSchema), defaultValues: { username, password: '' }, shouldUnregister: true });
+  useEffect(() => () => resetField('password', { defaultValue: '' }), [resetField]);
+  const disabled = pending || isSubmitting;
+  return <section aria-label="Acceso a la cuenta" className="space-y-4">
+    <div className={actions} role="group" aria-label="Elegir acceso">
+      <Button type="button" aria-label="Ingresar (cambiar formulario)" variant={mode === 'login' ? 'default' : 'outline'} aria-pressed={mode === 'login'} onClick={() => setMode('login')}>Ingresar</Button>
+      <Button type="button" aria-label="Crear cuenta (cambiar formulario)" variant={mode === 'register' ? 'default' : 'outline'} aria-pressed={mode === 'register'} onClick={() => setMode('register')}>Crear cuenta</Button>
+    </div>
+    {registrationComplete && mode === 'login' && <p role="status">La cuenta se creó correctamente. Ingresá con tu usuario y contraseña.</p>}
+    {mode === 'register' ? <RegisterForm pending={pending} username={username} onUsernameChange={setUsername}
+      registerAccount={registerAccount} onSuccess={name => {
+        setUsername(name);
+        reset({ username: name, password: '' });
+        setMode('login');
+      }} /> :
+      <Card><CardHeader><CardTitle>Ingresar</CardTitle></CardHeader><CardContent>
+        <form noValidate aria-label="Ingresar" className="max-w-lg space-y-4" onSubmit={handleSubmit(async values => {
+          try { await login(values); } finally { resetField('password', { defaultValue: '' }); }
+        }, () => resetField('password', { defaultValue: '' }))}>
+          <Field id={`${id}-username`} label="Usuario" error={errors.username?.message}><Input {...register('username', { onChange: event => setUsername(event.target.value) })} value={username} {...feedback(`${id}-username`, errors.username?.message)} required autoComplete="username" maxLength={80} disabled={disabled} /></Field>
+          <Field id={`${id}-password`} label="Contraseña" error={errors.password?.message}><Input {...register('password')} {...feedback(`${id}-password`, errors.password?.message)} type="password" required autoComplete="current-password" maxLength={1024} disabled={disabled} /></Field>
+          <Button disabled={disabled}>Ingresar</Button>
+        </form>
+      </CardContent></Card>}
+  </section>;
 }
 
 export function DomicileForm({ busy, save, addresses }: { busy: boolean; save: (address: string) => Promise<boolean>; addresses: { id: string; display_address: string }[] }) {

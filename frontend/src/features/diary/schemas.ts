@@ -8,6 +8,19 @@ export const loginSchema = z.object({
   username: z.string().min(1, 'Ingresá el usuario.').max(80, 'Usá como máximo 80 caracteres.'),
   password: z.string().min(1, 'Ingresá la contraseña.').max(1024, 'Usá como máximo 1024 caracteres.'),
 });
+export const registrationSchema = z.object({
+  username: z.string()
+    .min(3, 'El usuario debe tener entre 3 y 32 caracteres.')
+    .max(32, 'El usuario debe tener entre 3 y 32 caracteres.')
+    .regex(/^[A-Za-z0-9_.-]+$/, 'Usá solo letras sin tilde, números, punto, guion o guion bajo.'),
+  password: z.string()
+    .refine(value => [...value].length >= 12, 'La contraseña debe tener al menos 12 caracteres.')
+    .refine(value => [...value].length <= 128, 'La contraseña puede tener hasta 128 caracteres.'),
+  confirmPassword: z.string(),
+}).refine(values => values.password === values.confirmPassword, {
+  path: ['confirmPassword'],
+  message: 'Las contraseñas no coinciden.',
+});
 export const domicileSchema = z.object({ display_address: z.string().trim().min(1, 'Ingresá el domicilio.').max(300, 'Usá como máximo 300 caracteres.') });
 export const cutSchema = z.object({
   start_at: minute,

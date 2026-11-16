@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DiaryClient, DiaryError, isCut, isSession, isSummary } from '../src/diaryApi.ts';
+import { DiaryClient, DiaryError, isCut, isRegisteredAccount, isSession, isSummary } from '../src/diaryApi.ts';
 import { RequestScope, buenosAiresMinute, defaultPeriod, minuteInput } from '../src/diaryState.ts';
 import { mockHttp } from './httpSupport.ts';
 
@@ -17,6 +17,27 @@ test('validates private DTOs without unchecked casts', () => {
   assert.equal(isSession({ account: { id: 'a', username: 'name', role: 'root' }, csrf_token: 'token' }), false);
   assert.equal(isSession({ account: { id: 'a' }, csrf_token: 'token' }), false);
   assert.equal(isSummary({}), false);
+});
+
+test('registration validates a credential-free ordinary-account response and sends only registration fields', async () => {
+  const account = { id: 'registered', username: 'new.user', role: 'user' };
+  assert.equal(isRegisteredAccount(account), true);
+  assert.equal(isRegisteredAccount({ ...account, role: 'admin' }), false);
+  assert.equal(isRegisteredAccount({ ...account, password: 'secret' }), false);
+  assert.equal(isRegisteredAccount({ ...account, csrf_token: 'token' }), false);
+  let requestData: unknown;
+  const { http } = mockHttp(account, 201, 'application/json', config => {
+    assert.equal(config.url, '/api/register');
+    assert.equal(config.method, 'post');
+    assert.equal(config.withCredentials, true);
+    assert.equal(config.headers.get('X-CSRF-Token'), undefined);
+    requestData = JSON.parse(String(config.data)) as unknown;
+  });
+  const result = await new DiaryClient(http).register('new.user', 'synthetic password', new AbortController().signal);
+  assert.deepEqual(result, account);
+  assert.deepEqual(requestData, { username: 'new.user', password: 'synthetic password' });
+  await assert.rejects(new DiaryClient(mockHttp({ ...account, csrf_token: 'token' }, 201).http)
+    .register('new.user', 'synthetic password', new AbortController().signal), DiaryError);
 });
 
 test('calendar inputs use Buenos Aires rather than host time', () => {

@@ -7,7 +7,9 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import diary, management
@@ -28,6 +30,8 @@ from app.schemas import (
     MeterCorrection,
     MeterInput,
     MeterOut,
+    RegistrationInput,
+    RegistrationOut,
     SessionOut,
     SummaryOut,
     parse_datetime,
@@ -36,9 +40,11 @@ from app.security import (
     COOKIE_NAME,
     DUMMY_HASH,
     SESSION_SECONDS,
+    hash_password,
     matches_csrf,
     new_token,
     origin,
+    registration_limiter,
     token_hash,
     verify_password,
 )
@@ -206,6 +212,43 @@ def login(payload: Login, request: Request, response: Response, db: DB) -> Sessi
         samesite="lax", secure=secure, path="/",
     )
     return session_out(Actor(account, session))
+
+
+@router.post("/register", status_code=201, response_model=RegistrationOut)
+def register(
+    payload: RegistrationInput, request: Request, db: DB,
+) -> RegistrationOut | JSONResponse:
+    """Create an ordinary account without establishing an authenticated session."""
+    origin(request)
+    peer = request.client.host if request.client is not None else "unknown"
+    retry_after = registration_limiter.retry_after(peer)
+    if retry_after is not None:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Demasiados intentos de registro. Intentá nuevamente."},
+            headers={"Retry-After": str(retry_after), "Cache-Control": "no-store"},
+        )
+    if db.scalar(select(Account.id).where(Account.username == payload.username)) is not None:
+        raise HTTPException(409, "Ya existe una cuenta con ese nombre de usuario.")
+
+    account = Account(
+        username=payload.username,
+        password_hash=hash_password(payload.password),
+        role="user",
+    )
+    db.add(account)
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        diagnostic = getattr(error.orig, "diag", None)
+        constraint_name = getattr(diagnostic, "constraint_name", None)
+        if constraint_name == "es_accounts_username_key":
+            raise HTTPException(
+                409, "Ya existe una cuenta con ese nombre de usuario.",
+            ) from None
+        raise
+    return RegistrationOut(id=account.id, username=account.username, role="user")
 
 
 @router.get("/session", response_model=SessionOut)

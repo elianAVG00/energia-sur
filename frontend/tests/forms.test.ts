@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { loginSchema, domicileSchema, cutSchema, closedCutSchema, closeSchema, periodSchema } from '../src/features/diary/schemas.ts';
+import { loginSchema, registrationSchema, domicileSchema, cutSchema, closedCutSchema, closeSchema, periodSchema } from '../src/features/diary/schemas.ts';
 import { duplicateAddress, meterSchema } from '../src/features/domiciles/schemas.ts';
 
 const draft = { start_at: '2026-11-01T10:00', end_at: '', observations: '', complaint_number: '' };
@@ -26,6 +26,21 @@ test('login requires transient credentials and preserves exact password text', (
   assert.equal(loginSchema.safeParse({ username: 'u'.repeat(81), password: 'synthetic' }).success, false);
   assert.equal(loginSchema.safeParse({ username: 'synthetic', password: 'p'.repeat(1025) }).success, false);
   assert.equal(loginSchema.parse({ username: 'synthetic', password: ' synthetic ' }).password, ' synthetic ');
+});
+
+test('registration validates backend input limits and matching confirmation', () => {
+  const valid = { username: 'new.user_1', password: 'synthetic password', confirmPassword: 'synthetic password' };
+  assert.deepEqual(registrationSchema.parse(valid), valid);
+  for (const username of ['ab', 'a'.repeat(33), 'not valid', 'ábc', 'name/']) {
+    assert.equal(registrationSchema.safeParse({ ...valid, username }).success, false);
+  }
+  assert.equal(registrationSchema.safeParse({ ...valid, username: 'a'.repeat(32) }).success, true);
+  assert.equal(registrationSchema.safeParse({ ...valid, password: 'short' }).success, false);
+  assert.equal(registrationSchema.safeParse({ ...valid, password: 'p'.repeat(129), confirmPassword: 'p'.repeat(129) }).success, false);
+  assert.equal(registrationSchema.safeParse({ ...valid, password: '🔌'.repeat(12), confirmPassword: '🔌'.repeat(12) }).success, true);
+  const mismatch = registrationSchema.safeParse({ ...valid, confirmPassword: 'different password' });
+  assert.equal(mismatch.success, false);
+  if (!mismatch.success) assert.deepEqual(mismatch.error.issues[0]?.path, ['confirmPassword']);
 });
 
 test('domicile schema trims the accepted display address and enforces its limit', () => {

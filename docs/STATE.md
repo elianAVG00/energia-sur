@@ -1,6 +1,15 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-16 (territorial catalog implementation active; CU01/CU02 Playwright passed; final review/isolated API checks pending).
+Updated: 2026-11-16 (registration backend diagnostic and synthetic browser/PDF/restart acceptance completed; 8 unrelated backend failures remain).
+
+## Public account registration - IMPLEMENTATION ACTIVE
+- [Active OpenSpec change](../openspec/changes/add-public-account-registration/proposal.md), [engineering record](ai-engineering/add-public-account-registration.md), U36 in [decisions](use-cases/decisions.md#u36---public-account-registration-authorization).
+- Focused PostgreSQL/ASGI registration tests PASS (6/6); synthetic Chromium integration PASS (7/7) for registration/login/Mi cuenta, domicile creation/query, cross-account isolation, no-CSRF rejection, logout, plus legacy CLI account compatibility.
+- Actual downloaded CU09 PDFs PASS content checks; synthetic registered-account/CLI-account domicile and diary records persisted after backend restart. Original DB container ID stayed unchanged; synthetic DBs/artifacts are retained.
+- Ruff, mypy, frontend tests (120/120), TypeScript, Oxlint, production build, OpenSpec strict, PowerShell runner parse, and `git diff --check` PASS. Build emitted existing bundler warnings.
+- Backend confirmation: 491 total, 476 PASS, 8 FAIL, 7 SKIP. The initial 14-failure diagnostic was reduced by fixing CU06/OCR test-container configuration; the remaining 8 are unrelated active CU01/CU02 catalog/test mismatches and are detailed in the engineering record.
+- No schema migration/dependency changes. No Archive, sync, or deploy. The user has explicitly authorized committing and pushing the complete current worktree; deployment remains unauthorized.
+- The owner classified the earlier locally emitted environment value as synthetic/non-sensitive. It was not re-read or reproduced; no credential rotation is indicated by that classification.
 
 ## Shared CU01/CU02 territorial catalog - IMPLEMENTATION ACTIVE
 - [Active OpenSpec change](../openspec/changes/unify-territorial-catalog/proposal.md), [engineering record](ai-engineering/unify-territorial-catalog.md).
@@ -27,16 +36,18 @@ Updated: 2026-11-16 (territorial catalog implementation active; CU01/CU02 Playwr
 - CU01-CU10 are implemented and archived; CU02 definitive scope U22; CU03 SSE assistant; CU10 admin supervision.
 
 ## Blockers and unresolved decisions
+- Public registration’s requested integration scenarios and final QA/static security review pass. Archive/closure remains BLOCKED by the failed broad backend gate (8 unrelated CU01/CU02 tests); broad Playwright for other CUs also lacks CU07/CU08 state fixtures.
 - **QA-INT-CU04-08** deferred: real seeded CU04/CU06/CU07/CU08 Chromium specs not run.
 - Real CU10 administrator E2E (`cu10-real.spec.ts`) not run.
 - CU03 automatic 30-day retention deletion pending approval.
 - Edesur guide v1.0.0 delivered; time-sensitive data needs periodic revalidation.
 - CU05 OCR accuracy on real photos is not claimed.
-- Hosting unresolved; push and deployment need approval; one local commit ahead of `origin/main`.
+- Hosting unresolved; deployment needs separate approval. `main` currently matches `origin/main`; the current user has authorized this worktree's commit and push.
 - Deferred accessibility: M2 duplicate announcements, M3 shared table label, assistant overlay at 390 px, totals on stale/unavailable snapshots.
 
 ## Next actions
-1. Inspect staged files, create the single authorized local commit, then verify clean status and origin state.
-2. Run seeded CU09 and QA-INT-CU04-08 when an isolated prepared QA environment is available.
-3. Run the real CU10 administrator E2E when seeded QA is available.
-4. Await CU03 retention and hosting decisions; do not push or deploy.
+1. Assign the 8 unrelated CU01/CU02 test/catalog mismatches to their active change; do not alter those business rules in this registration change.
+2. Decide whether to update the stale CU01/CU02 assertions/mock target under their own accepted specs, then rerun the affected checks and broad backend suite.
+3. Provide CU07/CU08 synthetic state fixtures if a broad all-CU Playwright run is required.
+4. Keep Archive blocked until required broad regression gates are resolved or explicitly dispositioned under project policy.
+5. Run seeded QA-INT-CU04-08 / CU10 E2E only when an isolated prepared QA environment is available.

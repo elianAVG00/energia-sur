@@ -6,6 +6,8 @@ import { AppLayout } from './layouts/AppLayout.tsx';
 import { Alert } from './components/ui/alert.tsx';
 import { Button } from './components/ui/button.tsx';
 import { LoginForm } from './features/diary/forms.tsx';
+import type { z } from 'zod';
+import { registrationSchema } from './features/diary/schemas.ts';
 import { AccountWorkspace } from './features/account/AccountWorkspace.tsx';
 import { OutagesPanel } from './features/outages/OutagesPanel.tsx';
 import { ScheduledWorksPanel } from './features/scheduled-works/ScheduledWorksPanel.tsx';
@@ -39,6 +41,7 @@ export default function App() {
   const expired = useSessionStore(state => state.expired);
   const [pending, setPending] = useState(true);
   const [error, setError] = useState('');
+  const [registrationComplete, setRegistrationComplete] = useState('');
 
   useEffect(() => {
     if (view === 'admin' && !isAdmin) setView('account');
@@ -64,10 +67,27 @@ export default function App() {
     setPending(true); setError('');
     try {
       const result = await diaryApi.login(values.username, values.password, request.signal);
-      if (request.isCurrent()) sessionStore.getState().setSession(result, expectedGeneration);
+      if (request.isCurrent()) {
+        sessionStore.getState().setSession(result, expectedGeneration);
+        setRegistrationComplete('');
+      }
     } catch (reason: unknown) {
       if (request.isCurrent() && sessionStore.getState().generation === expectedGeneration) setError(errorMessage(reason));
     } finally { if (request.isCurrent()) setPending(false); }
+  }
+  async function registerAccount(values: z.output<typeof registrationSchema>) {
+    const request = scope.begin('session');
+    const expectedGeneration = sessionStore.getState().generation;
+    setPending(true);
+    setRegistrationComplete('');
+    try {
+      await diaryApi.register(values.username, values.password, request.signal);
+      if (request.isCurrent() && sessionStore.getState().generation === expectedGeneration) {
+        setRegistrationComplete(values.username);
+      }
+    } finally {
+      if (request.isCurrent()) setPending(false);
+    }
   }
   async function logout() {
     if (!session) return;
@@ -109,7 +129,8 @@ export default function App() {
       {session ? <>
         <p>Cuenta: {session.account.username}</p>
         <AccountWorkspace key={`${generation}:${session.account.id}`} session={session} generation={generation} />
-      </> : <LoginForm key={generation} pending={pending} login={login} />}
+      </> : <LoginForm key={generation} pending={pending} login={login}
+        registerAccount={registerAccount} registrationComplete={registrationComplete} />}
     </>}
     {pending && <p role="status">Comprobando sesión…</p>}
   </AppLayout>;

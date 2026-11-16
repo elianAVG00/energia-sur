@@ -5,6 +5,7 @@ export { DiaryError, errorMessage } from './lib/httpError.ts';
 
 export type Role = 'user' | 'admin';
 export interface Account { id: string; username: string; role?: Role }
+export interface RegisteredAccount { id: string; username: string; role: 'user' }
 export interface Session { account: Account; csrf_token: string }
 export interface Domicile { id: string; display_address: string }
 export interface Cut {
@@ -50,6 +51,11 @@ export function isSession(value: unknown): value is Session {
     (value.account.role === undefined || value.account.role === 'user' ||
       value.account.role === 'admin') &&
     identifier(value.csrf_token);
+}
+export function isRegisteredAccount(value: unknown): value is RegisteredAccount {
+  return record(value) && identifier(value.id) && identifier(value.username) && value.role === 'user' &&
+    Object.keys(value).length === 3 &&
+    Object.hasOwn(value, 'id') && Object.hasOwn(value, 'username') && Object.hasOwn(value, 'role');
 }
 export function isDomicile(value: unknown): value is Domicile {
   return record(value) && identifier(value.id) && identifier(value.display_address);
@@ -105,6 +111,12 @@ export class DiaryClient {
   login(username: string, password: string, signal: AbortSignal): Promise<Session> {
     // The browser supplies Origin. Never forge it or store credentials in browser storage.
     return this.json('/login', signal, isSession, 200, {
+      method: 'POST', data: { username, password },
+    });
+  }
+  register(username: string, password: string, signal: AbortSignal): Promise<RegisteredAccount> {
+    // The browser supplies Origin. Registration does not establish a session.
+    return this.json('/register', signal, isRegisteredAccount, 201, {
       method: 'POST', data: { username, password },
     });
   }

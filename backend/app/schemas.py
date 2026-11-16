@@ -19,10 +19,31 @@ class Login(Schema):
     password: str = Field(min_length=1, max_length=1024)
 
 
+class RegistrationInput(Schema):
+    username: str = Field(min_length=3, max_length=32)
+    password: str = Field(min_length=12, max_length=128)
+
+    @field_validator("username")
+    @classmethod
+    def valid_username(cls, value: str) -> str:
+        if any(
+            not (char.isascii() and (char.isalnum() or char in "_.-"))
+            for char in value
+        ):
+            raise ValueError("Username must use ASCII letters, digits, '.', '_' or '-'.")
+        return value
+
+
 class AccountOut(Schema):
     id: str
     username: str
     role: Literal["user", "admin"]
+
+
+class RegistrationOut(Schema):
+    id: str
+    username: str
+    role: Literal["user"]
 
 
 class SessionOut(Schema):

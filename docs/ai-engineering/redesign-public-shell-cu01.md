@@ -386,3 +386,12 @@ Archived on 2026-11-14 as `2026-11-14-redesign-public-shell-cu01`. The delta mer
 removed; the purpose and the other requirements were preserved, and strict validation
 passes 15/15 after the archive. Both stages were delivered in a single local commit
 (`feat(frontend): redesign shared layout and outages UI`). Nothing was pushed.
+
+## Publication note preserved from the root README (2026-11-16)
+
+The root README subsequently recorded that a later read-only remote check found
+the shell/CU01 commit already on `origin/main`, despite the earlier "nothing
+pushed" wording above. This note preserves that prior observation when removing
+implementation history from the root README. It is not a new remote verification,
+does not identify who pushed, and does not claim a push during this documentation
+refactor.
