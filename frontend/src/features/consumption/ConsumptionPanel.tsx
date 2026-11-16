@@ -12,6 +12,11 @@ import type { ConsumptionEstimate, ConsumptionEvolution } from './api.ts';
 import { displayKwh } from './format.ts';
 
 const ORIENTATIVE = 'Estimación orientativa, no facturada.';
+const BASE_TIME = new Intl.DateTimeFormat('es-AR', {
+  timeZone: 'America/Argentina/Buenos_Aires',
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
 
 function scale(values: (string | null)[]): number {
   let max = 0;
@@ -25,17 +30,19 @@ function scale(values: (string | null)[]): number {
 
 function Bars({ labels, values, unit }: { labels: string[]; values: (string | null)[]; unit: string }) {
   const maximum = scale(values);
-  return <ul aria-label={`Gráfico de ${unit}`} className="space-y-1">
+  return <ul aria-label={`Gráfico de ${unit}`} className="space-y-2">
     {labels.map((label, index) => {
       const raw = values[index];
       if (raw === null) {
         return <li key={label} className="text-sm text-muted-foreground">{label}: no calculable</li>;
       }
       const width = Math.min(100, Math.max(2, Math.round((Number(raw) / maximum) * 100)));
-      return <li key={label} className="flex items-center gap-2">
-        <span className="w-40 shrink-0 text-sm">{label}</span>
-        <div className="h-4 rounded-sm bg-primary" style={{ width: `${width}%` }} role="img" aria-label={`${raw} ${unit}`} />
-        <span className="text-sm">{raw} {unit}</span>
+      return <li key={label} className="grid min-w-0 gap-1.5 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+        <span className="break-words text-sm">{label}</span>
+        <div className="h-3 w-full overflow-hidden rounded-sm bg-muted" aria-hidden="true">
+          <div className="h-full rounded-sm bg-primary" style={{ width: `${width}%` }} />
+        </div>
+        <span className="text-sm tabular-nums">{raw} {unit}</span>
       </li>;
     })}
   </ul>;
@@ -95,57 +102,87 @@ export function ConsumptionPanel({ generation, domicileId, meterId }: {
   const consumption = intervals.map(item => item.calculable ? item.consumption_kwh : null);
   const dailyAverage = intervals.map(item => item.calculable ? displayKwh(item.daily_average_kwh_day ?? '0', item.below_minimum) : null);
 
-  return <Card><CardHeader><CardTitle>Consumo y estimación</CardTitle></CardHeader><CardContent>
-    <div className="space-y-4">
-      {error && <Alert>{error}</Alert>}
-      <div className="flex flex-wrap items-end gap-3">
-        <div><Label htmlFor="consumption-from">Desde</Label>{' '}
-          <input id="consumption-from" type="date" value={from} onChange={event => setFrom(event.target.value)} /></div>
-        <div><Label htmlFor="consumption-to">Hasta</Label>{' '}
-          <input id="consumption-to" type="date" value={to} onChange={event => setTo(event.target.value)} /></div>
-        <Button type="button" variant="outline" disabled={loading} onClick={() => void refresh()}>Actualizar consumo</Button>
-      </div>
-      {loading && <p role="status">Cargando consumo…</p>}
-      {!loading && intervals.length === 0 && !error && <p>No hay suficientes lecturas para mostrar la evolución.</p>}
-      {intervals.length > 0 && <>
-        <Card><CardHeader><CardTitle>Consumo real (kWh)</CardTitle></CardHeader><CardContent className="space-y-3">
-          <Bars labels={labels} values={consumption} unit="kWh" />
-          <Table>
-            <TableHeader><TableRow><TableHead>Intervalo</TableHead><TableHead>Consumo</TableHead></TableRow></TableHeader>
-            <TableBody>{intervals.map((item, index) => <TableRow key={`${item.start_reading_id}-${item.end_reading_id}`}>
-              <TableCell className="whitespace-nowrap">{labels[index]}</TableCell>
-              <TableCell>{item.calculable ? `${item.consumption_kwh} kWh` : 'no calculable'}{item.calculable && item.sub_day ? ' — poco representativo' : ''}</TableCell>
-            </TableRow>)}</TableBody>
-          </Table>
-        </CardContent></Card>
-        <Card><CardHeader><CardTitle>Promedio diario (kWh/día)</CardTitle></CardHeader><CardContent className="space-y-3">
-          <Bars labels={labels} values={dailyAverage} unit="kWh/día" />
-          <Table>
-            <TableHeader><TableRow><TableHead>Intervalo</TableHead><TableHead>Promedio diario</TableHead></TableRow></TableHeader>
-            <TableBody>{intervals.map((item, index) => <TableRow key={`${item.start_reading_id}-${item.end_reading_id}`}>
-              <TableCell className="whitespace-nowrap">{labels[index]}</TableCell>
-              <TableCell>{item.calculable ? `${displayKwh(item.daily_average_kwh_day ?? '0', item.below_minimum)} kWh/día` : 'no calculable'}</TableCell>
-            </TableRow>)}</TableBody>
-          </Table>
-        </CardContent></Card>
-      </>}
-      <Card><CardHeader><CardTitle>Estimación</CardTitle></CardHeader><CardContent className="space-y-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <div><Label htmlFor="consumption-days">Días a estimar (1–90)</Label>{' '}
-            <input id="consumption-days" type="number" min={1} max={90} value={days} onChange={event => setDays(event.target.value)} /></div>
-          <Button type="button" disabled={busy} onClick={() => void requestEstimate()}>Estimar</Button>
+  return <Card><CardHeader><CardTitle>Consumo del medidor</CardTitle></CardHeader><CardContent>
+    <div className="space-y-6">
+      <section aria-labelledby="consumption-filters-heading" className="space-y-3 border-b border-border pb-5">
+        <h3 id="consumption-filters-heading" className="text-lg font-semibold">Período de consulta</h3>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          <div className="grid min-w-0 gap-1.5">
+            <Label htmlFor="consumption-from">Desde</Label>
+            <input id="consumption-from" className="min-h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" type="date" value={from} onChange={event => setFrom(event.target.value)} />
+          </div>
+          <div className="grid min-w-0 gap-1.5">
+            <Label htmlFor="consumption-to">Hasta</Label>
+            <input id="consumption-to" className="min-h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" type="date" value={to} onChange={event => setTo(event.target.value)} />
+          </div>
+          <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={loading} onClick={() => void refresh()}>Actualizar consumo</Button>
         </div>
+      </section>
+      {error && <Alert>{error}</Alert>}
+      {loading && <p role="status">Cargando consumo…</p>}
+      {!loading && intervals.length === 0 && !error && <p className="rounded-md border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">No hay suficientes lecturas para mostrar la evolución.</p>}
+      {intervals.length > 0 && <>
+        <section aria-labelledby="consumption-real-heading" className="space-y-4 border-b border-border pb-5">
+          <div>
+            <h3 id="consumption-real-heading" className="text-lg font-semibold">Consumo real (kWh)</h3>
+            <p className="text-sm text-muted-foreground">Consumo de cada intervalo entre lecturas, en kWh.</p>
+          </div>
+          <div className="space-y-4 rounded-md border border-border bg-background p-3 sm:p-4">
+            <Bars labels={labels} values={consumption} unit="kWh" />
+            <Table>
+              <TableHeader><TableRow><TableHead>Intervalo</TableHead><TableHead>Consumo</TableHead></TableRow></TableHeader>
+              <TableBody>{intervals.map((item, index) => <TableRow key={`${item.start_reading_id}-${item.end_reading_id}`}>
+                <TableCell className="whitespace-nowrap">{labels[index]}</TableCell>
+                <TableCell>{item.calculable ? `${item.consumption_kwh} kWh` : 'no calculable'}{item.calculable && item.sub_day ? ' — poco representativo' : ''}</TableCell>
+              </TableRow>)}</TableBody>
+            </Table>
+          </div>
+        </section>
+        <section aria-labelledby="consumption-average-heading" className="space-y-4 border-b border-border pb-5">
+          <div>
+            <h3 id="consumption-average-heading" className="text-lg font-semibold">Promedio diario (kWh/día)</h3>
+            <p className="text-sm text-muted-foreground">Promedio de cada intervalo, en kWh/día.</p>
+          </div>
+          <div className="space-y-4 rounded-md border border-border bg-background p-3 sm:p-4">
+            <Bars labels={labels} values={dailyAverage} unit="kWh/día" />
+            <Table>
+              <TableHeader><TableRow><TableHead>Intervalo</TableHead><TableHead>Promedio diario</TableHead></TableRow></TableHeader>
+              <TableBody>{intervals.map((item, index) => <TableRow key={`${item.start_reading_id}-${item.end_reading_id}`}>
+                <TableCell className="whitespace-nowrap">{labels[index]}</TableCell>
+                <TableCell>{item.calculable ? `${displayKwh(item.daily_average_kwh_day ?? '0', item.below_minimum)} kWh/día` : 'no calculable'}</TableCell>
+              </TableRow>)}</TableBody>
+            </Table>
+          </div>
+        </section>
+      </>}
+      <section aria-labelledby="consumption-estimate-heading" className="space-y-4 rounded-md border border-primary/20 bg-primary/5 p-4 sm:p-5">
+        <div>
+          <h3 id="consumption-estimate-heading" className="text-lg font-semibold">Estimación</h3>
+          <p className="text-sm text-muted-foreground">Proyección basada en el último intervalo válido.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <div className="grid min-w-0 gap-1.5">
+            <Label htmlFor="consumption-days">Días a estimar (1–90)</Label>
+            <input id="consumption-days" className="min-h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" type="number" min={1} max={90} value={days} onChange={event => setDays(event.target.value)} />
+          </div>
+          <Button type="button" className="w-full sm:w-auto" disabled={busy} onClick={() => void requestEstimate()}>Estimar</Button>
+        </div>
+        {busy && <p role="status">Calculando estimación…</p>}
         {estimate && (estimate.status === 'base_unavailable'
-          ? <p>{estimate.reason === 'decreasing_latest'
+          ? <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm" role="status">{estimate.reason === 'decreasing_latest'
             ? 'No se estima porque la última lectura es menor que la anterior.'
             : 'No hay suficientes lecturas para estimar.'}</p>
-          : <section aria-label="Resultado de la estimación" className="space-y-1 border-t border-border pt-3">
-            <p>Estimación a {estimate.days} días: {displayKwh(estimate.estimate_kwh, estimate.below_minimum)} kWh</p>
-            <p>Promedio diario usado: {displayKwh(estimate.daily_average_kwh_day, estimate.daily_average_below_minimum)} kWh/día</p>
-            {estimate.sub_day && <p>El intervalo base es menor a 24 horas: poco representativo.</p>}
-            <p className="font-medium">{ORIENTATIVE}</p>
+          : <section aria-label="Resultado de la estimación" className="space-y-3 rounded-md border border-primary/20 bg-background p-4">
+            <h4 className="font-semibold">Resultado de la estimación</h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <p className="text-lg font-semibold">Estimación a {estimate.days} días: {displayKwh(estimate.estimate_kwh, estimate.below_minimum)} kWh</p>
+              <p className="font-medium">Promedio diario usado: {displayKwh(estimate.daily_average_kwh_day, estimate.daily_average_below_minimum)} kWh/día</p>
+              <p className="text-sm sm:col-span-2"><span className="text-muted-foreground">Intervalo considerado: </span><span className="font-medium">{BASE_TIME.format(new Date(estimate.base_start_at))} — {BASE_TIME.format(new Date(estimate.base_end_at))} (Buenos Aires)</span></p>
+            </div>
+            {estimate.sub_day && <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">El intervalo base es menor a 24 horas: poco representativo.</p>}
+            <p className="text-sm font-medium">{ORIENTATIVE}</p>
           </section>)}
-      </CardContent></Card>
+      </section>
     </div>
   </CardContent></Card>;
 }

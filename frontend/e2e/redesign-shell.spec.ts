@@ -49,14 +49,14 @@ async function openCortes(page: Page): Promise<void> {
 test('shared shell exposes header, main and footer landmarks with one heading', async ({ page }) => {
   await mockApi(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Diario de interrupciones', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mi cuenta', exact: true })).toBeVisible();
 
   await expect(page.getByRole('banner')).toHaveCount(1);
   await expect(page.getByRole('banner')).toContainText('Energía Sur');
   await expect(page.getByRole('main')).toHaveCount(1);
   await expect(page.getByRole('contentinfo')).toHaveCount(1);
   await expect(page.locator('h1')).toHaveCount(1);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Diario de interrupciones');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mi cuenta');
   await expect(page.getByRole('button', { name: 'Cerrar sesión', exact: true })).toHaveCount(0);
 
   const footer = page.getByRole('contentinfo');
@@ -145,7 +145,7 @@ test('failed logout keeps its feedback visible outside the account view', async 
 test('keyboard users can skip repeated navigation and operate the nav', async ({ page }) => {
   await mockApi(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Diario de interrupciones', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mi cuenta', exact: true })).toBeVisible();
 
   await page.keyboard.press('Tab');
   const skip = page.getByRole('link', { name: 'Saltar al contenido' });

@@ -155,26 +155,39 @@ export function ReadingHistory({ generation, domicileId, meterId }: {
     } finally { if (request.isCurrent() && active()) setBusy(false); }
   }
 
-  return <Card><CardHeader><CardTitle>Historial de lecturas</CardTitle></CardHeader><CardContent>
-    <div className="space-y-3">
+  return <Card><CardHeader><CardTitle>Lecturas del medidor</CardTitle></CardHeader><CardContent>
+    <div className="space-y-6">
       {error && <Alert>{error}</Alert>}
       {notice && <Alert role="status">{notice}</Alert>}
       {createAttempt && <div className="space-y-2"><p role="status">Hay una creación sin resultado confirmado. El reintento usa los mismos datos y clave. No recargues la página hasta resolverla.</p>
         <Button type="button" disabled={busy} onClick={() => void create(createAttempt)}>Reintentar la misma creación</Button></div>}
       {editAttempt && <div className="space-y-2"><p role="status">Consultá la versión actual antes de volver a corregir. La solicitud anterior podría seguir procesándose.</p>
         <Button type="button" disabled={busy} onClick={() => void reconcile(editAttempt)}>Consultar versión actual</Button></div>}
-      {!createAttempt && !editAttempt && <ReadingForm key={`${meterId}:${editing?.id ?? 'new'}:${editing?.version ?? 0}:${revision}`} reading={editing} rows={rows} meterId={meterId} busy={busy || loading || !historyReady} save={save} cancel={() => { setEditing(null); setRevision(n => n + 1); setError(''); }} />}
-      <Button type="button" variant="outline" disabled={loading || busy} onClick={() => void refresh()}>Actualizar lecturas</Button>
-      {loading && <p role="status">Cargando lecturas…</p>}
-      {!loading && rows.length === 0 && !error && <p>No hay lecturas registradas.</p>}
-      <p>Fechas y horas de Buenos Aires.</p>
-      <ul className="space-y-2">{rows.map(row => <li key={row.id}>
-        <span>{timestampFormatter.format(new Date(row.recorded_at))} — {row.value_kwh} kWh</span>
-        <Button type="button" variant="outline" size="sm" disabled={busy || Boolean(createAttempt) || Boolean(editAttempt)} onClick={() => { setEditing(row); setRevision(n => n + 1); setError(''); setNotice(''); }}>Corregir lectura</Button>
-        {row.has_photo && <Button type="button" variant="outline" size="sm" disabled={photoLoading} onClick={() => void showPhoto(row.id)}>Ver foto</Button>}
-      </li>)}</ul>
-      {photoLoading && <p role="status">Cargando foto…</p>}
-      {photoUrl && <div><img src={photoUrl} alt="Foto de la lectura seleccionada" /><Button type="button" variant="outline" onClick={() => setPhotoUrl('')}>Cerrar foto</Button></div>}
+      {!createAttempt && !editAttempt && <section aria-label="Registrar o corregir lectura" className="space-y-3 border-b border-border pb-6">
+        <h3 className="text-lg font-semibold">{editing ? 'Corregir lectura' : 'Registrar lectura'}</h3>
+        <p className="text-sm text-muted-foreground">Medidor activo: el seleccionado en Contexto de trabajo.</p>
+        <ReadingForm key={`${meterId}:${editing?.id ?? 'new'}:${editing?.version ?? 0}:${revision}`} reading={editing} rows={rows} meterId={meterId} busy={busy || loading || !historyReady} save={save} cancel={() => { setEditing(null); setRevision(n => n + 1); setError(''); }} />
+      </section>}
+      <section aria-labelledby="reading-history-heading" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div><h3 id="reading-history-heading" className="text-lg font-semibold">Historial de lecturas</h3><p className="text-sm text-muted-foreground">Fechas y horas de Buenos Aires.</p></div>
+          <Button type="button" variant="outline" disabled={loading || busy} onClick={() => void refresh()}>Actualizar lecturas</Button>
+        </div>
+        {loading && <p role="status">Cargando lecturas.</p>}
+        {!loading && rows.length === 0 && !error && <p>No hay lecturas registradas.</p>}
+        <ul className="divide-y divide-border">{rows.map(row => <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+          <span className="font-medium">{timestampFormatter.format(new Date(row.recorded_at))} <span className="text-muted-foreground">·</span> {row.value_kwh} kWh</span>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={busy || Boolean(createAttempt) || Boolean(editAttempt)} onClick={() => { setEditing(row); setRevision(n => n + 1); setError(''); setNotice(''); }}>Corregir lectura</Button>
+            {row.has_photo && <Button type="button" variant="outline" size="sm" disabled={photoLoading} onClick={() => void showPhoto(row.id)}>Ver foto</Button>}
+          </div>
+        </li>)}</ul>
+        {photoLoading && <p role="status">Cargando foto.</p>}
+        {photoUrl && <div className="space-y-2 border-t border-border pt-4">
+          <img src={photoUrl} alt="Foto de la lectura seleccionada" className="max-h-[32rem] max-w-full rounded-md object-contain" />
+          <Button type="button" variant="outline" onClick={() => setPhotoUrl('')}>Cerrar foto</Button>
+        </div>}
+      </section>
     </div>
   </CardContent></Card>;
 }

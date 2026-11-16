@@ -92,33 +92,40 @@ export function BillComparison({ generation, domicileId, meterId, bill, onClose 
     void compare(startId, endId, !exact);
   }
 
-  return <section aria-label="Comparación con la factura" className="space-y-3 border-t border-border pt-4">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <h3 className="text-lg font-semibold">Consumo registrado vs. facturado</h3>
+  return <section aria-label="Comparación con la factura" className="space-y-4 rounded-lg border border-border bg-muted/30 p-4 sm:p-5">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h3 className="text-lg font-semibold">Consumo registrado vs. facturado</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Factura seleccionada</p>
+      </div>
       <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onClose}>Cerrar comparación</Button>
     </div>
-    <p className="text-sm text-muted-foreground">Período facturado: {periodStart} — {periodEnd}. Consumo facturado: {billedKwh} kWh. Se admiten lecturas hasta 7 días antes o después de cada extremo.</p>
+    <dl className="grid gap-3 rounded-md border border-border bg-background p-3 text-sm sm:grid-cols-2">
+      <div><dt className="text-muted-foreground">Período facturado</dt><dd className="font-medium">{periodStart} — {periodEnd}</dd></div>
+      <div><dt className="text-muted-foreground">Consumo facturado</dt><dd className="font-medium">{billedKwh} kWh</dd></div>
+    </dl>
+    <p className="text-sm text-muted-foreground">Se admiten lecturas hasta 7 días antes o después de cada extremo.</p>
     {error && <Alert>{error}</Alert>}
     {loading && <p role="status">Buscando lecturas compatibles…</p>}
     {!loading && unavailable && <Alert>No hay lecturas compatibles dentro de ±7 días de cada extremo del período. No se puede calcular la comparación.</Alert>}
     {!loading && !unavailable && sets && !result && <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="space-y-1">Lectura inicial (candidatas)
-          <select className="min-h-10 w-full rounded-md border border-input bg-card px-3 py-2" value={startId} disabled={busy}
+        <label className="grid min-w-0 gap-1.5 text-sm font-medium">Lectura inicial (candidatas)
+          <select className="min-h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 font-normal focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" value={startId} disabled={busy}
             onChange={event => { setStartId(event.target.value); setResult(null); setConfirmed(false); setError(''); }}>
             <option value="" disabled>Elegí la lectura inicial</option>
             {sets.start_candidates.map(row => <option key={row.reading_id} value={row.reading_id}>{row.local_date} — {row.value_kwh} kWh</option>)}
           </select>
         </label>
-        <label className="space-y-1">Lectura final (candidatas)
-          <select className="min-h-10 w-full rounded-md border border-input bg-card px-3 py-2" value={endId} disabled={busy}
+        <label className="grid min-w-0 gap-1.5 text-sm font-medium">Lectura final (candidatas)
+          <select className="min-h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 font-normal focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" value={endId} disabled={busy}
             onChange={event => { setEndId(event.target.value); setResult(null); setConfirmed(false); setError(''); }}>
             <option value="" disabled>Elegí la lectura final</option>
             {sets.end_candidates.map(row => <option key={row.reading_id} value={row.reading_id}>{row.local_date} — {row.value_kwh} kWh</option>)}
           </select>
         </label>
       </div>
-      {startCandidate && endCandidate && !exact && <div className="space-y-2">
+      {startCandidate && endCandidate && !exact && <div className="space-y-2 rounded-md border border-amber-500/50 bg-amber-500/5 p-3">
         <Alert>Las fechas de las lecturas (inicio {startCandidate.local_date}, fin {endCandidate.local_date}) no coinciden exactamente con el período facturado ({periodStart} a {periodEnd}).</Alert>
         <label className="flex items-start gap-2"><input type="checkbox" checked={confirmed} disabled={busy}
           onChange={event => { setConfirmed(event.target.checked); setError(''); }} />Confirmo que quiero comparar con estas fechas aproximadas.</label>
@@ -127,14 +134,17 @@ export function BillComparison({ generation, domicileId, meterId, bill, onClose 
       <Button type="button" disabled={busy || !startCandidate || !endCandidate || startId === endId || (!exact && !confirmed)} onClick={submit}>Calcular comparación</Button>
       {busy && <p role="status">Calculando…</p>}
     </div>}
-    {result && <div className="space-y-2">
+    {result && <div className="space-y-3 rounded-md border border-border bg-background p-4">
+      <h4 className="font-semibold">Resultado de la comparación</h4>
       {result.status === 'no_comparison' ? <Alert>No se calculó la comparación porque la lectura final es menor que la lectura inicial.</Alert> : <>
-        <p>Lectura inicial: {result.start_reading?.local_date} — {result.start_reading?.value_kwh} kWh</p>
-        <p>Lectura final: {result.end_reading?.local_date} — {result.end_reading?.value_kwh} kWh</p>
-        <p>Consumo registrado: {result.recorded_kwh} kWh</p>
-        <p>Consumo facturado: {result.billed_kwh} kWh</p>
-        <p>Diferencia: {result.difference_kwh} kWh</p>
-        <p>{outcomeText(result.outcome)}</p>
+        <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          <p><span className="text-sm text-muted-foreground">Lectura inicial: </span><span className="font-medium">{result.start_reading?.local_date} — {result.start_reading?.value_kwh} kWh</span></p>
+          <p><span className="text-sm text-muted-foreground">Lectura final: </span><span className="font-medium">{result.end_reading?.local_date} — {result.end_reading?.value_kwh} kWh</span></p>
+          <p className="text-lg font-semibold">Consumo registrado: {result.recorded_kwh} kWh</p>
+          <p className="text-lg font-semibold">Consumo facturado: {result.billed_kwh} kWh</p>
+          <p className="text-lg font-semibold sm:col-span-2">Diferencia: {result.difference_kwh} kWh</p>
+        </div>
+        <p className="font-medium">{outcomeText(result.outcome)}</p>
         {!result.exact && <Alert>Comparación aproximada: las fechas de las lecturas no coinciden exactamente con el período facturado.</Alert>}
       </>}
       <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => { setResult(null); setError(''); }}>Volver a elegir lecturas</Button>

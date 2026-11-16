@@ -164,30 +164,39 @@ export function BillHistory({ generation: sessionGeneration, domicileId, meterId
     setFileName(''); setFileProblem(false); setWarning(null); setError(''); setNotice(''); setComparing(null);
   }
   const disabled = busy || Boolean(createAttempt) || Boolean(editAttempt);
-  return <Card><CardHeader><CardTitle>Facturas del medidor</CardTitle></CardHeader><CardContent><div className="space-y-3">
+  return <Card><CardHeader><CardTitle>Facturas del medidor</CardTitle></CardHeader><CardContent><div className="space-y-6">
     {error && <Alert>{error}</Alert>}{notice && <Alert role="status">{notice}</Alert>}
     {createAttempt && <div><p>Creación sin resultado confirmado. No recargues la página hasta resolverla.</p><Button type="button" disabled={busy} onClick={() => void create(createAttempt)}>Reintentar la misma creación</Button></div>}
     {editAttempt && <div><p>La corrección anterior podría seguir procesándose.</p><Button type="button" disabled={busy} onClick={() => void reconcile(editAttempt)}>Consultar versión actual</Button></div>}
-    {!createAttempt && !editAttempt && <form className="space-y-2" onSubmit={event => { event.preventDefault(); void save(false); }}>
-      <h3>{editing ? 'Corregir factura' : 'Registrar factura'}</h3>
-      <label>Inicio del período <input type="date" required value={draft.period_start} disabled={disabled} onChange={event => change({ period_start: event.target.value })} /></label>{' '}
-      <label>Fin del período <input type="date" required value={draft.period_end} disabled={disabled} onChange={event => change({ period_end: event.target.value })} /></label>{' '}
-      <label>Consumo facturado (kWh) <input type="text" inputMode="decimal" required value={draft.value_kwh} disabled={disabled} onChange={event => change({ value_kwh: event.target.value })} /></label>{' '}
-      <label>Importe (ARS, opcional) <input type="text" inputMode="decimal" value={draft.amount_ars ?? ''} disabled={disabled} onChange={event => change({ amount_ars: event.target.value || null })} /></label>{' '}
-      <label>{editing ? 'Reemplazar archivo (opcional)' : 'Archivo obligatorio'} <input type="file" accept="application/pdf,image/jpeg,image/png" disabled={disabled} onChange={event => void selectFile(event.target.files?.[0])} /></label>
-      {fileName && <p>Archivo seleccionado: {fileName}</p>}
-      {editing && <p>Si no seleccionás otro archivo, se conserva el actual.</p>}
-      <div><Button type="submit" disabled={disabled}>Guardar factura</Button>{editing && <Button type="button" variant="outline" disabled={disabled} onClick={() => { setEditing(null); setDraft(empty()); setFileName(''); setFileProblem(false); setWarning(null); }}>Cancelar corrección</Button>}</div>
-      {warning && <div><p>{warning.overlaps.length ? 'Los siguientes períodos se superponen:' : 'Los períodos ya no se superponen. Revisá y confirmá el estado actual.'}</p><ul>{warning.overlaps.map(row => <li key={row.id}>{row.period_start} — {row.period_end} (versión {row.version})</li>)}</ul><Button type="button" disabled={disabled} onClick={() => void save(true)}>Confirmar superposición y guardar</Button></div>}
+    {!createAttempt && !editAttempt && <form className="space-y-4 border-b border-border pb-6" onSubmit={event => { event.preventDefault(); void save(false); }}>
+      <div><h3 className="text-lg font-semibold">{editing ? 'Corregir factura' : 'Registrar factura'}</h3><p className="text-sm text-muted-foreground">Medidor activo: el seleccionado en Contexto de trabajo.</p></div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-1.5 text-sm font-medium">Inicio del período <input className="min-h-10 min-w-0 rounded-md border border-input bg-card px-3 py-2 font-normal focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" type="date" required value={draft.period_start} disabled={disabled} onChange={event => change({ period_start: event.target.value })} /></label>
+        <label className="grid gap-1.5 text-sm font-medium">Fin del período <input className="min-h-10 min-w-0 rounded-md border border-input bg-card px-3 py-2 font-normal focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" type="date" required value={draft.period_end} disabled={disabled} onChange={event => change({ period_end: event.target.value })} /></label>
+        <label className="grid gap-1.5 text-sm font-medium">Consumo facturado (kWh) <input className="min-h-10 min-w-0 rounded-md border border-input bg-card px-3 py-2 font-normal focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" type="text" inputMode="decimal" required value={draft.value_kwh} disabled={disabled} onChange={event => change({ value_kwh: event.target.value })} /></label>
+        <label className="grid gap-1.5 text-sm font-medium">Importe (ARS, opcional) <input className="min-h-10 min-w-0 rounded-md border border-input bg-card px-3 py-2 font-normal focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" type="text" inputMode="decimal" value={draft.amount_ars ?? ''} disabled={disabled} onChange={event => change({ amount_ars: event.target.value || null })} /></label>
+      </div>
+      <div className="space-y-2"><label className="grid gap-1.5 text-sm font-medium">{editing ? 'Reemplazar archivo (opcional)' : 'Archivo obligatorio'} <input className="min-h-10 w-full min-w-0 rounded-md border border-input bg-card px-3 py-2 text-sm font-normal file:mr-3 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5" type="file" accept="application/pdf,image/jpeg,image/png" disabled={disabled} onChange={event => void selectFile(event.target.files?.[0])} /></label>
+        {fileName && <p className="text-sm text-muted-foreground">Archivo seleccionado: {fileName}</p>}
+        {editing && <p className="text-sm text-muted-foreground">Si no seleccionás otro archivo, se conserva el actual.</p>}</div>
+      <div className="flex flex-wrap gap-2"><Button type="submit" disabled={disabled}>Guardar factura</Button>{editing && <Button type="button" variant="outline" disabled={disabled} onClick={() => { setEditing(null); setDraft(empty()); setFileName(''); setFileProblem(false); setWarning(null); }}>Cancelar corrección</Button>}</div>
+      {warning && <div className="space-y-2 border-l-4 border-amber-500 pl-4"><p>{warning.overlaps.length ? 'Los siguientes períodos se superponen:' : 'Los períodos ya no se superponen. Revisá y confirmá el estado actual.'}</p><ul className="list-inside list-disc">{warning.overlaps.map(row => <li key={row.id}>{row.period_start} — {row.period_end} (versión {row.version})</li>)}</ul><Button type="button" disabled={disabled} onClick={() => void save(true)}>Confirmar superposición y guardar</Button></div>}
     </form>}
-    <Button type="button" variant="outline" disabled={busy || loading} onClick={() => void refresh()}>Actualizar facturas</Button>
+    <section aria-labelledby="bill-history-heading" className="space-y-3">
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 id="bill-history-heading" className="text-lg font-semibold">Facturas registradas</h3><Button type="button" variant="outline" disabled={busy || loading} onClick={() => void refresh()}>Actualizar facturas</Button></div>
     {loading && <p role="status">Cargando facturas…</p>}
-    {!loading && !rows.length && <p>No hay facturas registradas.</p>}
-    <ul>{rows.map(row => <li key={row.id}><span>{row.period_start} — {row.period_end}: {row.value_kwh} kWh{row.amount_ars === null ? '' : ` — ARS ${row.amount_ars}`} (versión {row.version})</span>{' '}
-      <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => void showDetail(row)}>Ver detalle</Button>{' '}
-      <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => { setComparing(row); setError(''); setNotice(''); }}>Comparar</Button>{' '}
-      <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => startEdit(row)}>Corregir factura</Button>{' '}
-      <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => void download(row)}>Descargar archivo</Button></li>)}</ul>
+    {!loading && !rows.length && !error && <p>No hay facturas registradas.</p>}
+    <ul className="divide-y divide-border">{rows.map(row => <li key={row.id} className="space-y-3 py-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2"><strong>{row.period_start} — {row.period_end}</strong><span className="text-sm text-muted-foreground">Versión {row.version}</span></div>
+      <p className="text-sm">{row.value_kwh} kWh{row.amount_ars === null ? '' : ` · ARS ${row.amount_ars}`} · {row.file_type === 'application/pdf' ? 'PDF' : row.file_type === 'image/png' ? 'PNG' : 'JPG'}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => void showDetail(row)}>Ver detalle</Button>
+        <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => { setComparing(row); setError(''); setNotice(''); }}>Comparar</Button>
+        <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => startEdit(row)}>Corregir factura</Button>
+        <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => void download(row)}>Descargar archivo</Button>
+      </div>
+    </li>)}</ul>
+    </section>
     {comparing && <BillComparison key={`${meterId}:${comparing.id}`} generation={sessionGeneration} domicileId={domicileId} meterId={meterId} bill={comparing} onClose={() => setComparing(null)} />}
     {detail && <section aria-label="Detalle de factura"><p>Período: {detail.period_start} — {detail.period_end}</p><p>Consumo: {detail.value_kwh} kWh</p><p>Importe: {detail.amount_ars === null ? 'No informado' : `ARS ${detail.amount_ars}`}</p><p>Archivo: {detail.file_type} — versión {detail.version}</p><Button type="button" variant="outline" onClick={() => setDetail(null)}>Cerrar detalle</Button></section>}
   </div></CardContent></Card>;

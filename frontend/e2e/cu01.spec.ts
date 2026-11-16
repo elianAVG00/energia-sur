@@ -380,7 +380,7 @@ test('public shell renders every section without the technical API panel', async
   for (const [section, heading] of [
     ['Cortes', 'Cortes eléctricos'],
     ['Trabajos', 'Trabajos programados'],
-    ['Mi cuenta', 'Diario de interrupciones'],
+    ['Mi cuenta', 'Mi cuenta'],
   ] as const) {
     await page.getByRole('button', { name: section }).click();
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();

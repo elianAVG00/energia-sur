@@ -129,7 +129,8 @@ export function ReadingForm({ reading, rows, meterId, busy, save, cancel }: {
     <Input id={`${id}-value`} inputMode="numeric" maxLength={MAX_READING_DIGITS} {...register('value_kwh')} disabled={pending} aria-invalid={Boolean(errors.value_kwh)} aria-describedby={errors.value_kwh ? `${id}-value-error` : undefined} />
     {errors.value_kwh && <p id={`${id}-value-error`} role="alert">{errors.value_kwh.message}</p>}
     {warning && <p role="status">La lectura es menor que la lectura anterior. Revisala; podés confirmarla igualmente.</p>}
-    <div className="space-y-2">
+    <div className="space-y-3 border-t border-border pt-4">
+      <h4 className="font-semibold">Fotografía y lectura mediante OCR</h4>
       <Label htmlFor={`${id}-photo`}>Fotografía (JPG, PNG o WebP, hasta 5 MB)</Label>
       <Input id={`${id}-photo`} type="file" accept="image/jpeg,image/png,image/webp" disabled={pending}
         aria-describedby={`${id}-photo-help`} onChange={event => {
@@ -139,8 +140,8 @@ export function ReadingForm({ reading, rows, meterId, busy, save, cancel }: {
         }} />
       <p id={`${id}-photo-help`}>Opcional y privada. Para OCR, recortá solo los dígitos enteros del registro de kWh.</p>
       {photoError && <p role="alert">{photoError}</p>}
-      {photo && <div className="space-y-2">
-        <img src={photo.url} alt="Vista previa de la fotografía" className="max-w-full" onLoad={event => {
+      {photo && <div className="space-y-3">
+        <img src={photo.url} alt="Vista previa de la fotografía" className="max-h-[32rem] max-w-full rounded-md object-contain" onLoad={event => {
           setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight });
         }} />
         <Button type="button" variant="outline" disabled={pending} onClick={clearPhoto}>Quitar foto seleccionada</Button>

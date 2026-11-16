@@ -230,6 +230,48 @@ concurrency behavior are unchanged; no new administrative capability or polling 
 added. See the
 [engineering record](docs/ai-engineering/redesign-public-works-admin.md).
 
+## Mi cuenta redesign - Stages A-C
+
+`redesign-account-workspace` (U31-U33) modernizes the authenticated area that hosts
+CU04-CU09. Stage 0 created the OpenSpec change, decision U31, a gated synthetic
+capture spec and the baseline evidence. Stage A changed the account view title to
+`Mi cuenta`, added the "Índice de Mi cuenta" anchor navigation and six labelled
+sections. Stage B added the "Contexto de trabajo" panel and the final order:
+Domicilios, Medidores, Cortes e interrupciones, Lecturas, Facturas and Consumo y
+estimación.
+
+`frontend/src/features/account/AccountWorkspace.tsx` composes the page and owns the
+active meter selection as scope-tagged state (`generation:domicile`), so changing
+the account or domicile resets it synchronously without touching Zustand.
+`DomicileManagement.tsx` remains the only owner of the meter request and mutations
+and reports the list through a callback; the new
+`frontend/src/features/domiciles/DomicileAddress.tsx` owns address correction,
+duplicates and 409 recovery; `AccountSection.tsx` provides section headings without
+an extra card layer and `frontend/src/features/diary/DiarySection.tsx` keeps the
+unchanged CU09 diary. The context panel renders the only `selected-domicile` and
+`reading-meter` selectors and shows the active domicile and meter. CU09 still works
+without a meter, and the meter-scoped sections show neutral guidance instead of
+asserting an absent meter while loading or after a failed load.
+
+Stage C reorganizes the CU05 reading form, photo/OCR area and per-meter history,
+and the CU06 invoice form, attachment details and history. CU07 comparison stays
+in its existing place and its results/calculations are unchanged. The existing
+meter keys and state ownership remain unchanged; no backend/API/state/schema/store
+or dependency was modified. `Registrar factura` remains inside its form.
+
+Ids, labels, accessible names, messages, handlers, drafts, conflict recovery,
+ownership isolation, adapters, state helpers, Zod schemas, Zustand, HTTP, the shared
+shell/layout, the chat mount and the dependencies are unchanged. The recorded
+difference from the Stage A ownership note is that the address left
+`DomicileManagement` to live in the Domicilios section, while meters stay in
+Medidores, without duplicated requests, lists or selectors. Consumo still nests its
+internal cards until Stage D. Stage C's Docker gates, focused mocked E2E and 42
+synthetic captures pass; seeded real CU04-CU08 acceptance and the final independent
+diff review remain blocked/pending. See the
+[engineering record](docs/ai-engineering/redesign-account-workspace.md) for
+evidence, before/after captures and gate results. Nothing was committed, pushed or
+archived.
+
 ## CU01 public outage queries and UI (BUILD 3)
 
 The public, read-only outage API is backed by a cached ENRE snapshot:
@@ -542,3 +584,4 @@ Before live checks:
 - [Docker environment decisions, planning checks, and pending implementation evidence](docs/ai-engineering/docker-development-environment.md)
 - [Public API health panel removal: spec reconciliation, implementation and focused checks](docs/ai-engineering/remove-public-api-health-panel.md) — [archived change](openspec/changes/archive/2026-11-14-remove-public-api-health-panel/proposal.md)
 - [CU03 integrated assistant proposal, decisions and review evidence](docs/ai-engineering/implement-integrated-assistant-cu03.md) — [archived change](openspec/changes/archive/2026-11-11-implement-integrated-assistant-cu03/proposal.md), [main spec](openspec/specs/assistant/spec.md)
+- [Mi cuenta redesign Stages 0/A-E: composition, captures, accumulated review and gates](docs/ai-engineering/redesign-account-workspace.md) — [archived change](openspec/changes/archive/2026-11-15-redesign-account-workspace/proposal.md), [decision U35](docs/use-cases/decisions.md#u35---mi-cuenta-stage-d-review-completion-and-stage-e-authorization)

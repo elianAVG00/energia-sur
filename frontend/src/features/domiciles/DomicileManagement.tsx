@@ -1,124 +1,109 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Domicile } from '../../diaryApi.ts';
 import { DiaryError, errorMessage } from '../../lib/httpError.ts';
 import { sessionStore } from '../../stores/session.ts';
 import { useRequestScope } from '../../useRequestScope.ts';
 import { Alert } from '../../components/ui/alert.tsx';
 import { Button } from '../../components/ui/button.tsx';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.tsx';
+import { Card, CardContent } from '../../components/ui/card.tsx';
 import { domicilesApi } from './api.ts';
-import type { ManagedDomicile, Meter, MeterInput } from './api.ts';
-import { AddressForm, MeterForm } from './forms.tsx';
-import { ReadingHistory } from '../readings/ReadingHistory.tsx';
-import { BillHistory } from '../bills/BillHistory.tsx';
-import { ConsumptionPanel } from '../consumption/ConsumptionPanel.tsx';
+import type { Meter, MeterInput } from './api.ts';
+import { MeterForm } from './forms.tsx';
+import { AccountSection } from '../account/AccountSection.tsx';
 
-export function DomicileManagement({ selected, generation, rows, updateRow }: {
-  selected: string; generation: number; rows: Domicile[]; updateRow: (row: Domicile) => void;
+export type MeterLoad = { rows: Meter[]; status: 'loading' | 'ready' | 'failed' };
+
+// Meter management for the selected domicile. The active meter is chosen in the
+// account context panel; this component reports the loaded list to its owner.
+export function DomicileManagement({ selected, generation, onMetersChange }: {
+  selected: string; generation: number; onMetersChange: (state: MeterLoad) => void;
 }) {
   const scope = useRequestScope();
-  const [domicile, setDomicile] = useState<ManagedDomicile | null>(null);
   const [meters, setMeters] = useState<Meter[]>([]);
-  const [editingAddress, setEditingAddress] = useState(false);
   const [editingMeter, setEditingMeter] = useState<Meter | null>(null);
-  const [readingMeter, setReadingMeter] = useState<string>('');
-  const [addressRevision, setAddressRevision] = useState(0);
   const [meterRevision, setMeterRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [conflict, setConflict] = useState<'address' | 'meter' | null>(null);
+  const [conflict, setConflict] = useState(false);
   const active = useCallback(() => {
     const state = sessionStore.getState();
     return state.generation === generation && state.selectedDomicileId === selected;
   }, [generation, selected]);
 
-  const failed = useCallback((reason: unknown, target: 'address' | 'meter' | null = null) => {
+  const failed = useCallback((reason: unknown) => {
     if (!active()) return;
-    if (target && reason instanceof DiaryError && reason.status === 409 && reason.code === 'VERSION_CONFLICT') {
-      setConflict(target);
+    if (reason instanceof DiaryError && reason.status === 401) {
+      sessionStore.getState().clearSession(generation, true);
+      return;
+    }
+    if (reason instanceof DiaryError && reason.status === 409 && reason.code === 'VERSION_CONFLICT') {
+      setConflict(true);
       setError('La versión cambió. Descartá el borrador y recargá antes de volver a editar.');
-    } else if (reason instanceof DiaryError && reason.status === 409 && reason.code === 'DUPLICATE_METER') {
+      return;
+    }
+    if (reason instanceof DiaryError && reason.status === 409 && reason.code === 'DUPLICATE_METER') {
       setError('Ese número de medidor ya está registrado en tu cuenta. Revisá el número antes de guardar.');
-    } else setError(errorMessage(reason));
-  }, [active]);
+      return;
+    }
+    setError(errorMessage(reason));
+  }, [active, generation]);
 
-  const refresh = useCallback(async (discard: 'address' | 'meter' | null) => {
-    const request = scope.begin('load');
+  const refresh = useCallback(async (discard: boolean) => {
+    const request = scope.begin('meters-load');
     setLoading(true); setError('');
     try {
-      const [home, list] = await Promise.all([domicilesApi.management(selected, request.signal), domicilesApi.meters(selected, request.signal)]);
+      const list = await domicilesApi.meters(selected, request.signal);
       if (!request.isCurrent() || !active()) return;
-      if (discard !== 'meter') {
-        setDomicile(home);
-        updateRow({ id: home.id, display_address: home.display_address });
-      }
-      if (discard !== 'address') setMeters(list);
+      setMeters(list);
+      setLoaded(true);
       if (discard) {
-        if (discard === 'address') { setEditingAddress(false); setAddressRevision(n => n + 1); }
-        else { setEditingMeter(null); setMeterRevision(n => n + 1); }
-        setConflict(null);
+        setEditingMeter(null); setMeterRevision(n => n + 1); setConflict(false);
         setNotice('Borrador descartado. Revisá la versión actual antes de guardar.');
       }
-    } catch (reason: unknown) { if (request.isCurrent() && active()) failed(reason); }
-    finally { if (request.isCurrent() && active()) setLoading(false); }
-  }, [scope, selected, active, failed, updateRow]);
-  useEffect(() => { void refresh(null); }, [refresh]);
+    } catch (reason: unknown) {
+      if (request.isCurrent() && active()) failed(reason);
+    } finally {
+      if (request.isCurrent() && active()) setLoading(false);
+    }
+  }, [scope, selected, active, failed]);
+  useEffect(() => { void refresh(false); }, [refresh]);
+  useEffect(() => {
+    onMetersChange({ rows: meters, status: loading ? 'loading' : loaded ? 'ready' : 'failed' });
+  }, [meters, loading, loaded, onMetersChange]);
 
-  async function mutate(target: 'address' | 'meter', action: (signal: AbortSignal) => Promise<void>) {
-    const request = scope.begin('mutation');
-    setBusy(true); setError(''); setNotice('');
-    try { await action(request.signal); }
-    catch (reason: unknown) { if (request.isCurrent() && active()) failed(reason, target); }
-    finally { if (request.isCurrent() && active()) setBusy(false); }
-  }
-
-  async function saveAddress(address: string) {
-    if (!domicile) return;
-    await mutate('address', async signal => {
-      const result = await domicilesApi.correctDomicile(domicile, address, signal);
-      if (signal.aborted || !active()) return;
-      setDomicile(result); updateRow({ id: result.id, display_address: result.display_address });
-      setEditingAddress(false); setAddressRevision(n => n + 1); setNotice('Domicilio actualizado.');
-    });
-  }
   async function saveMeter(input: MeterInput) {
-    await mutate('meter', async signal => {
+    const request = scope.begin('meters-mutation');
+    setBusy(true); setError(''); setNotice('');
+    try {
       const result = editingMeter
-        ? await domicilesApi.correctMeter(editingMeter, input, signal)
-        : await domicilesApi.createMeter(selected, input, signal);
-      if (signal.aborted || !active()) return;
+        ? await domicilesApi.correctMeter(editingMeter, input, request.signal)
+        : await domicilesApi.createMeter(selected, input, request.signal);
+      if (!request.isCurrent() || !active()) return;
       setMeters(current => editingMeter ? current.map(row => row.id === result.id ? result : row) : [...current, result]);
-      setEditingMeter(null); setMeterRevision(n => n + 1); setNotice('Medidor guardado.');
-    });
+      setEditingMeter(null); setMeterRevision(n => n + 1); setConflict(false); setNotice('Medidor guardado.');
+    } catch (reason: unknown) {
+      if (request.isCurrent() && active()) failed(reason);
+    } finally {
+      if (request.isCurrent() && active()) setBusy(false);
+    }
   }
 
-  const disabled = busy || loading || conflict !== null;
-  const selectedMeter = meters.some(row => row.id === readingMeter) ? readingMeter : '';
-  return <Card><CardHeader><CardTitle>Administrar domicilio y medidores</CardTitle></CardHeader><CardContent>
-    <div className="space-y-4">
-      {error && <Alert>{error}</Alert>}
-      {notice && <Alert role="status">{notice}</Alert>}
-      {loading && <p role="status">Cargando administración…</p>}
-      {conflict && <Button type="button" variant="outline" disabled={busy || loading} onClick={() => void refresh(conflict)}>Descartar borrador y recargar administración</Button>}
-      {!loading && !domicile && <Button type="button" variant="outline" onClick={() => void refresh(null)}>Reintentar administración</Button>}
-      {domicile && <>
-        {editingAddress ? <AddressForm key={`${domicile.id}:${domicile.version}:${addressRevision}`} row={domicile} rows={rows} busy={disabled} save={saveAddress} cancel={() => { setEditingAddress(false); setAddressRevision(n => n + 1); setError(''); }} />
-          : <Button type="button" variant="outline" disabled={disabled} onClick={() => { setEditingAddress(true); setError(''); setNotice(''); }}>Corregir domicilio</Button>}
-        <h3 className="text-lg font-semibold">Medidores</h3>
-        {!loading && meters.length === 0 && <p>No hay medidores registrados. El domicilio puede usarse sin medidor.</p>}
+  const disabled = busy || loading || conflict;
+  return <AccountSection id="medidores" title="Medidores"
+    description="Registrá y corregí los medidores del domicilio. El medidor activo se elige en Contexto de trabajo.">
+    <Card><CardContent>
+      <div className="space-y-4">
+        {error && <Alert>{error}</Alert>}
+        {notice && <Alert role="status">{notice}</Alert>}
+        {loading && <p role="status">Cargando medidores…</p>}
+        {!loading && !loaded && <Button type="button" variant="outline" onClick={() => void refresh(false)}>Reintentar administración</Button>}
+        {conflict && <Button type="button" variant="outline" disabled={busy || loading} onClick={() => void refresh(true)}>Descartar borrador y recargar administración</Button>}
+        {loaded && meters.length === 0 && <p>No hay medidores registrados. El domicilio puede usarse sin medidor.</p>}
         <ul aria-label="Medidores registrados" className="space-y-2">{meters.map(row => <li key={row.id} className="flex flex-wrap items-center gap-2"><span>{row.meter_number}{row.alias ? ` — ${row.alias}` : ''}</span><Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => { setEditingMeter(row); setMeterRevision(n => n + 1); setError(''); setNotice(''); }}>Corregir medidor</Button></li>)}</ul>
-        <MeterForm key={`${selected}:${editingMeter?.id ?? 'new'}:${editingMeter?.version ?? 0}:${meterRevision}`} row={editingMeter} busy={disabled} save={saveMeter} cancel={() => { setEditingMeter(null); setMeterRevision(n => n + 1); setError(''); }} />
-        {meters.length > 0 && <div className="space-y-2"><label htmlFor="reading-meter">Medidor para consultar lecturas</label>
-          <select id="reading-meter" className="min-h-10 w-full rounded-md border border-input bg-card px-3 py-2" value={readingMeter} onChange={event => setReadingMeter(event.target.value)}>
-            <option value="">Elegí un medidor</option>{meters.map(row => <option key={row.id} value={row.id}>{row.meter_number}{row.alias ? ` — ${row.alias}` : ''}</option>)}
-          </select>
-        </div>}
-        {selectedMeter && <ReadingHistory key={`readings:${generation}:${selected}:${selectedMeter}`} generation={generation} domicileId={selected} meterId={selectedMeter} />}
-        {selectedMeter && <BillHistory key={`bills:${generation}:${selected}:${selectedMeter}`} generation={generation} domicileId={selected} meterId={selectedMeter} />}
-        {selectedMeter && <ConsumptionPanel key={`consumption:${generation}:${selected}:${selectedMeter}`} generation={generation} domicileId={selected} meterId={selectedMeter} />}
-      </>}
-    </div>
-  </CardContent></Card>;
+        {loaded && <MeterForm key={`${selected}:${editingMeter?.id ?? 'new'}:${editingMeter?.version ?? 0}:${meterRevision}`} row={editingMeter} busy={disabled} save={saveMeter} cancel={() => { setEditingMeter(null); setMeterRevision(n => n + 1); setError(''); }} />}
+      </div>
+    </CardContent></Card>
+  </AccountSection>;
 }

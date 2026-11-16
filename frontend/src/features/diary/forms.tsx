@@ -56,8 +56,7 @@ export function CutForm({ cut, busy, save, cancel }: { cut: Cut | null; busy: bo
     defaultValues: { start_at: cut ? minuteInput(cut.start_at) : '', end_at: cut?.end_at ? minuteInput(cut.end_at) : '', observations: cut?.observations ?? '', complaint_number: cut?.complaint_number ?? '' },
   });
   const disabled = busy || isSubmitting;
-  return <Card><CardHeader><CardTitle>{cut ? 'Corregir corte' : 'Registrar corte'}</CardTitle></CardHeader><CardContent>
-    <form noValidate aria-label={cut ? 'Corregir corte' : 'Registrar corte'} className="space-y-4" onSubmit={handleSubmit(save)}>
+  return <form noValidate aria-label={cut ? 'Corregir corte' : 'Registrar corte'} className="space-y-4" onSubmit={handleSubmit(save)}>
       <div className="grid gap-4 md:grid-cols-2">
         <Field id={`${id}-start`} label="Inicio" error={errors.start_at?.message}><Input {...register('start_at')} {...feedback(`${id}-start`, errors.start_at?.message)} type="datetime-local" step="60" min="1970-01-01T00:00" required disabled={disabled} /></Field>
         <Field id={`${id}-end`} label="Fin (opcional si está en curso)" error={errors.end_at?.message}><Input {...register('end_at')} {...feedback(`${id}-end`, errors.end_at?.message)} type="datetime-local" step="60" min="1970-01-01T00:00" required={cut?.status === 'closed'} disabled={disabled} /></Field>
@@ -65,19 +64,18 @@ export function CutForm({ cut, busy, save, cancel }: { cut: Cut | null; busy: bo
       <Field id={`${id}-notes`} label="Observaciones" error={errors.observations?.message}><Textarea {...register('observations')} {...feedback(`${id}-notes`, errors.observations?.message)} maxLength={4000} disabled={disabled} /></Field>
       <Field id={`${id}-claim`} label="Número de reclamo" error={errors.complaint_number?.message}><Input {...register('complaint_number')} {...feedback(`${id}-claim`, errors.complaint_number?.message)} maxLength={120} disabled={disabled} /></Field>
       <div className={actions}><Button disabled={disabled}>{cut ? 'Guardar corrección' : 'Guardar corte'}</Button>{cut && <Button type="button" variant="outline" disabled={disabled} onClick={cancel}>Cancelar corrección</Button>}</div>
-    </form>
-  </CardContent></Card>;
+    </form>;
 }
 
 export function CloseForm({ cut, busy, save, cancel }: { cut: Cut; busy: boolean; save: (end: string) => Promise<void>; cancel: () => void }) {
   const id = useId();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<z.input<typeof closeSchema>, unknown, z.output<typeof closeSchema>>({ resolver: zodResolver(closeSchema), defaultValues: { end_at: '' } });
   const disabled = busy || isSubmitting;
-  return <Card><CardContent><form noValidate aria-label="Cerrar corte" className="space-y-4" onSubmit={handleSubmit(values => save(values.end_at))}>
+  return <form noValidate aria-label="Cerrar corte" className="space-y-4" onSubmit={handleSubmit(values => save(values.end_at))}>
     <h3 className="text-lg font-semibold">Cerrar corte de {displayTimestamp(cut.start_at)}</h3>
     <Field id={id} label="Fecha de cierre" error={errors.end_at?.message}><Input {...register('end_at')} {...feedback(id, errors.end_at?.message)} type="datetime-local" step="60" min="1970-01-01T00:00" required disabled={disabled} /></Field>
     <div className={actions}><Button disabled={disabled}>Confirmar cierre</Button><Button type="button" variant="outline" disabled={disabled} onClick={cancel}>Cancelar cierre</Button></div>
-  </form></CardContent></Card>;
+  </form>;
 }
 
 export function PeriodForm({ busy, query, changed }: { busy: boolean; query: (period: Period) => Promise<void>; changed: () => void }) {

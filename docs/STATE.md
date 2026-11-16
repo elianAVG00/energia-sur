@@ -1,41 +1,35 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-14 (redesign-public-works-admin archived; single local commit; nothing pushed).
+Updated: 2026-11-15 (Mi cuenta archived; final gates pass; local commit pending).
 
-## Public works/admin redesign - CLOSED / ARCHIVED
-- [Archived change](../openspec/changes/archive/2026-11-14-redesign-public-works-admin/proposal.md), [record](ai-engineering/redesign-public-works-admin.md), [U29](use-cases/decisions.md#u29---cu02-visual-redesign-stage-a-and-stage-b-proposal-authorization), [U30](use-cases/decisions.md#u30---cu10-visual-redesign-stage-b-authorization).
-- Stage A: CU02 split into "Consultar trabajos" and "Buscar por dirección"; `ScheduledWorksResultCard.tsx` adds state chips, scope, unpublished dates, the existing five-column table and provenance. No date filters; query/address/location behavior unchanged.
-- Stage B: `AdminPanel.tsx` + presentational `SourceCard.tsx` with "Estado", "Configuración" and "Acciones", status chips, preserved failure-versus-success and the existing retry/interval/CSRF/409 behavior.
-- Evidence: `docs/ai-engineering/evidence/redesign-public-works-admin/` (24 `before/`, 18 CU02 `etapa-a/`, 6 CU10 `etapa-b/` synthetic PNGs).
-- PASS: typecheck, lint (101 files), 117/117 unit, build (333 modules), CU02 14/14, CU10 15/15, focused Playwright 68/68, strict OpenSpec 15/15 after archive. Both independent reviews were corrected/re-verified; no BLOCKER/HIGH.
-- Archived 2026-11-14; `scheduled-works` and `source-refresh-administration` synchronized (~2 modified, none added/removed). One local commit; no push.
+## Mi cuenta redesign - STAGES 0/A/B/C/D/E ARCHIVED
+- [Archived change](../openspec/changes/archive/2026-11-15-redesign-account-workspace/proposal.md), [record](ai-engineering/redesign-account-workspace.md), [U31-U35](use-cases/decisions.md).
+- Stage A: h1 "Mi cuenta", "Índice de Mi cuenta", six sections; the CU05-CU08 cards became siblings of CU04; CU09 works without a meter.
+- Stage B: "Contexto de trabajo" after the index with the only `selected-domicile` and `reading-meter` selectors; `AccountWorkspace` owns the meter selection as scope-tagged state; `DomicileManagement` stays the meter request owner; new `DomicileAddress` owns address correction; final order Domicilios, Medidores, Cortes, Lecturas, Facturas, Consumo.
+- Stage C: CU05 reading/photo/OCR/history layout and CU06 invoice form/history layout; CU07 remains unchanged in the invoice section. No API/state/schema/store/backend/dependency changes.
+- Stage D: CU07 comparison and CU08 consumption are presentation-only subpanels; existing CU08 bars retained, no new chart. Stage E: CU09 presentation-only composition and 24 synthetic screenshots at 1440/820/390; mock tests added.
+- Stage E remains presentation-only. Independent accumulated review found a PDF-action regression; it was fixed, and reviewer follow-up confirmed the correction. Review accepts that exact Stage E hunk attribution is unavailable; no E-only attribution is claimed.
+- Final Docker gates PASS: typecheck; lint 101 files; unit 117/117; build 336 modules; account E2E 30/30 and combined Playwright 46/46; post-archive OpenSpec strict 16/16 and `git diff --check`.
+- Evidence: `docs/ai-engineering/evidence/redesign-account-workspace/{before,etapa-a,etapa-b,etapa-c,etapa-d,etapa-e}/`.
+- Real seeded CU09 and QA-INT-CU04-08 BLOCKED: no confirmed isolated seeded QA setup; not reported as PASS.
+- No backend/API/auth/CSRF/business-rule/dependency changes. Capture spec skips unless `VISUAL_CAPTURE=1`; 210 synthetic PNGs (~63 MB) retained.
+- Archived only this change; specs synchronized (`account-workspace` added, `meter-readings` history isolation updated). The two temporary review packet files were removed.
 
-## Public shell + CU01 - CLOSED / ARCHIVED
-- [Archived change](../openspec/changes/archive/2026-11-14-redesign-public-shell-cu01/proposal.md), [record](ai-engineering/redesign-public-shell-cu01.md), U27/U28, [spec](../openspec/specs/frontend-shell/spec.md).
-- Approved palette, identity header/nav/footer, 1200 px main, single `h1`, skip link, header logout. CU01 uses search/address cards and `OutagesResultCard.tsx`.
-- Archived 2026-11-14; `frontend-shell` synchronized. Local commit `223a61c` is on `origin/main` according to the read-only remote check.
-
-## CU10 - CLOSED / ARCHIVED
-- [Archived change](../openspec/changes/archive/2026-11-13-supervise-source-refresh-cu10/proposal.md), [spec](../openspec/specs/source-refresh-administration/spec.md), [record](ai-engineering/supervise-source-refresh-cu10.md); U24/U25/U30.
-- Admin-only supervision of both ENRE sources, intervals and synchronous retry. Visual Stage B is archived with the current redesign.
-
-## Other closed work
-- CU01, CU02, CU03, CU04, CU05, CU06, CU07, CU08 and CU09 are implemented, verified and archived.
-- CU02 definitive scope (U22): ENRE `cortesProgramados`; no agenda, date filters, planned dates, reasons or distances.
-- CU03: SSE assistant with CU01/CU02 read tools, one `ChatMount`, owner-scoped memory and CSRF delete.
+## Closed work
+- `redesign-public-works-admin` archived and committed at `a966867` (CU02 + CU10); `redesign-public-shell-cu01` at `223a61c`.
+- CU01-CU10 are implemented and archived; CU02 definitive scope U22; CU03 SSE assistant; CU10 admin supervision.
 
 ## Blockers and unresolved decisions
-- **QA-INT-CU04-08** remains deferred: real seeded CU04/CU06/CU07/CU08 Chromium specs not run.
-- Real CU10 administrator E2E (`cu10-real.spec.ts`) was not run; current acceptance is mocked UI plus preserved backend contracts.
-- CU03 automatic 30-day retention deletion remains pending approval.
+- **QA-INT-CU04-08** deferred: real seeded CU04/CU06/CU07/CU08 Chromium specs not run.
+- Real CU10 administrator E2E (`cu10-real.spec.ts`) not run.
+- CU03 automatic 30-day retention deletion pending approval.
 - Edesur guide v1.0.0 delivered; time-sensitive data needs periodic revalidation.
-- CU05 OCR accuracy on real photos is not claimed; the supplied real photograph abstains (accepted).
-- Hosting remains unresolved; push and deployment need explicit approval.
-- Deferred accessibility: M2 duplicate announcements, M3 shared table region label, assistant overlay at 390 px, totals on stale/unavailable snapshots.
+- CU05 OCR accuracy on real photos is not claimed.
+- Hosting unresolved; push and deployment need approval; one local commit ahead of `origin/main`.
+- Deferred accessibility: M2 duplicate announcements, M3 shared table label, assistant overlay at 390 px, totals on stale/unavailable snapshots.
 
 ## Next actions
-1. Run **QA-INT-CU04-08** and the integral CU01-CU10 regression before delivery.
-2. Run the real CU10 administrator E2E when the synthetic admin environment is available.
-3. Await approval for the 30-day automatic retention deletion.
-4. Resolve hosting before deployment; pushing the local commit remains unauthorized.
-5. Start the next visual change only under a new authorized OpenSpec change.
+1. Inspect staged files, create the single authorized local commit, then verify clean status and origin state.
+2. Run seeded CU09 and QA-INT-CU04-08 when an isolated prepared QA environment is available.
+3. Run the real CU10 administrator E2E when seeded QA is available.
+4. Await CU03 retention and hosting decisions; do not push or deploy.

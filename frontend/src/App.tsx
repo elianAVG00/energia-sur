@@ -6,7 +6,7 @@ import { AppLayout } from './layouts/AppLayout.tsx';
 import { Alert } from './components/ui/alert.tsx';
 import { Button } from './components/ui/button.tsx';
 import { LoginForm } from './features/diary/forms.tsx';
-import { Workspace } from './features/diary/Workspace.tsx';
+import { AccountWorkspace } from './features/account/AccountWorkspace.tsx';
 import { OutagesPanel } from './features/outages/OutagesPanel.tsx';
 import { ScheduledWorksPanel } from './features/scheduled-works/ScheduledWorksPanel.tsx';
 import { AdminPanel } from './features/admin/AdminPanel.tsx';
@@ -25,8 +25,8 @@ const VIEWS = {
     description: 'Supervisá el estado y la actualización de las fuentes de datos públicas.',
   },
   account: {
-    title: 'Diario de interrupciones',
-    description: 'Registrá tus cortes, consultá tu historial y gestioná tus domicilios.',
+    title: 'Mi cuenta',
+    description: 'Gestioná tus domicilios y medidores, registrá lecturas y facturas, y consultá tu consumo y cortes.',
   },
 } as const;
 
@@ -108,7 +108,7 @@ export default function App() {
       {expired && !session && <Alert>La sesión venció. Ingresá nuevamente.</Alert>}
       {session ? <>
         <p>Cuenta: {session.account.username}</p>
-        <Workspace key={`${generation}:${session.account.id}`} session={session} generation={generation} />
+        <AccountWorkspace key={`${generation}:${session.account.id}`} session={session} generation={generation} />
       </> : <LoginForm key={generation} pending={pending} login={login} />}
     </>}
     {pending && <p role="status">Comprobando sesión…</p>}

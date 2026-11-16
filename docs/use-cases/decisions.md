@@ -955,3 +955,231 @@ This decision does not authorize push or deployment.
 `source-refresh-administration` were synchronized (0 added, 2 modified, 0 removed)
 and strict validation passes 15/15 after archive. A single local commit contains the
 implementation, tests, evidence and documentation; nothing was pushed.
+
+## U31 - Mi cuenta visual redesign Stage 0/A authorization
+
+Recorded from the user's 2026-11-14 BUILD instruction for the authenticated
+`redesign-account-workspace` change. The user approved the plan's presentation-only
+scope and authorized **Stage 0 (preparation) and Stage A (account frame)** only.
+Stage B (CU04 split and visible meter context), Stage C (CU05/CU06), Stage D
+(CU07/CU08) and Stage E (CU09) remain specified and task-planned but require a new
+explicit authorization after the previous stage is verified.
+
+**Approved decisions:** one OpenSpec change with verifiable stages, not six
+independent changes; a single page with an "Índice de Mi cuenta" anchor navigation,
+rejecting tabs and accordions because they would hide accepted controls, unmount
+forms and break the existing authenticated suites; the account `h1` changes from
+"Diario de interrupciones" to "Mi cuenta", editing only the four affected title
+assertions in `cu01.spec.ts` and `redesign-shell.spec.ts`; the new
+`account-workspace` capability plus a wording-only modification of
+`meter-readings`.
+
+**Review-driven corrections:** the independent review found that the index link and
+the section heading both contained "Consumo y estimación", making the non-exact
+`getByText` locator in `cu08.spec.ts` ambiguous. The locator was changed to
+`getByRole('heading', { name: 'Consumo y estimación', exact: true })` as a defect
+correction authorized by the BUILD instruction, not as a new scope. The
+`ConsumptionPanel` card title changed to "Consumo del medidor" so the section name
+stays unique, and the meter-scoped guidance now distinguishes loading, failed load,
+no meters and no selection instead of asserting an unverified fact.
+
+**Stage A scope:** `App.tsx` account title and description, `AccountWorkspace`,
+`AccountSection`, `DiarySection`, six labelled sections (Domicilios, Medidores,
+Lecturas, Facturas, Consumo y estimación, Cortes e interrupciones) and sibling
+rendering of the existing feature cards to remove the main card nesting. In this
+stage `DomicileManagement` keeps ownership of the address, meters and the
+`readingMeter` state; the meter selector stays in place and the "Contexto de
+trabajo" panel plus the CU04 split are deferred to Stage B. "Cortes e
+interrupciones" renders after the meter-scoped sections until Stage B can interleave
+it after "Medidores".
+
+**Preserved:** every existing id (`selected-domicile`, `reading-meter`), label,
+accessible name, message, handler, request scope, conflict recovery, draft,
+ownership rule, calculation and API contract; CU09 remains usable without a meter;
+backend, adapters, state helpers, Zod schemas, Zustand, HTTP, authentication/CSRF,
+the shared shell/layout, the chat mount, visual tokens and dependencies are
+untouched. M2, M3, the assistant overlay, stale/unavailable totals, hosting and the
+CU03 retention policy remain out of scope. QA-INT-CU04-08 remains deferred and must
+not be reported as passing.
+
+This decision does not authorize commit, push, archive or deployment.
+
+## U32 - Mi cuenta visual redesign Stage B authorization and result
+
+Recorded from the user's 2026-11-14 BUILD instruction for the authenticated
+`redesign-account-workspace` change. The user authorized **Stage B (CU04: domiciles,
+meters and work context)** only, authorized the minimal lift of the selected meter
+to the account container and required preserving every CU04-CU09 contract.
+
+**Implemented architecture:** `AccountWorkspace` is the single owner of the active
+meter selection. The selected id and the meter list carry the scope key
+`{generation}:{selectedDomicileId}`; values from a previous scope are ignored during
+render, so changing the account or domicile resets the meter synchronously without
+an effect, without a stale frame and without a Zustand change. `DomicileManagement`
+remains the only owner of the meter request (`GET /domiciles/{id}/meters`) and the
+meter create/correct mutations, and reports the loaded list through a typed
+`onMetersChange` callback. `DomicileAddress` owns the single
+`GET /domiciles/{id}/management` request, the address correction and its conflict
+recovery. The "Contexto de trabajo" panel after the index renders the only
+`selected-domicile` and `reading-meter` selectors and shows the active domicile and
+meter as text.
+
+**Recorded difference from the Stage A design:** D3/D6 previously kept the address,
+meters and meter selection inside `DomicileManagement`. Stage B extracted the
+address into `DomicileAddress` so the Domicilios section can own registration and
+address correction while Medidores owns only meter management, without duplicating
+requests, lists or selectors and without rendering one component in two sections.
+The meter selection was lifted exactly as authorized; no other state moved to
+Zustand or to a new store.
+
+**Section order:** Domicilios, Medidores, Cortes e interrupciones, Lecturas,
+Facturas, Consumo y estimación. CU09 still works without a meter; the meter-scoped
+sections show neutral guidance instead of asserting an absent meter while loading
+or after a failed load.
+
+**Preserved:** ids `selected-domicile` and `reading-meter` (one occurrence each),
+labels, accessible names, messages, handlers, form drafts, address and meter 409
+recovery, duplicate detection, generation/cancellation keys, meter isolation for
+readings/photos/bills/comparison/consumption, OCR, PDF and ownership isolation.
+Backend, adapters, `state.ts`, Zod schemas, Zustand, HTTP, authentication/CSRF, the
+shared shell/layout, the chat mount, tokens and dependencies are untouched. M2, M3,
+the assistant overlay, stale/unavailable totals, hosting, the CU03 retention policy
+and QA-INT-CU04-08 remain out of scope or deferred.
+
+**Evidence:** focused Playwright 82/82 including `cu05-history` 9/9, strict OpenSpec
+16/16 and 30 `etapa-b/` captures (10 scenes at three widths). Real CU04 and the other seeded suites were not
+run; QA-INT-CU04-08 is not claimed as passing. This decision does not authorize
+commit, push, archive or deployment.
+
+## U33 - Mi cuenta visual redesign Stage C authorization and result
+
+Recorded from the user's 2026-11-15 BUILD instruction for the existing
+`redesign-account-workspace` change. The user explicitly authorized **Stage C
+(CU05 Lecturas and CU06 Facturas)** only. No new OpenSpec change was created;
+Stages D (CU07/CU08 visual redesign) and E (CU09 diary redesign) remain
+unauthorized and untouched.
+
+**Scope:** reorganize the existing CU05 form, photo/OCR area and meter-scoped
+history; organize the existing CU06 registration form, attachment and history.
+Use the current `AccountSection` as the one section card, with internal headings,
+dividers and lightweight groupings. Keep CU07 comparison in its existing
+location and leave its results and calculations unchanged.
+
+**Preserved:** IDs, labels, accessible controls and messages; reading validation,
+lower-reading warning, photo contract, OCR suggestion/fallback/confirmation,
+correction, versions, uncertain-creation retry and conflict recovery; bill
+period/value validation, overlap confirmation, attached file, idempotency,
+version/conflict recovery, uncertain-creation retry, detail/download actions and
+the CU07 relationship. The exact text “Registrar factura” remains inside the
+invoice form. `AccountWorkspace` retains the only meter selection owner and
+existing `generation:domicile:meter` keys; no request, state, API, backend,
+schema, store or dependency was changed.
+
+**Verification:** typecheck, lint, unit tests 117/117, build, CU05 history E2E
+9/9, account redesign E2E 15/15, shell/navigation E2E 7/7, visual-capture E2E
+14/14 (42 synthetic screenshots across 1440/820/390 px), and strict OpenSpec
+16/16 passed. Initial local host checks were unavailable because `node_modules`
+was absent; the passing checks ran in the existing pinned Docker environment.
+Real seeded `cu04`, `cu05-real`, `cu06-real`, `cu07` and `cu08` acceptance remains
+BLOCKED because QA credentials/seeded setup are unavailable; QA-INT-CU04-08 is
+not claimed as passing. The first Playwright attempt used a Vite-disallowed
+container hostname; after using the frontend container IP, one assertion exposed
+the already-running Vite graph had not loaded the mounted edit. Restarting only
+the frontend service loaded current source; the final focused rerun passed.
+
+The read-only reviewer found no confirmed defect in its static snapshot, but
+could not attribute findings to the diff or run checks; a diff-based independent
+review remains pending. This decision does not authorize commit, push, archive,
+deployment or Stage D/E.
+
+## U34 - Mi cuenta visual redesign Stage D authorization and result
+
+Recorded from the user's 2026-11-15 BUILD instruction for the existing
+`redesign-account-workspace` change. Stage D (presentation of CU07 comparison and
+CU08 evolution/estimate) was authorized only after the independent read-only
+review inspected the actual supplied Stage C diffs against current source and
+the CU05/CU06/CU07 contracts. The reviewer found no confirmed Stage C-attributable
+defect, so task 6.7 may close. This was a static review; it did not run runtime
+gates and does not resolve the real seeded QA blocker.
+
+**Scope:** visually organize the existing CU07 comparison inside Facturas and
+the existing CU08 consumption panel. Preserve comparison selection, matching,
+calculations, exact displayed messages, API calls, validation, units and
+meter isolation. Organize filters, real interval consumption, daily averages
+and the existing estimate; show its existing period and representativeness
+warning when available. Do not change request/state helpers, keys, cancellation,
+stores, backend, API, schemas, tokens or dependencies. Do not start Stage E.
+
+**Chart decision:** no new graph or graphing dependency is authorized. Retain the
+existing simple CU08 bars and make their presentation responsive; do not add a
+new graph.
+
+**Implementation result:** `BillComparison.tsx` now renders the selected bill,
+comparison result and existing warnings/states in a labelled visual subpanel,
+without changing the existing `Comparar` action in `BillHistory`. `ConsumptionPanel.tsx`
+uses semantic subpanels for filters, real intervals, daily averages and estimates,
+with the estimate's existing base timestamps formatted in Buenos Aires time.
+Stage D tests and synthetic captures are added under the existing account harness.
+
+**Verification:** typecheck, lint (106 files, 0 warnings/errors), unit tests
+117/117, build (336 modules), focused Playwright 37/37, visual captures 22/22
+(66 synthetic images across 1440/820/390 px), responsive/no-overflow checks and
+strict OpenSpec 16/16 passed in the existing pinned Docker verification image.
+The first Playwright attempt hit a stale Vite module graph (33/37); after
+restarting only the frontend service, the current-source rerun passed 37/37.
+Native Windows checks remain blocked by absent dependencies/tools. Real seeded
+CU04-CU08 and QA-INT-CU04-08 remain BLOCKED, not passing. Independent review
+identified a LOW coverage gap for decreasing readings and the `billed_higher`/
+`equal` outcomes. Mocked regression cases were added; the account Playwright
+suite then passed 22/22 and lint passed on 106 files. At the time, the reviewer
+could not inspect the actual Git diff because it lacked Git/shell access; U35
+subsequently records the completed diff-attributed review. Commit, push, archive
+and deployment remain unauthorized.
+
+## U35 - Mi cuenta Stage D review completion and Stage E authorization
+
+Recorded from the user's 2026-11-15 BUILD instruction for the existing
+`redesign-account-workspace` change. The user authorized completing the
+independent Stage D review and authorized Stage E only if that review was
+satisfactory.
+
+**Stage D review result:** the read-only reviewer directly inspected the supplied
+real diffs for `BillComparison.tsx` and `ConsumptionPanel.tsx`, their base and
+current context, the named CU07/CU08 mocked test additions, the locator-only
+`cu08.spec.ts` update, accepted specifications and D15. No blocker, high-severity
+or confirmed Stage-D-attributable defect was found. The reviewer reported high
+attribution confidence for the supplied scope, but could not verify omitted
+whole-tree changes or run gates. A LOW test-coverage limitation remains: the
+named visual suite does not directly assert exact ±7-day candidate boundaries,
+manual choice among multiple candidates or positive values below the two-decimal
+display threshold. The review is static and does not replace runtime or seeded
+acceptance.
+
+**Stage E authorization:** redesign only CU09's presentation in the same change.
+Keep its existing requests, forms, validation, drafts, 409 recovery, selected
+domicile/account isolation, minute-precision behavior, server summary totals and
+PDF endpoint/contract. CU09 must remain independent of meter selection. Do not
+modify backend, APIs, stores, schemas, helpers, auth/CSRF, calculations, PDF
+generation, AccountWorkspace, CU01-CU08/CU10, shared tables, global layout,
+tokens or dependencies. Use one primary card for Cortes e interrupciones, with
+lightweight internal groups, no nested cards, tabs, accordions, routes or new
+dependencies. Add synthetic tests and visual evidence; distinguish them from
+real seeded acceptance.
+
+This authorizes only Stage E implementation, verification and its documentation
+within the existing `redesign-account-workspace` change. It does not authorize
+another OpenSpec change, commit, push, Sync, Archive or deployment. Stop for
+human review when Stage E implementation/review is complete.
+
+**Subsequent closure authorization (2026-11-15):** the user expressly approved
+reviewing the integrated accumulated change from base
+`a966867400febc5f34a3531b9b32c07ec790927b` instead of requiring unreliable
+Stage E per-hunk attribution, with the original deleted `Workspace.tsx`
+recovered for comparison. The limitation must be documented; no E-only
+attribution may be claimed. If the review and final checks pass, archive this
+change with its specs synchronized and create one local commit,
+`feat(frontend): redesign account workspace CU04-CU09`. No push or deployment.
+The independent accumulated review found a PDF-action regression; its fix was
+independently rechecked and affected gates rerun. Seeded CU09 and
+QA-INT-CU04-08 remain pending and are not completion criteria for this
+presentation-only archive, nor are they reported as passing.

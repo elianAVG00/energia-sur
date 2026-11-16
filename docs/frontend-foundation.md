@@ -14,6 +14,7 @@ this foundation is not a second app, backend framework, router or query cache.
 | HTTP policy | `frontend/src/lib/http.ts`, `httpError.ts` | Fixed same-origin `/api`, cookie credentials, interceptors, cancellation and safe typed errors. |
 | CU09 DTO adapter | `frontend/src/diaryApi.ts` | Payload/status/MIME validation and response identity checks; authoritative data comes from backend. |
 | CU09 presentation/forms | `frontend/src/features/diary/` | Feature-local rows, summaries, drafts and React Hook Form/Zod schemas. |
+| Account workspace composition | `frontend/src/features/account/` plus `src/features/domiciles/` | `AccountWorkspace` composes CU04-CU09, owns the scoped active-meter selection and context presentation; `DomicileAddress` owns address management requests, while `DomicileManagement` owns meter requests and mutations. These are presentation/data-access boundaries; backend business rules remain authoritative. |
 | Cancellation/calendar presentation | `frontend/src/diaryState.ts`, `useRequestScope.ts` | Existing request lanes and Buenos Aires display helpers; not authoritative duration calculations. |
 
 All paths in the table are repository-relative; abbreviated `src/` paths are under
