@@ -11,8 +11,8 @@ const areas = {
   coverage_retrieved_on: '2026-11-10',
   areas: [
     { partido: 'LOMAS DE ZAMORA', localidades: [
-      { localidad: 'BANFIELD', coverage: 'coverage_unverified', reported: true },
-      { localidad: null, coverage: 'coverage_unverified', reported: false },
+      { localidad: 'BANFIELD', coverage: 'coverage_unverified' },
+      { localidad: null, coverage: 'coverage_unverified' },
     ] },
   ],
 };
@@ -46,6 +46,7 @@ test('areas uses the public catalog endpoint and validates coverage', async () =
   const result = await new OutagesClient(http).areas(signal());
   assert.equal(result.coverage_version, '2026-11-10');
   assert.equal(result.areas[0]?.localidades[0]?.coverage, 'coverage_unverified');
+  assert.equal('reported' in (result.areas[0]?.localidades[0] ?? {}), false);
 });
 
 test('query builds an encoded partido/localidad request and validates rows', async () => {

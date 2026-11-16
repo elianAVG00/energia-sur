@@ -15,8 +15,14 @@ from sqlalchemy.orm import Session
 from starlette.types import Message, Scope
 
 from app import georef
-from app.coverage import CoverageCatalog, CoverageCatalogError, _load, load_catalog
-from app.enre_parser import parse_feed
+from app.coverage import (
+    CoverageCatalog,
+    CoverageCatalogError,
+    CoverageEntry,
+    _load,
+    load_catalog,
+)
+from app.enre_parser import normalized_key, parse_feed
 from app.main import app
 from app.models import OutageFetchRun, OutageReport, OutageSnapshot
 from app.outage_store import _store_snapshot, current_snapshot
@@ -56,6 +62,44 @@ def _catalog() -> CoverageCatalog:
 
 
 class CoverageTests(unittest.TestCase):
+    def test_shared_alias_normalization_and_unresolved_names(self) -> None:
+        canonical = CoverageCatalog(
+            version="test-georef",
+            retrieved_on="2026-11-15",
+            source="synthetic",
+            entries={
+                ("presidente peron", None): CoverageEntry(
+                    "Presidente Perón", None, "covered",
+                ),
+                ("presidente peron", "san jose"): CoverageEntry(
+                    "Presidente Perón", "San José", "coverage_unverified",
+                ),
+            },
+            party_labels={"presidente peron": "Presidente Perón"},
+            party_ids={"presidente peron": "06648"},
+            party_aliases={"pte peron": "presidente peron"},
+            locality_aliases={
+                ("presidente peron", "san jose"): "san jose",
+            },
+            party_query_keys={
+                "presidente peron": frozenset({"presidente peron", "pte peron"}),
+            },
+            locality_query_keys={
+                ("presidente peron", "san jose"): frozenset({"san jose"}),
+            },
+        )
+        self.assertEqual(normalized_key("  PTE   PERÓN "), "pte peron")
+        self.assertEqual(canonical.canonical_partido("PTE PERON"), "Presidente Perón")
+        self.assertEqual(canonical.classify("PTE PERON", "SAN JOSE"),
+                         "coverage_unverified")
+        self.assertEqual(canonical.query_partido_keys("Pte Perón"),
+                         frozenset({"presidente peron", "pte peron"}))
+        self.assertEqual(canonical.query_localidad_keys("PTE PERON", "San José"),
+                         frozenset({"san jose"}))
+        self.assertEqual(canonical.query_localidad_keys("Cañuelas", "Santa Anita"),
+                         frozenset({"santa anita"}))
+        self.assertFalse(canonical.has_localidad("Cañuelas", "Santa Anita"))
+
     def test_statuses_and_absence(self) -> None:
         catalog = _catalog()
         self.assertEqual(catalog.classify("Quilmes", "quilmes"), "covered")
@@ -114,6 +158,21 @@ class GeorefAdapterTests(unittest.TestCase):
         self.assertEqual(zones[0].localidad, "QUILMES")
         self.assertEqual(zones[0].granularity, "localidad")
         self.assertEqual(zones[0].coverage, "covered")
+
+    def test_v21_address_localidad_precedes_localidad_censal(self) -> None:
+        def fake_get(path: str, params: dict[str, str]) -> dict[str, object]:
+            if path == "direcciones" and params["provincia"] == "06":
+                return {"direcciones": [{
+                    **_address("CALLE 1", "Quilmes", "Quilmes", "06"),
+                    "localidad": {"id": "06091010", "nombre": "Quilmes"},
+                    "localidad_censal": {"id": "06091010", "nombre": "Otro nombre"},
+                }]}
+            return {"direcciones": []}
+
+        with patch("app.georef._get", side_effect=fake_get):
+            zones = georef.resolve_address("calle 1 100", self.catalog, {})
+        self.assertEqual(zones[0].partido, "QUILMES")
+        self.assertEqual(zones[0].localidad, "QUILMES")
 
     def test_forward_retries_without_av_prefix(self) -> None:
         calls: list[str] = []
@@ -439,20 +498,29 @@ class CoverageApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["state"], "coverage_unverified")
         self.assertNotIn("outages", payload)
 
-    async def test_areas_merge_catalog_and_snapshot(self) -> None:
-        status, payload = await self._get("/outages/areas")
+    async def test_areas_are_catalog_only_and_exclude_snapshot_only_options(self) -> None:
+        test_catalog = _catalog()
+        test_catalog = CoverageCatalog(
+            version=test_catalog.version,
+            retrieved_on=test_catalog.retrieved_on,
+            source=test_catalog.source,
+            entries={
+                key: entry for key, entry in test_catalog.entries.items()
+                if key[0] != "capital"
+            },
+        )
+        with patch("app.outages_api.load_catalog", return_value=test_catalog):
+            status, payload = await self._get("/outages/areas")
         self.assertEqual(status, 200)
         self.assertEqual(payload["coverage_version"], "test-1")
         self.assertTrue(payload["coverage_retrieved_on"])
         areas = {area["partido"]: area for area in payload["areas"]}
         self.assertIn("QUILMES", areas)
-        self.assertIn("ALMIRANTE BROWN", areas)
+        self.assertNotIn("ALMIRANTE BROWN", areas)
         quilmes = areas["QUILMES"]["localidades"][0]
         self.assertEqual(quilmes["coverage"], "covered")
-        self.assertFalse(quilmes["reported"])
-        brown = {entry["localidad"]: entry
-                 for entry in areas["ALMIRANTE BROWN"]["localidades"]}
-        self.assertTrue(brown["SAN JOSE"]["reported"])
+        self.assertNotIn("reported", quilmes)
+        self.assertNotIn("CAPITAL", areas)
 
 
 @unittest.skipUnless(

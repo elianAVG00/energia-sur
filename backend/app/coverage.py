@@ -6,7 +6,7 @@ only asserted for an explicit entry with documented provenance.
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
@@ -36,6 +36,43 @@ class CoverageCatalog:
     retrieved_on: str
     source: str
     entries: dict[tuple[str, str | None], CoverageEntry]
+    party_labels: dict[str, str] = field(default_factory=dict)
+    party_ids: dict[str, str] = field(default_factory=dict)
+    party_aliases: dict[str, str] = field(default_factory=dict)
+    locality_aliases: dict[tuple[str, str], str] = field(default_factory=dict)
+    party_query_keys: dict[str, frozenset[str]] = field(default_factory=dict)
+    locality_query_keys: dict[tuple[str, str], frozenset[str]] = field(
+        default_factory=dict,
+    )
+
+    def canonical_partido_key(self, partido: str) -> str:
+        key = normalized_key(partido)
+        return self.party_aliases.get(key, key)
+
+    def canonical_localidad_key(self, partido: str, localidad: str) -> str:
+        party_key = self.canonical_partido_key(partido)
+        locality_key = normalized_key(localidad)
+        return self.locality_aliases.get((party_key, locality_key), locality_key)
+
+    def canonical_partido(self, partido: str) -> str | None:
+        key = self.canonical_partido_key(partido)
+        return self.party_labels.get(key)
+
+    def partido_id(self, partido: str) -> str | None:
+        return self.party_ids.get(self.canonical_partido_key(partido))
+
+    def query_partido_keys(self, partido: str) -> frozenset[str]:
+        key = self.canonical_partido_key(partido)
+        return self.party_query_keys.get(key, frozenset({normalized_key(partido)}))
+
+    def query_localidad_keys(self, partido: str, localidad: str) -> frozenset[str]:
+        party_key = self.canonical_partido_key(partido)
+        locality_key = self.canonical_localidad_key(partido, localidad)
+        known = self.locality_query_keys.get((party_key, locality_key))
+        if known is not None:
+            return known
+        # Preserve exact queries for ENRE values that have no GeoRef equivalent.
+        return frozenset({normalized_key(localidad)})
 
     def classify(self, partido: str, localidad: str | None) -> str:
         """Classify a zone; absence is unverified, never out of coverage.
@@ -43,18 +80,26 @@ class CoverageCatalog:
         A localidad query only matches a localidad entry: a partido-level entry
         does not silently cover localidades the catalog does not list.
         """
-        partido_key = normalized_key(partido)
+        partido_key = self.canonical_partido_key(partido)
         if localidad is not None:
-            entry = self.entries.get((partido_key, normalized_key(localidad)))
+            entry = self.entries.get((
+                partido_key, self.canonical_localidad_key(partido, localidad),
+            ))
         else:
             entry = self.entries.get((partido_key, None))
         return entry.status if entry is not None else "coverage_unverified"
 
     def has_localidad(self, partido: str, localidad: str) -> bool:
-        return (normalized_key(partido), normalized_key(localidad)) in self.entries
+        return (
+            self.canonical_partido_key(partido),
+            self.canonical_localidad_key(partido, localidad),
+        ) in self.entries
 
     def label(self, partido: str, localidad: str) -> str | None:
-        entry = self.entries.get((normalized_key(partido), normalized_key(localidad)))
+        entry = self.entries.get((
+            self.canonical_partido_key(partido),
+            self.canonical_localidad_key(partido, localidad),
+        ))
         return entry.localidad if entry is not None else None
 
 

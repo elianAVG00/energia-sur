@@ -1,17 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
-
-const AREAS = {
-  coverage_version: '2026-11-10',
-  coverage_retrieved_on: '2026-11-10',
-  areas: [
-    { partido: 'LOMAS DE ZAMORA', localidades: [
-      { localidad: 'BANFIELD', coverage: 'coverage_unverified', reported: true },
-    ] },
-    { partido: 'SAN VICENTE', localidades: [] },
-    { partido: 'CAPITAL', localidades: [] },
-  ],
-};
+import { APPROVED_PARTIES, TERRITORIAL_AREAS } from './territorialCatalog.ts';
 
 const RESOLVED_LOMAS = {
   status: 'resolved',
@@ -93,7 +82,7 @@ async function mockApi(page: Page, options: MockOptions = {}): Promise<void> {
       return;
     }
     if (url.pathname === '/api/outages/areas') {
-      await route.fulfill({ status: 200, json: AREAS });
+      await route.fulfill({ status: 200, json: TERRITORIAL_AREAS });
       return;
     }
     if (url.pathname === '/api/outages') {
@@ -142,6 +131,14 @@ test('visitor queries reported outages without a session and without direct ENRE
   expect(external).toEqual([]);
 });
 
+test('area selector uses only the approved shared party catalog', async ({ page }) => {
+  await mockApi(page);
+  await openPublic(page);
+  const options = page.getByLabel('Partido', { exact: true }).locator('option');
+  await expect(options).toHaveText(['Elegí un partido', ...APPROVED_PARTIES]);
+  await expect(options).not.toContainText(['CAPITAL', 'CABA']);
+});
+
 test('ambiguous address shows candidates and posts the address without CSRF', async ({ page }) => {
   let body: unknown;
   let csrf: string | undefined;
@@ -181,7 +178,7 @@ test('stale, unverified coverage and unavailable source are distinct states', as
     state: 'unavailable',
     freshness: 'unavailable',
     granularity: 'partido',
-    coverage: { partido: 'CAPITAL', localidad: null, status: 'coverage_unverified' },
+    coverage: { partido: 'AVELLANEDA', localidad: null, status: 'coverage_unverified' },
     outages: undefined,
   });
   await mockApi(page, { byPartido: {
@@ -192,7 +189,7 @@ test('stale, unverified coverage and unavailable source are distinct states', as
       coverage: { partido: 'LOMAS DE ZAMORA', localidad: null, status: 'coverage_unverified' },
     }),
     'SAN VICENTE': unverified,
-    'CAPITAL': unavailable,
+    'AVELLANEDA': unavailable,
   } });
   await openPublic(page);
 
@@ -207,7 +204,7 @@ test('stale, unverified coverage and unavailable source are distinct states', as
   await expect(page.getByText('No podemos confirmar si hay cortes ni afirmar que no los hay.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Sin cortes reportados' })).toHaveCount(0);
 
-  await page.getByLabel('Partido', { exact: true }).selectOption('CAPITAL');
+  await page.getByLabel('Partido', { exact: true }).selectOption('AVELLANEDA');
   await page.getByRole('button', { name: 'Consultar cortes' }).click();
   await expect(page.getByRole('heading', { name: 'Fuente no disponible' })).toBeVisible();
   await expect(page.getByText('No podemos confirmar cortes ni ausencia de cortes.').first()).toBeVisible();
@@ -224,7 +221,9 @@ test('a covered zone with no reports never claims supply', async ({ page }) => {
   await page.getByLabel('Partido', { exact: true }).selectOption('SAN VICENTE');
   await page.getByRole('button', { name: 'Consultar cortes' }).click();
   await expect(page.getByRole('heading', { name: 'Sin cortes reportados' })).toBeVisible();
-  await expect(page.getByText('No hay cortes reportados para esta zona en la última actualización. Esto no garantiza el suministro eléctrico.')).toBeVisible();
+  await expect(page.getByText(
+    'En la última actualización disponible no se informó un corte coincidente con esta zona. Esto no garantiza el suministro eléctrico.',
+  )).toBeVisible();
   await expect(page.getByText('Cobertura verificada')).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);
   await expect(page.getByText('Detalle de cortes informados')).toHaveCount(0);
@@ -322,11 +321,11 @@ test('outage states stay readable and scroll internally at every width', async (
       coverage: { partido: 'SAN VICENTE', localidad: null, status: 'coverage_unverified' },
       outages: undefined,
     }),
-    'CAPITAL': result({
+    'AVELLANEDA': result({
       state: 'unavailable',
       freshness: 'unavailable',
       granularity: 'partido',
-      coverage: { partido: 'CAPITAL', localidad: null, status: 'coverage_unverified' },
+      coverage: { partido: 'AVELLANEDA', localidad: null, status: 'coverage_unverified' },
       outages: undefined,
     }),
   } });
@@ -337,7 +336,7 @@ test('outage states stay readable and scroll internally at every width', async (
     for (const [partido, heading] of [
       ['LOMAS DE ZAMORA', 'Cortes reportados'],
       ['SAN VICENTE', 'Cobertura no verificada'],
-      ['CAPITAL', 'Fuente no disponible'],
+      ['AVELLANEDA', 'Fuente no disponible'],
     ] as const) {
       await page.getByLabel('Partido', { exact: true }).selectOption(partido);
       await page.getByRole('button', { name: 'Consultar cortes' }).click();

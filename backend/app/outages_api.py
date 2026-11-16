@@ -13,13 +13,13 @@ from sqlalchemy.orm import Session
 
 from app import georef
 from app.api import DB, no_cache
-from app.coverage import CoverageCatalog, load_catalog
+from app.coverage import CoverageCatalog
 from app.enre_client import FEED_URL
-from app.enre_parser import normalized_key
 from app.models import OutageReport
 from app.outage_store import current_snapshot, latest_source_status
 from app.public_reads import freshness
 from app.public_reads import outage_state as _state
+from app.territorial_catalog import load_catalog
 
 router = APIRouter(dependencies=[Depends(no_cache)])
 
@@ -93,7 +93,6 @@ class OutageOut(BaseModel):
 class LocalidadAreaOut(BaseModel):
     localidad: str | None
     coverage: CoverageStatus
-    reported: bool
 
 
 class PartidoAreaOut(BaseModel):
@@ -186,18 +185,7 @@ def _known_areas(db: Session) -> georef.KnownAreas:
     return known
 
 
-def _areas(db: Session, catalog: CoverageCatalog) -> AreasOut:
-    snapshot = current_snapshot(db)
-    reported: dict[tuple[str, str | None], str | None] = {}
-    row_partidos: dict[str, str] = {}
-    if snapshot is not None:
-        rows = db.scalars(select(OutageReport).where(
-            OutageReport.snapshot_id == snapshot.id,
-        ).order_by(OutageReport.partido_key, OutageReport.localidad_key))
-        for row in rows:
-            reported[(row.partido_key, row.localidad_key)] = row.localidad
-            row_partidos[row.partido_key] = row.partido
-
+def _areas(catalog: CoverageCatalog) -> AreasOut:
     partido_labels: dict[str, str] = {}
     buckets: dict[str, dict[str | None, LocalidadAreaOut]] = {}
     for (partido_key, localidad_key), entry in catalog.entries.items():
@@ -205,18 +193,6 @@ def _areas(db: Session, catalog: CoverageCatalog) -> AreasOut:
         buckets.setdefault(partido_key, {})[localidad_key] = LocalidadAreaOut(
             localidad=entry.localidad,
             coverage=cast(CoverageStatus, entry.status),
-            reported=(partido_key, localidad_key) in reported,
-        )
-    for partido_key, label in row_partidos.items():
-        partido_labels.setdefault(partido_key, label)
-    for (partido_key, localidad_key), localidad_label in reported.items():
-        bucket = buckets.setdefault(partido_key, {})
-        previous = bucket.get(localidad_key)
-        bucket[localidad_key] = LocalidadAreaOut(
-            localidad=previous.localidad if previous is not None else localidad_label,
-            coverage=(previous.coverage if previous is not None
-                      else "coverage_unverified"),
-            reported=True,
         )
     return AreasOut(
         coverage_version=catalog.version or None,
@@ -266,7 +242,7 @@ def _client(request: Request) -> str:
 
 @router.get("/outages/areas", response_model=AreasOut)
 def outage_areas(db: DB) -> AreasOut:
-    return _areas(db, load_catalog())
+    return _areas(load_catalog(db))
 
 
 @router.get("/outages", response_model=OutagesOut, response_model_exclude_none=True)
@@ -277,16 +253,19 @@ def current_outages(
 ) -> OutagesOut:
     partido_value = _clean(partido)
     localidad_value = _clean(localidad) if localidad is not None else None
+    catalog = load_catalog(db)
     snapshot = current_snapshot(db)
     rows: list[OutageReport] = []
     if snapshot is not None:
         statement = select(OutageReport).where(
             OutageReport.snapshot_id == snapshot.id,
-            OutageReport.partido_key == normalized_key(partido_value),
+            OutageReport.partido_key.in_(catalog.query_partido_keys(partido_value)),
         )
         if localidad_value is not None:
             statement = statement.where(
-                OutageReport.localidad_key == normalized_key(localidad_value),
+                OutageReport.localidad_key.in_(
+                    catalog.query_localidad_keys(partido_value, localidad_value),
+                ),
             )
         rows = list(db.scalars(statement.order_by(
             OutageReport.category, OutageReport.localidad_key, OutageReport.id,
@@ -296,7 +275,7 @@ def current_outages(
         snapshot.source_last_modified if snapshot is not None else None,
         datetime.now(UTC),
     ))
-    coverage = cast(CoverageStatus, load_catalog().classify(partido_value, localidad_value))
+    coverage = cast(CoverageStatus, catalog.classify(partido_value, localidad_value))
     source_status = cast(Literal["ok", "degraded"], latest_source_status(db))
     state = cast(State, _state(freshness_value, coverage, bool(rows), source_status))
     if rows and state in {"reported", "stale", "unavailable"}:
@@ -355,7 +334,7 @@ def resolve_outage_address(
     localidad_hint = _clean(payload.localidad) if payload.localidad is not None else None
     try:
         zones = georef.resolve_address(
-            address, load_catalog(), _known_areas(db),
+            address, load_catalog(db), _known_areas(db),
             partido_hint=partido_hint, localidad_hint=localidad_hint,
         )
     except georef.GeorefError as error:
@@ -372,7 +351,7 @@ def resolve_outage_location(
         return _too_many()
     try:
         zone = georef.resolve_location(
-            payload.lat, payload.lon, load_catalog(), _known_areas(db),
+            payload.lat, payload.lon, load_catalog(db), _known_areas(db),
         )
     except georef.GeorefError as error:
         raise HTTPException(422, _geo_message(error)) from None

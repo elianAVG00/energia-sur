@@ -479,7 +479,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
             status, _ = await self._get("/scheduled-works", {"partido": "almirante brown"})
         self.assertEqual(status, 503)
 
-    async def test_areas_list_from_catalog_and_snapshot(self) -> None:
+    async def test_areas_list_is_catalog_only(self) -> None:
         self._seed(datetime.now(UTC) - timedelta(minutes=2))
         status, body = await self._get("/scheduled-works/areas")
         self.assertEqual(status, 200)
@@ -490,8 +490,9 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         glew = [row for row in partidos["ALMIRANTE BROWN"]["localidades"]
                 if row["localidad"] == "GLEW"]
         self.assertEqual(len(glew), 1)
-        self.assertTrue(glew[0]["reported"])
-        self.assertEqual(glew[0]["coverage"], "covered")
+        self.assertNotIn("reported", glew[0])
+        self.assertEqual(glew[0]["coverage"], "coverage_unverified")
+        self.assertEqual(len(partidos), 12)
 
 
 @unittest.skipUnless(
@@ -526,17 +527,13 @@ class LiveEnreTests(unittest.IsolatedAsyncioTestCase):
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             areas = (await client.get("/scheduled-works/areas")).json()
             self.assertIsNotNone(areas["coverage_version"])
-            reported = [
-                (area["partido"], row["localidad"])
-                for area in areas["areas"]
-                for row in area["localidades"]
-                if row["reported"]
-            ]
-            if reported:
-                partido, localidad = reported[0]
-            elif areas["areas"]:
+            if areas["areas"]:
                 partido = areas["areas"][0]["partido"]
-                localidad = None
+                locality_options = [
+                    row["localidad"] for row in areas["areas"][0]["localidades"]
+                    if row["localidad"] is not None
+                ]
+                localidad = locality_options[0] if locality_options else None
             else:
                 partido, localidad = "ALMIRANTE BROWN", None
             params = {"partido": partido}

@@ -61,8 +61,13 @@ class EnreFeed:
 
 
 def normalized_key(value: str) -> str:
-    """Comparison key: NFC, case-folded, trimmed and single-spaced."""
-    return " ".join(unicodedata.normalize("NFC", value).strip().casefold().split())
+    """Comparison key: accent-insensitive, case-folded and whitespace-normalized."""
+    decomposed = unicodedata.normalize("NFKD", value)
+    without_marks = "".join(
+        character for character in decomposed
+        if not unicodedata.combining(character)
+    )
+    return " ".join(without_marks.casefold().strip().split())
 
 
 def _text(value: object, field: str, limit: int, *, required: bool = False) -> str | None:

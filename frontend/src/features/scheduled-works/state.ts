@@ -50,7 +50,7 @@ export function stateDetail(state: ScheduledState): string {
     case 'works_reported':
       return 'Estos son los trabajos de mantenimiento informados por el ENRE para la zona. No son una agenda de trabajos futuros.';
     case 'no_works':
-      return 'No hay trabajos de mantenimiento informados para esta zona en la última actualización. El ENRE no publica una agenda de fechas futuras.';
+      return 'En la última actualización disponible no se informó un trabajo de mantenimiento coincidente con esta zona. Esto no descarta interrupciones. El ENRE no publica una agenda de fechas futuras.';
     case 'stale':
       return 'La última actualización tiene más de 15 minutos. Los datos pueden no reflejar la situación actual.';
     case 'unavailable':

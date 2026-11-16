@@ -102,12 +102,12 @@ export function OutagesPanel() {
           return area;
         }
         return { ...area, localidades: [...area.localidades, {
-          localidad: zone.localidad, coverage: zone.coverage, reported: false,
+          localidad: zone.localidad, coverage: zone.coverage,
         }] };
       });
       if (!found) {
         areas.push({ partido: zone.partido, localidades: zone.localidad
-          ? [{ localidad: zone.localidad, coverage: zone.coverage, reported: false }]
+          ? [{ localidad: zone.localidad, coverage: zone.coverage }]
           : [] });
       }
       return { ...previous, areas };

@@ -51,7 +51,6 @@ export interface ScheduledWorksResult {
 export interface AreaLocalidad {
   localidad?: string | null;
   coverage: CoverageStatus;
-  reported: boolean;
 }
 
 export interface AreaPartido {
@@ -151,7 +150,7 @@ function isScheduledWorksResult(value: unknown): value is ScheduledWorksResult {
 
 function isAreaLocalidad(value: unknown): value is AreaLocalidad {
   return record(value) && optionalNullableText(value.localidad) &&
-    oneOf(value.coverage, COVERAGE) && typeof value.reported === 'boolean';
+    oneOf(value.coverage, COVERAGE);
 }
 
 function isAreaPartido(value: unknown): value is AreaPartido {

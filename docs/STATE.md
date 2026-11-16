@@ -1,6 +1,13 @@
 # Operational state - energia-sur
 
-Updated: 2026-11-15 (Mi cuenta archived; final gates pass; local commit pending).
+Updated: 2026-11-16 (territorial catalog implementation active; CU01/CU02 Playwright passed; final review/isolated API checks pending).
+
+## Shared CU01/CU02 territorial catalog - IMPLEMENTATION ACTIVE
+- [Active OpenSpec change](../openspec/changes/unify-territorial-catalog/proposal.md), [engineering record](ai-engineering/unify-territorial-catalog.md).
+- PostgreSQL is at `0010_territorial_alias_party_fk`; 12 parties, 93 locality names, 92 selectable localities, 99 source records, 14 aliases (2 unresolved). Existing report/work/account rows were preserved at the migration check.
+- Live API parity passed: 12 parties/92 localities on both selectors, no CABA/CAPITAL, verified aliases equivalent, `Santa Anita` remains unverified; GeoRef address and reverse-location requests resolved.
+- Isolated-schema migration test, full backend suite (485 passed; 247 prerequisite skips), Ruff and mypy pass. Frontend Docker build, 117 unit tests, lint, typecheck and CU01/CU02 Playwright (30/30) pass; E2E fixtures assert identical approved-party options and exclude CABA/CAPITAL.
+- Live endpoint parity and GeoRef address/reverse-location checks passed. Static independent review found no actionable issues; independent runtime migration/data sign-off remains pending. Full CU01/CU02 PostgreSQL API integration suites remain blocked until an isolated migrated `TEST_DATABASE_URL` is available. No commit, push or archive.
 
 ## Mi cuenta redesign - STAGES 0/A/B/C/D/E ARCHIVED
 - [Archived change](../openspec/changes/archive/2026-11-15-redesign-account-workspace/proposal.md), [record](ai-engineering/redesign-account-workspace.md), [U31-U35](use-cases/decisions.md).

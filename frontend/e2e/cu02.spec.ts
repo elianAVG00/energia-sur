@@ -1,19 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
-
-const AREAS = {
-  coverage_version: '2026-11-10',
-  coverage_retrieved_on: '2026-11-10',
-  areas: [
-    { partido: 'ALMIRANTE BROWN', localidades: [
-      { localidad: 'GLEW', coverage: 'covered', reported: true },
-    ] },
-    { partido: 'BERAZATEGUI', localidades: [
-      { localidad: 'BERAZATEGUI', coverage: 'covered', reported: false },
-    ] },
-    { partido: 'CAPITAL', localidades: [] },
-  ],
-};
+import { APPROVED_PARTIES, TERRITORIAL_AREAS } from './territorialCatalog.ts';
 
 const RESOLVED = {
   status: 'resolved',
@@ -90,7 +77,7 @@ async function mockApi(page: Page, options: MockOptions = {}): Promise<void> {
       return;
     }
     if (url.pathname === '/api/scheduled-works/areas') {
-      await route.fulfill({ status: 200, json: AREAS });
+      await route.fulfill({ status: 200, json: TERRITORIAL_AREAS });
       return;
     }
     if (url.pathname === '/api/scheduled-works') {
@@ -147,6 +134,14 @@ test('visitor sees reported works without dates, motives or direct ENRE access',
   expect(external).toEqual([]);
 });
 
+test('area selector uses only the approved shared party catalog', async ({ page }) => {
+  await mockApi(page);
+  await openWorks(page);
+  const options = page.getByLabel('Partido', { exact: true }).locator('option');
+  await expect(options).toHaveText(['Elegí un partido', ...APPROVED_PARTIES]);
+  await expect(options).not.toContainText(['CAPITAL', 'CABA']);
+});
+
 test('empty agenda and unverified coverage are distinct states', async ({ page }) => {
   await mockApi(page, { byPartido: {
     BERAZATEGUI: result({
@@ -154,9 +149,9 @@ test('empty agenda and unverified coverage are distinct states', async ({ page }
       coverage: { partido: 'BERAZATEGUI', localidad: 'BERAZATEGUI', status: 'covered' },
       works: [],
     }),
-    CAPITAL: result({
+    'SAN VICENTE': result({
       state: 'coverage_unverified',
-      coverage: { partido: 'CAPITAL', localidad: null, status: 'coverage_unverified' },
+      coverage: { partido: 'SAN VICENTE', localidad: null, status: 'coverage_unverified' },
       works: undefined,
     }),
   } });
@@ -168,7 +163,7 @@ test('empty agenda and unverified coverage are distinct states', async ({ page }
   await expect(page.getByRole('heading', { name: 'Sin trabajos informados' })).toBeVisible();
   await expect(page.getByText(/no publica una agenda de fechas futuras/i)).toBeVisible();
 
-  await page.getByLabel('Partido', { exact: true }).selectOption('CAPITAL');
+  await page.getByLabel('Partido', { exact: true }).selectOption('SAN VICENTE');
   await page.getByRole('button', { name: 'Consultar trabajos' }).click();
   await expect(page.getByRole('heading', { name: 'Cobertura no verificada' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Sin trabajos informados' })).toHaveCount(0);
@@ -256,14 +251,14 @@ test('stale and degraded results keep the works and mark the source', async ({ p
 
 test('unverified coverage does not claim that there are no works', async ({ page }) => {
   await mockApi(page, { byPartido: {
-    CAPITAL: result({
+    'SAN VICENTE': result({
       state: 'coverage_unverified',
-      coverage: { partido: 'CAPITAL', localidad: null, status: 'coverage_unverified' },
+      coverage: { partido: 'SAN VICENTE', localidad: null, status: 'coverage_unverified' },
       works: undefined,
     }),
   } });
   await openWorks(page);
-  await page.getByLabel('Partido', { exact: true }).selectOption('CAPITAL');
+  await page.getByLabel('Partido', { exact: true }).selectOption('SAN VICENTE');
   await page.getByRole('button', { name: 'Consultar trabajos' }).click();
 
   await expect(page.getByRole('heading', { name: 'Cobertura no verificada' })).toBeVisible();
@@ -311,9 +306,9 @@ test('no works and unverified coverage do not present planned date fields', asyn
       state: 'no_works', works: [],
       coverage: { partido: 'BERAZATEGUI', localidad: 'BERAZATEGUI', status: 'covered' },
     }),
-    CAPITAL: result({
+    'SAN VICENTE': result({
       state: 'coverage_unverified',
-      coverage: { partido: 'CAPITAL', localidad: null, status: 'coverage_unverified' },
+      coverage: { partido: 'SAN VICENTE', localidad: null, status: 'coverage_unverified' },
       works: undefined,
     }),
   } });
@@ -326,7 +321,7 @@ test('no works and unverified coverage do not present planned date fields', asyn
   await expect(page.getByText('Inicio planificado')).toHaveCount(0);
   await expect(page.getByText('Fin planificado')).toHaveCount(0);
 
-  await page.getByLabel('Partido', { exact: true }).selectOption('CAPITAL');
+  await page.getByLabel('Partido', { exact: true }).selectOption('SAN VICENTE');
   await page.getByRole('button', { name: 'Consultar trabajos' }).click();
   await expect(page.getByRole('heading', { name: 'Cobertura no verificada' })).toBeVisible();
   await expect(page.getByText('Inicio planificado')).toHaveCount(0);

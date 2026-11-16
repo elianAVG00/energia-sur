@@ -47,7 +47,7 @@ export function stateDetail(state: OutageState): string {
     case 'reported':
       return 'Estos son los cortes informados por el ENRE para la zona. No indican el estado de un domicilio en particular.';
     case 'no_reports':
-      return 'No hay cortes reportados para esta zona en la última actualización. Esto no garantiza el suministro eléctrico.';
+      return 'En la última actualización disponible no se informó un corte coincidente con esta zona. Esto no garantiza el suministro eléctrico.';
     case 'stale':
       return 'La última actualización tiene más de 15 minutos. Los datos pueden no reflejar la situación actual.';
     case 'unavailable':

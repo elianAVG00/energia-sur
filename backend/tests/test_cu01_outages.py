@@ -70,7 +70,7 @@ class ParserTests(unittest.TestCase):
         low = [row for row in feed.rows if row.category == "low_voltage"]
         self.assertEqual(low[0].partido_key, "almirante brown")
         self.assertEqual(low[1].partido, "CA\u00d1UELAS")
-        self.assertEqual(low[1].partido_key, "ca\u00f1uelas")
+        self.assertEqual(low[1].partido_key, "canuelas")
 
     def test_schema_and_parse_errors(self) -> None:
         with self.assertRaises(EnreSchemaError):

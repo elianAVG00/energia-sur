@@ -274,6 +274,21 @@ archived.
 
 ## CU01 public outage queries and UI (BUILD 3)
 
+The active OpenSpec change [`unify-territorial-catalog`](openspec/changes/unify-territorial-catalog/proposal.md)
+replaces the partial selector seed with a PostgreSQL catalog captured from GeoRef v2.1 for the
+approved twelve Buenos Aires partidos. CU01 and CU02 share the same 92 locality options, while
+CABA/CAPITAL is excluded from selectors. The provenance-bearing capture retains all 99 GeoRef
+records, including the individually reviewed `Área Reserva Cinturón Ecológico` record excluded
+from options. GeoRef membership does not prove individual Edesur service coverage. Verified ENRE
+aliases are stored separately, original ENRE labels are preserved, and `Santa Anita` and
+`Zona Rural` remain unresolved. Additive migrations `0009_territorial_catalog` and
+`0010_territorial_alias_party_fk` seed the catalog and re-key comparison keys from preserved
+labels; they do not rewrite reports, works or snapshots. The engineering record tracks verification
+and remaining acceptance/review work. CU01/CU02 Playwright coverage verifies matching approved
+party options with no CABA/CAPITAL option (30/30 passed); PostgreSQL-backed API integration suites
+still require an isolated migrated `TEST_DATABASE_URL`, and independent runtime migration/data
+sign-off remains pending.
+
 The public, read-only outage API is backed by a cached ENRE snapshot:
 `GET /api/outages?partido=<name>&localidad=<optional>`, `GET /api/outages/areas`,
 `POST /api/outages/resolve` (address in the body) and `POST /api/outages/resolve-location`
@@ -286,12 +301,20 @@ seconds) is stored in `es_source_config` and read each cycle, so CU10 changes ap
 restart; the seeded default is `300`. `OUTAGE_REFRESH_SECONDS` is no longer read.
 Migration `0005_cu01` adds `es_outage_snapshots`, `es_outage_reports` and `es_outage_fetch_runs`.
 
-Coverage uses the versioned catalog `backend/app/data/edesur_coverage.2026-11-10.json` with
+The previous file-backed coverage implementation used the versioned catalog
+`backend/app/data/edesur_coverage.2026-11-10.json` with
 `covered`, `out_of_coverage` and `coverage_unverified`. The shipped catalog is a partial,
 observation-based seed (provenance and retrieval date in the file; most entries were observed in
 current-outage collections and three in the same feed's programmed/comunicado collections).
 Absence is always `coverage_unverified` and no `out_of_coverage` entry is asserted without
-explicit evidence. `no_reports` is reachable only for localidades explicitly listed in the seed.
+explicit evidence. `no_reports` was reachable only for localidades explicitly listed in the seed.
+
+For the active territorial-catalog change, the selector source is now the PostgreSQL catalog
+seeded by `alembic upgrade head` (revisions `0009_territorial_catalog` and
+`0010_territorial_alias_party_fk`). Use the repository's documented backend-only migration
+procedure above, with the intended database selected and backed up; do not run it against a
+populated database as a test. The file-based coverage catalog remains available to unrelated
+consumers but no longer supplies CU01/CU02 area options.
 
 Resolve requests are rate-limited in-process per socket peer (20/minute). Behind the Vite proxy
 all browser traffic shares that peer; revisit the client-identity key before multi-user hosting.
@@ -573,6 +596,7 @@ Before live checks:
 ## Engineering context and evidence
 
 - [Operational state](docs/STATE.md)
+- [Shared CU01/CU02 territorial catalog implementation and verification](docs/ai-engineering/unify-territorial-catalog.md) — [active OpenSpec change](openspec/changes/unify-territorial-catalog/proposal.md)
 - [Accepted stage 05 catalog and decision baseline](docs/use-cases/README.md)
 - [CU09 approved first-development proposal and Apply contract](openspec/changes/archive/2026-11-08-record-cu09-interruption-diary/proposal.md)
 - [CU09 implementation, verification evidence and remaining gates](docs/ai-engineering/record-cu09-interruption-diary.md)

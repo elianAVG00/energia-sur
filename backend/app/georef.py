@@ -14,7 +14,7 @@ import httpx
 from app.coverage import CoverageCatalog
 from app.enre_parser import normalized_key
 
-BASE_URL = "https://apis.datos.gob.ar/georef/api"
+BASE_URL = "https://apis.datos.gob.ar/georef/api/v2.1"
 TIMEOUT_SECONDS = 8.0
 MAX_CANDIDATES = 5
 _AV_PREFIX = re.compile(r"(?i)^(av\.?|avenida)\s+")
@@ -127,7 +127,7 @@ def _zone(partido_raw: str, localidad_raw: str | None, province: str,
         partido = "CAPITAL"
         localidad = None
     else:
-        partido = partido_raw.strip().upper()
+        partido = catalog.canonical_partido(partido_raw) or partido_raw.strip().upper()
         localidad = _map_localidad(partido, localidad_raw, catalog, known)
     granularity = "localidad" if localidad is not None else "partido"
     return Zone(
@@ -146,16 +146,23 @@ def _zone_from_address(item: dict[str, object], catalog: CoverageCatalog,
     partido_raw = _text(_nested(item, "departamento", "nombre"))
     if partido_raw is None:
         return None
-    localidad_raw = _text(_nested(item, "localidad_censal", "nombre"))
+    localidad_raw = (
+        _text(_nested(item, "localidad", "nombre"))
+        or _text(_nested(item, "localidad_censal", "nombre"))
+    )
     return _zone(partido_raw, localidad_raw, province, catalog, known)
 
 
-def _matches(zone: Zone, partido_hint: str | None, localidad_hint: str | None) -> bool:
-    if partido_hint is not None and normalized_key(zone.partido) != normalized_key(partido_hint):
+def _matches(zone: Zone, partido_hint: str | None, localidad_hint: str | None,
+             catalog: CoverageCatalog) -> bool:
+    if (partido_hint is not None
+            and catalog.canonical_partido_key(zone.partido)
+            != catalog.canonical_partido_key(partido_hint)):
         return False
     if localidad_hint is not None:
         return (zone.localidad is not None
-                and normalized_key(zone.localidad) == normalized_key(localidad_hint))
+                and catalog.canonical_localidad_key(zone.partido, zone.localidad)
+                == catalog.canonical_localidad_key(zone.partido, localidad_hint))
     return True
 
 
@@ -190,7 +197,9 @@ def resolve_address(address: str, catalog: CoverageCatalog, known: KnownAreas, *
             })
             for item in _items(payload.get("direcciones")):
                 zone = _zone_from_address(item, catalog, known)
-                if zone is not None and _matches(zone, partido_hint, localidad_hint):
+                if zone is not None and _matches(
+                    zone, partido_hint, localidad_hint, catalog,
+                ):
                     zones.append(zone)
         deduped = _dedupe(zones)
         if deduped:
@@ -212,5 +221,8 @@ def resolve_location(lat: float, lon: float, catalog: CoverageCatalog,
     partido_raw = _text(_nested(ubicacion, "departamento", "nombre"))
     if province not in _SCOPED_PROVINCES or partido_raw is None:
         raise GeorefOutsideScope("location outside the scoped area")
-    localidad_raw = _text(_nested(ubicacion, "localidad", "nombre"))
+    localidad_raw = (
+        _text(_nested(ubicacion, "localidad", "nombre"))
+        or _text(_nested(ubicacion, "localidad_censal", "nombre"))
+    )
     return _zone(partido_raw, localidad_raw, province, catalog, known)

@@ -7,16 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from app.api import DB, no_cache
-from app.coverage import CoverageCatalog, load_catalog
+from app.coverage import CoverageCatalog
 from app.enre_client import FEED_URL
-from app.enre_parser import normalized_key
 from app.models import ScheduledWork
 from app.public_reads import freshness, scheduled_limitations
 from app.public_reads import scheduled_state as _state
 from app.scheduled_store import current_snapshot, latest_source_status
+from app.territorial_catalog import load_catalog
 
 router = APIRouter(dependencies=[Depends(no_cache)])
 
@@ -51,7 +50,6 @@ class WorkOut(BaseModel):
 class LocalidadAreaOut(BaseModel):
     localidad: str | None
     coverage: CoverageStatus
-    reported: bool
 
 
 class PartidoAreaOut(BaseModel):
@@ -103,18 +101,7 @@ def _instant(value: datetime | None) -> str | None:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _areas(db: Session, catalog: CoverageCatalog) -> AreasOut:
-    snapshot = current_snapshot(db)
-    reported: dict[tuple[str, str | None], str | None] = {}
-    row_partidos: dict[str, str] = {}
-    if snapshot is not None:
-        rows = db.scalars(select(ScheduledWork).where(
-            ScheduledWork.snapshot_id == snapshot.id,
-        ).order_by(ScheduledWork.partido_key, ScheduledWork.localidad_key))
-        for row in rows:
-            reported[(row.partido_key, row.localidad_key)] = row.localidad
-            row_partidos[row.partido_key] = row.partido
-
+def _areas(catalog: CoverageCatalog) -> AreasOut:
     partido_labels: dict[str, str] = {}
     buckets: dict[str, dict[str | None, LocalidadAreaOut]] = {}
     for (partido_key, localidad_key), entry in catalog.entries.items():
@@ -122,18 +109,6 @@ def _areas(db: Session, catalog: CoverageCatalog) -> AreasOut:
         buckets.setdefault(partido_key, {})[localidad_key] = LocalidadAreaOut(
             localidad=entry.localidad,
             coverage=cast(CoverageStatus, entry.status),
-            reported=(partido_key, localidad_key) in reported,
-        )
-    for partido_key, label in row_partidos.items():
-        partido_labels.setdefault(partido_key, label)
-    for (partido_key, localidad_key), localidad_label in reported.items():
-        bucket = buckets.setdefault(partido_key, {})
-        previous = bucket.get(localidad_key)
-        bucket[localidad_key] = LocalidadAreaOut(
-            localidad=previous.localidad if previous is not None else localidad_label,
-            coverage=(previous.coverage if previous is not None
-                      else "coverage_unverified"),
-            reported=True,
         )
     return AreasOut(
         coverage_version=catalog.version or None,
@@ -174,7 +149,7 @@ def _payload(result: ScheduledWorksOut) -> JSONResponse:
 
 @router.get("/scheduled-works/areas", response_model=AreasOut)
 def scheduled_areas(db: DB) -> AreasOut:
-    return _areas(db, load_catalog())
+    return _areas(load_catalog(db))
 
 
 @router.get("/scheduled-works", response_model=ScheduledWorksOut)
@@ -185,16 +160,19 @@ def scheduled_works(
 ) -> Response:
     partido_value = _clean(partido)
     localidad_value = _clean(localidad) if localidad is not None else None
+    catalog = load_catalog(db)
     snapshot = current_snapshot(db)
     rows: list[ScheduledWork] = []
     if snapshot is not None:
         statement = select(ScheduledWork).where(
             ScheduledWork.snapshot_id == snapshot.id,
-            ScheduledWork.partido_key == normalized_key(partido_value),
+            ScheduledWork.partido_key.in_(catalog.query_partido_keys(partido_value)),
         )
         if localidad_value is not None:
             statement = statement.where(
-                ScheduledWork.localidad_key == normalized_key(localidad_value),
+                ScheduledWork.localidad_key.in_(
+                    catalog.query_localidad_keys(partido_value, localidad_value),
+                ),
             )
         rows = list(db.scalars(statement.order_by(
             ScheduledWork.category, ScheduledWork.localidad_key, ScheduledWork.id,
@@ -204,7 +182,7 @@ def scheduled_works(
         snapshot.source_last_modified if snapshot is not None else None,
         datetime.now(UTC),
     ))
-    coverage = cast(CoverageStatus, load_catalog().classify(partido_value, localidad_value))
+    coverage = cast(CoverageStatus, catalog.classify(partido_value, localidad_value))
     source_status = cast(Literal["ok", "degraded"], latest_source_status(db))
     state = cast(State, _state(freshness_value, coverage, bool(rows), source_status))
     if state == "works_reported" or (state in {"stale", "unavailable"} and rows):

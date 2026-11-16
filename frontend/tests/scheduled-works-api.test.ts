@@ -10,8 +10,8 @@ const areas = {
   coverage_retrieved_on: '2026-11-10',
   areas: [
     { partido: 'ALMIRANTE BROWN', localidades: [
-      { localidad: 'GLEW', coverage: 'covered', reported: true },
-      { localidad: null, coverage: 'coverage_unverified', reported: false },
+      { localidad: 'GLEW', coverage: 'coverage_unverified' },
+      { localidad: null, coverage: 'coverage_unverified' },
     ] },
   ],
 };
@@ -43,7 +43,8 @@ test('areas uses the scheduled-works catalog endpoint', async () => {
   });
   const result = await new ScheduledWorksClient(http).areas(signal());
   assert.equal(result.coverage_version, '2026-11-10');
-  assert.equal(result.areas[0]?.localidades[0]?.reported, true);
+  assert.equal(result.areas[0]?.localidades[0]?.coverage, 'coverage_unverified');
+  assert.equal('reported' in (result.areas[0]?.localidades[0] ?? {}), false);
 });
 
 test('query builds an encoded request and validates nullable unpublished fields', async () => {

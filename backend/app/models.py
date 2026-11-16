@@ -336,6 +336,129 @@ class ScheduledFetchRun(Base):
     content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
+class TerritorialCatalogMetadata(Base):
+    """Version and provenance for the shared CU01/CU02 selector catalog."""
+
+    __tablename__ = "es_territorial_catalog_metadata"
+    catalog_key: Mapped[str] = mapped_column(String(32), primary_key=True)
+    version: Mapped[str] = mapped_column(String(64), nullable=False)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_url: Mapped[str] = mapped_column(String(300), nullable=False)
+    concession_source_url: Mapped[str] = mapped_column(String(300), nullable=False)
+    province_id: Mapped[str] = mapped_column(String(2), nullable=False)
+
+
+class TerritorialParty(Base):
+    """One party in the approved Edesur concession scope."""
+
+    __tablename__ = "es_territorial_parties"
+    __table_args__ = (
+        UniqueConstraint("normalized_name", name="uq_territorial_party_normalized_name"),
+        CheckConstraint("coverage_status IN ('covered','coverage_unverified')",
+                        name="ck_territorial_party_coverage"),
+        CheckConstraint(
+            "georef_id IN ('06028','06035','06091','06134','06260','06270',"
+            "'06274','06434','06490','06648','06658','06778')",
+            name="ck_territorial_party_approved_scope",
+        ),
+    )
+    georef_id: Mapped[str] = mapped_column(String(12), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    coverage_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="covered",
+    )
+
+
+class TerritorialLocality(Base):
+    """A party-scoped canonical selector name backed by one or more GeoRef records."""
+
+    __tablename__ = "es_territorial_localities"
+    __table_args__ = (
+        UniqueConstraint(
+            "party_georef_id", "normalized_name",
+            name="uq_territorial_locality_party_normalized_name",
+        ),
+        UniqueConstraint(
+            "id", "party_georef_id",
+            name="uq_territorial_locality_id_party",
+        ),
+        CheckConstraint(
+            "coverage_status IN ('covered','out_of_coverage','coverage_unverified')",
+            name="ck_territorial_locality_coverage",
+        ),
+        CheckConstraint(
+            "party_georef_id IN ('06028','06035','06091','06134','06260','06270',"
+            "'06274','06434','06490','06648','06658','06778')",
+            name="ck_territorial_locality_approved_scope",
+        ),
+        Index("ix_territorial_locality_party", "party_georef_id", "selectable", "name"),
+    )
+    id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    party_georef_id: Mapped[str] = mapped_column(
+        ForeignKey("es_territorial_parties.georef_id"), nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    coverage_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="coverage_unverified",
+    )
+    selectable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+
+
+class TerritorialLocalitySource(Base):
+    """An original GeoRef locality record retained behind a canonical option."""
+
+    __tablename__ = "es_territorial_locality_sources"
+    georef_id: Mapped[str] = mapped_column(String(24), primary_key=True)
+    locality_id: Mapped[str] = mapped_column(
+        ForeignKey("es_territorial_localities.id"), nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    category: Mapped[str] = mapped_column(String(80), nullable=False)
+    localidad_censal_id: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    localidad_censal: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    selector_review: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class TerritorialNameAlias(Base):
+    """A verified ENRE equivalence or a documented unresolved ENRE locality."""
+
+    __tablename__ = "es_territorial_name_aliases"
+    __table_args__ = (
+        UniqueConstraint(
+            "kind", "party_georef_id", "normalized_source_key",
+            name="uq_territorial_alias_kind_party_key",
+        ),
+        CheckConstraint("kind IN ('party','locality')", name="ck_territorial_alias_kind"),
+        CheckConstraint("status IN ('verified','unresolved')",
+                        name="ck_territorial_alias_status"),
+        CheckConstraint(
+            "(status = 'verified' AND "
+            "((kind = 'party' AND locality_id IS NULL) OR "
+            "(kind = 'locality' AND locality_id IS NOT NULL))) OR "
+            "(status = 'unresolved' AND kind = 'locality' AND locality_id IS NULL)",
+            name="ck_territorial_alias_target",
+        ),
+        ForeignKeyConstraint(
+            ["locality_id", "party_georef_id"],
+            ["es_territorial_localities.id",
+             "es_territorial_localities.party_georef_id"],
+            name="fk_territorial_alias_locality_party",
+        ),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    source_label: Mapped[str] = mapped_column(String(120), nullable=False)
+    normalized_source_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    party_georef_id: Mapped[str] = mapped_column(
+        ForeignKey("es_territorial_parties.georef_id"), nullable=False,
+    )
+    locality_id: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    evidence: Mapped[str] = mapped_column(String(300), nullable=False)
+
+
 class OutageFetchRun(Base):
     """Every acquisition attempt, including failures and skipped runs."""
 
