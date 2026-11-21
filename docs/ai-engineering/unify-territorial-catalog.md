@@ -84,7 +84,73 @@
 
 ## Remaining work
 
-1. Obtain independent runtime migration/data sign-off.
-2. Run PostgreSQL API integration suites with an isolated migrated test database if available;
-   otherwise keep that acceptance criterion explicitly blocked.
-3. Keep the change unarchived until mandatory verification and review requirements pass.
+1. Obtain independent reviewer disposition of the migration/runtime evidence; the configured
+   read-only reviewer cannot execute shell commands, so independent runtime execution may remain
+   blocked even after static review.
+2. Keep the change unarchived until the mandatory independent review gate passes.
+
+## Closure verification follow-up (2026-11-16)
+
+- The primary agent corrected tests only; no production endpoint, migration, business rule,
+  dependency, or security behavior changed. The old assertions expected uppercase selector labels,
+  snapshot-derived coverage, or a `current_snapshot` mock on an endpoint that now reads the
+  PostgreSQL catalog. Updated assertions target the accepted canonical labels and catalog contract;
+  none were removed or relaxed.
+- The two catalog area endpoints were exercised over ASGI against a fresh, fully migrated,
+  isolated PostgreSQL database. With no CU01/CU02 snapshot rows, they returned identical 12-party
+  and 92-locality hierarchies. CU01's selector response was also compared before and after deleting
+  only synthetic snapshot rows in that isolated test database.
+- A separate CU01/CU02 test run passed 83 tests with 6 live-source prerequisite skips. It covers
+  endpoint behavior, party/locality filters, canonical labels, coverage uncertainty, stale and
+  degraded states, GeoRef adapter v2.1 locality precedence, address privacy, and rate limits.
+- `tests.test_territorial_catalog_migration_postgres` passed 1/1 against the isolated test server:
+  migration seed counts, repeatable seed, row/label preservation, normalized-key upgrade/downgrade,
+  CABA and duplicate rejection, and alias party integrity. Full Alembic `upgrade head` also passed
+  on a newly initialized isolated test database.
+- One full backend run passed: 491 tests, 484 passed, 7 skipped for explicit ENRE/GeoRef or
+  reconciliation prerequisites. Ruff passed; mypy passed (54 source files); strict OpenSpec
+  validation passed. Existing frontend type/lint/build/unit and CU01/CU02 Playwright evidence was
+  not repeated because this follow-up changed no frontend files.
+- PostgreSQL test containers used private Docker networks and ephemeral tmpfs data directories.
+  Neither connected to nor changed/restarted the original Compose database or its volumes.
+- Independent static/runtime evidence review was requested from the configured reviewer. That
+  agent is read-only and has no shell permission; its response and any independent runtime
+  execution limitation will be recorded before closure. No sync/archive/commit/push/deploy occurred.
+
+## Final regression correction (2026-11-16)
+
+- The two alias regressions now query the canonical locality `Presidente Perón` against synthetic
+  ENRE rows whose preserved source label is `PTE PERON`; this exercises a reviewed, non-mechanical
+  alias rather than accent/case normalization alone. A separate parity test uses distinct CU01/CU02
+  snapshots, and both endpoints continue to return the same catalog hierarchy.
+- Final focused CU01/CU02 and migration tests: 86 run, 80 passed, 6 external/live-source skips.
+  The single complete backend suite after those test changes passed 493 tests: 486 passed, 7 skipped,
+  0 failed, using isolated PostgreSQL on a private network with tmpfs storage.
+- Final-tree Ruff, mypy, strict OpenSpec validation (19/19), and `git diff --check` all passed.
+  The independent reviewer remains static-only; runtime migration/data sign-off is BLOCKED and
+  task 5.3 remains unchecked. No sync, archive, commit, push, or deploy occurred.
+
+## Party-scope review follow-up (2026-11-16)
+
+- This follow-up supersedes the earlier focused-test count of 86 in the preceding closure snapshot.
+- Independent static review found a Low coverage gap: the alias tests did not explicitly exclude a
+  competing party. The first CU02 fixture-insertion attempt targeted an abbreviated substation
+  label and silently made no insertion; the reviewer identified this before closure.
+- Both tests now assert that the constructed, parsed ENRE feed contains the expected `PTE PERON`
+  alias row and a competing `CAÑUELAS` row for the same locality before querying canonical
+  `Presidente Perón`. CU02 insertion now matches the full fixture substation label. The API
+  assertions require exactly one result and preserve the original `PTE PERON`/`GUERNICA` labels.
+- Rebuilt the verification image after the final test edits. Focused CU01/CU02 modules passed:
+  57 tests, 55 passed and 2 live-source skips. One subsequent complete suite passed 493 tests
+  (486 passed, 7 skipped) in 138.351 seconds against fresh isolated PostgreSQL on a private
+  network with tmpfs. A previous complete-suite attempt ended at the 120-second shell timeout
+  before a test summary; it is not counted as a test failure or pass.
+- Follow-up static review confirmed both competing rows are actually present in the parsed feeds,
+  the API assertions exclude the competing party, and original source labels are preserved. No
+  remaining test-assertion concern was reported. The reviewer cannot execute tests or independently
+  inspect the production diff; the primary diff contains test/documentation changes only, with no
+  `backend/app`, migrations, frontend, or dependency changes. Independent runtime migration/data
+  sign-off remains BLOCKED.
+- Rebuilt-image runtime evidence: focused tests 57 run (55 passed, 2 skipped); final complete suite
+  493 total (486 passed, 7 skipped) in 138.351 seconds. Final-tree Ruff, mypy, strict OpenSpec
+  validation (19/19), and `git diff --check` passed. No sync, archive, commit, push, or deploy.

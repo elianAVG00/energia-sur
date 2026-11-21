@@ -74,3 +74,28 @@ provisioning remains, and administrator promotion remains CLI-only.
 Do not archive, sync, commit, push, deploy, delete databases, or remove volumes.
 Preserve unrelated pre-existing changes in the territorial catalog and outage/
 scheduled-work specifications.
+
+## Backend regression closure follow-up (2026-11-16)
+
+- The eight CU01/CU02 failures that had blocked the registration broad-regression gate were
+  reproduced against isolated PostgreSQL and corrected in tests only. Assertions now match the
+  accepted title-case catalog labels, PostgreSQL-backed area endpoints, and locality-level
+  `coverage_unverified` semantics. The unavailable-database test now mocks the catalog reader
+  actually used by `/outages/areas`. No registration behavior, authorization rule, or assertion
+  strength was weakened.
+- Focused CU01/CU02 and territorial migration tests passed before the final broad run. The
+  complete backend suite then passed once on a fresh, fully migrated, network-isolated PostgreSQL
+  container: 491 tests total, 484 passed, 7 skipped for external/live or explicit reconciliation
+  prerequisites.
+- Ruff, mypy, and strict OpenSpec validation passed. Existing registration-specific PostgreSQL,
+  Chromium, PDF, and restart-persistence evidence remains as recorded above; the current full
+  backend run additionally passed registration/session/CSRF/ownership coverage.
+- No production registration/session code, frontend files, dependencies, migrations, or
+  authentication policy changed. The original Compose services and database volume were not used.
+  No sync, archive, commit, push, or deploy occurred.
+- Final result superseding the earlier 491-test snapshot above: the final complete backend suite
+  passed 493 tests (486 passed, 7 external/live prerequisite skips, 0 failures) after the CU01/CU02
+  test-only corrections. It ran against a newly created PostgreSQL container on a private network
+  with tmpfs storage; the original Compose services and volumes were not used. Registration-specific
+  backend/browser/PDF/restart acceptance remains PASS. This clears the broad backend regression
+  blocker; it does not waive the separate territorial catalog runtime-review gate.

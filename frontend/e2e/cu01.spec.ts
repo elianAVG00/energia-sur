@@ -119,6 +119,7 @@ test('visitor queries reported outages without a session and without direct ENRE
   await mockApi(page);
   await openPublic(page);
   await expect(page.getByRole('heading', { name: 'Cortes eléctricos' })).toBeVisible();
+  await expect(page.getByLabel('Buscar zona', { exact: true })).toHaveCount(0);
   await page.getByLabel('Partido', { exact: true }).selectOption('LOMAS DE ZAMORA');
   await page.getByLabel('Localidad (opcional)', { exact: true }).selectOption('BANFIELD');
   await page.getByRole('button', { name: 'Consultar cortes' }).click();
@@ -147,7 +148,7 @@ test('ambiguous address shows candidates and posts the address without CSRF', as
     onResolve: (value, headers) => { body = value; csrf = headers['x-csrf-token']; },
   });
   await openPublic(page);
-  await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calchaqui 100');
+  await page.getByLabel('Dirección', { exact: true }).fill('calchaqui 100');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
   await expect(addressCard(page).getByRole('status'))
     .toHaveText('La dirección es ambigua. Elegí una de las zonas encontradas.');
@@ -155,6 +156,36 @@ test('ambiguous address shows candidates and posts the address without CSRF', as
   await expect(page.getByRole('heading', { name: 'Cortes reportados' })).toBeVisible();
   expect(body).toEqual({ address: 'calchaqui 100' });
   expect(csrf).toBeUndefined();
+});
+
+test('an address with a written partido overrides the selected zone', async ({ page }) => {
+  let body: unknown;
+  await mockApi(page, {
+    resolve: {
+      status: 'resolved',
+      zone: {
+        partido: 'LANÚS', localidad: 'LANÚS OESTE',
+        granularity: 'localidad', coverage: 'coverage_unverified',
+      },
+    },
+    onResolve: value => { body = value; },
+  });
+  await openPublic(page);
+  await page.getByLabel('Partido', { exact: true }).selectOption('LOMAS DE ZAMORA');
+  await page.getByLabel('Localidad (opcional)', { exact: true }).selectOption('BANFIELD');
+  const address = page.getByLabel('Dirección', { exact: true });
+  const search = page.getByRole('button', { name: 'Buscar dirección' });
+  await expect(address).toHaveAccessibleDescription(/Ingresá calle y altura, una coma y el partido/);
+  await address.fill('Moreno 857,');
+  await search.click();
+  await expect(addressCard(page).getByRole('status')).toHaveText(
+    'Ingresá la calle y la altura, seguidas de una coma y el partido.',
+  );
+  expect(body).toBeUndefined();
+  await address.fill('Moreno 857, Lanus');
+  await search.click();
+  await expect(page.getByText('Zona resuelta: LANÚS · LANÚS OESTE.')).toBeVisible();
+  expect(body).toEqual({ address: 'Moreno 857', partido: 'Lanus' });
 });
 
 test('consented browser location resolves a partido and degrades the search', async ({ page, context }) => {
@@ -251,7 +282,7 @@ test('the loading state is announced while the query is in flight', async ({ pag
 test('rate limiting is explained with Retry-After', async ({ page }) => {
   await mockApi(page, { rateLimited: true });
   await openPublic(page);
-  await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calchaqui 100');
+  await page.getByLabel('Dirección', { exact: true }).fill('calchaqui 100');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
   await expect(addressCard(page).getByRole('alert'))
     .toHaveText('Demasiadas solicitudes. Reintentá en 30 segundos.');
@@ -292,7 +323,7 @@ test('unresolved address shows the geographic error without an outage list', asy
   }));
   await openPublic(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calle inexistente 99999');
+  await page.getByLabel('Dirección', { exact: true }).fill('calle inexistente 99999');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
   await expect(addressCard(page).getByRole('alert'))
     .toHaveText('No pudimos ubicar la dirección. Probá con partido y localidad.');

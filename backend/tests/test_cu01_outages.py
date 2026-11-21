@@ -197,10 +197,16 @@ class StoreTests(unittest.TestCase):
         with patch("app.outage_store.fetch_feed",
                    return_value=FetchedFeed(text=DEGRADED, last_modified=now, status=200)):
             self.assertEqual(refresh_once(), "source_degraded")
-        with patch("app.outage_store.parse_feed", side_effect=EnreParseError("bad")):
-            self.assertEqual(refresh_once(), "parse_error")
-        with patch("app.outage_store.parse_feed", side_effect=EnreSchemaError("bad")):
-            self.assertEqual(refresh_once(), "schema_error")
+        with patch("app.outage_store.fetch_feed", return_value=FetchedFeed(
+            text=FEED, last_modified=now, status=200,
+        )):
+            with patch("app.outage_store.parse_feed", side_effect=EnreParseError("bad")):
+                self.assertEqual(refresh_once(), "parse_error")
+        with patch("app.outage_store.fetch_feed", return_value=FetchedFeed(
+            text=FEED, last_modified=now, status=200,
+        )):
+            with patch("app.outage_store.parse_feed", side_effect=EnreSchemaError("bad")):
+                self.assertEqual(refresh_once(), "schema_error")
         with Session(self.engine) as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(OutageSnapshot)), 1)
             outcomes = list(db.scalars(select(OutageFetchRun.outcome)))
@@ -324,6 +330,27 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(payload["outages"]), 2)
         self.assertTrue(all(row["localidad"] == "BANFIELD" for row in payload["outages"]))
 
+    async def test_verified_party_alias_matches_preserved_enre_label(self) -> None:
+        alias_feed = FEED.replace("partido: 'CAÑUELAS'", "partido: 'PTE PERON'")
+        alias_feed = alias_feed.replace(
+            "cortesServicioBaja:  [",
+            "cortesServicioBaja:  [{partido: 'CAÑUELAS', localidad: 'GUERNICA', "
+            "usuarios: '9'}, ",
+        )
+        self.assertNotEqual(alias_feed, FEED)
+        parsed_rows = {(row.partido, row.localidad) for row in parse_feed(alias_feed).rows}
+        self.assertIn(("PTE PERON", "SANTA ANITA"), parsed_rows)
+        self.assertIn(("CAÑUELAS", "GUERNICA"), parsed_rows)
+        self._seed(datetime.now(UTC) - timedelta(minutes=2), alias_feed)
+        status, body = await self._get("/outages", {
+            "partido": "Presidente Perón",
+        })
+        self.assertEqual(status, 200)
+        payload = json.loads(body)
+        self.assertEqual(payload["state"], "reported")
+        self.assertEqual(len(payload["outages"]), 1)
+        self.assertEqual(payload["outages"][0]["partido"], "PTE PERON")
+
     async def test_stale_unavailable_and_unverified_states(self) -> None:
         self._seed(datetime.now(UTC) - timedelta(minutes=30))
         status, body = await self._get("/outages", {"partido": "lomas de zamora"})
@@ -341,7 +368,10 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["state"], "unavailable")
         self.assertIn("outages", payload)
 
-        status, body = await self._get("/outages", {"partido": "san vicente"})
+        status, body = await self._get(
+            "/outages",
+            {"partido": "Lomas de Zamora", "localidad": "Villa Fiorito"},
+        )
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["state"], "unavailable")
         self.assertNotIn("outages", json.loads(body))
@@ -359,7 +389,10 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(json.loads(body)["coverage_version"])
 
         self._seed(datetime.now(UTC) - timedelta(minutes=2))
-        status, body = await self._get("/outages", {"partido": "san vicente"})
+        status, body = await self._get(
+            "/outages",
+            {"partido": "Lomas de Zamora", "localidad": "Villa Fiorito"},
+        )
         self.assertEqual(status, 200)
         payload = json.loads(body)
         self.assertEqual(payload["state"], "coverage_unverified")
@@ -383,18 +416,29 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         status, _ = await self._get("/outages", {"partido": "x\ty"})
         self.assertEqual(status, 422)
 
-    async def test_areas_list_from_snapshot(self) -> None:
+    async def test_areas_list_uses_catalog_with_and_without_snapshot_rows(self) -> None:
         self._seed(datetime.now(UTC) - timedelta(minutes=2))
         status, body = await self._get("/outages/areas")
         self.assertEqual(status, 200)
-        payload = json.loads(body)
-        self.assertIsNotNone(payload["coverage_version"])
-        partidos = {area["partido"]: area for area in payload["areas"]}
-        self.assertIn("LOMAS DE ZAMORA", partidos)
-        self.assertEqual(
-            partidos["LOMAS DE ZAMORA"]["localidades"][0]["coverage"],
-            "coverage_unverified",
-        )
+        with_snapshot = json.loads(body)
+        self.assertIsNotNone(with_snapshot["coverage_version"])
+        partidos = {area["partido"]: area for area in with_snapshot["areas"]}
+        self.assertIn("Lomas de Zamora", partidos)
+        localities = {
+            row["localidad"]: row
+            for row in partidos["Lomas de Zamora"]["localidades"]
+        }
+        self.assertEqual(localities["Villa Fiorito"]["coverage"], "coverage_unverified")
+        self.assertNotIn("reported", localities["Villa Fiorito"])
+
+        with Session(self.engine) as db:
+            db.execute(delete(OutageReport))
+            db.execute(delete(OutageSnapshot))
+            db.commit()
+        status, body = await self._get("/outages/areas")
+        self.assertEqual(status, 200)
+        without_snapshot = json.loads(body)
+        self.assertEqual(without_snapshot["areas"], with_snapshot["areas"])
 
     async def test_areas_group_by_normalized_key(self) -> None:
         self._seed(datetime.now(UTC) - timedelta(minutes=2))
@@ -433,7 +477,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_database_unavailable_returns_503(self) -> None:
         self._seed(datetime.now(UTC) - timedelta(minutes=2))
-        with patch("app.outages_api.current_snapshot",
+        with patch("app.outages_api.load_catalog",
                    side_effect=DatabaseUnavailable("x")):
             status, _ = await self._get("/outages/areas")
         self.assertEqual(status, 503)

@@ -174,6 +174,30 @@ class GeorefAdapterTests(unittest.TestCase):
         self.assertEqual(zones[0].partido, "QUILMES")
         self.assertEqual(zones[0].localidad, "QUILMES")
 
+    def test_catalog_partido_scopes_address_before_georef_limits_results(self) -> None:
+        catalog = CoverageCatalog(
+            version="test-georef",
+            retrieved_on="2026-11-20",
+            source="synthetic",
+            entries={},
+            party_labels={"lanus": "Lanús"},
+            party_ids={"lanus": "06434"},
+        )
+        locality = {("lanus", "lanus oeste"): "Lanús Oeste"}
+        with patch("app.georef._get", return_value={"direcciones": [
+            _address("MORENO 857", "Vicente López", "Olivos", "06"),
+            _address("MORENO 857", "Lanús", "Lanús Oeste", "06"),
+            _address("JOSE MARIA MORENO 857", "Lanús", "Lanús Oeste", "06"),
+        ]}) as request:
+            zones = georef.resolve_address("Moreno 857", catalog, locality, partido_hint="LANUS")
+
+        request.assert_called_once_with("direcciones", {
+            "direccion": "Moreno 857", "provincia": "06", "departamento": "06434", "max": "5",
+        })
+        self.assertEqual(zones, [
+            georef.Zone("Lanús", "Lanús Oeste", "localidad", "coverage_unverified"),
+        ])
+
     def test_forward_retries_without_av_prefix(self) -> None:
         calls: list[str] = []
 
@@ -336,7 +360,7 @@ class ResolveApiTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(status, 200)
         self.assertEqual(payload["status"], "resolved")
-        self.assertEqual(payload["zone"]["partido"], "QUILMES")
+        self.assertEqual(payload["zone"]["partido"], "Quilmes")
         self.assertNotIn("calchaqui", json.dumps(payload).lower())
         self.assertNotIn("lat", payload)
         self.assertEqual(headers.get(b"cache-control"), b"no-store")
@@ -368,7 +392,7 @@ class ResolveApiTests(unittest.IsolatedAsyncioTestCase):
                 "POST", "/outages/resolve-location", {"lat": -34.76, "lon": -58.40},
             )
         self.assertEqual(status, 200)
-        self.assertEqual(payload["zone"]["partido"], "LOMAS DE ZAMORA")
+        self.assertEqual(payload["zone"]["partido"], "Lomas de Zamora")
         self.assertEqual(payload["zone"]["granularity"], "partido")
 
         status, _, _ = await self._call(

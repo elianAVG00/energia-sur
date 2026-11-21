@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Input } from '../../components/ui/input.tsx';
 import { Label } from '../../components/ui/label.tsx';
 import { DiaryError, errorMessage } from '../../lib/httpError.ts';
+import { parseZoneAddress } from '../../lib/zoneAddress.ts';
 import { useRequestScope } from '../../useRequestScope.ts';
 import { outagesApi } from './api.ts';
 import type { AreasResult, OutagesResult, ResolveZone } from './api.ts';
@@ -26,10 +27,6 @@ function messageFor(reason: unknown): string {
   return errorMessage(reason);
 }
 
-function normalize(value: string): string {
-  return value.normalize('NFC').trim().toLocaleLowerCase('es-AR');
-}
-
 export function OutagesPanel() {
   const scope = useRequestScope();
   const [areas, setAreas] = useState<AreasResult | null>(null);
@@ -37,7 +34,6 @@ export function OutagesPanel() {
   const [areasError, setAreasError] = useState('');
   const [partido, setPartido] = useState('');
   const [localidad, setLocalidad] = useState('');
-  const [areaFilter, setAreaFilter] = useState('');
   const [result, setResult] = useState<OutagesResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -121,22 +117,19 @@ export function OutagesPanel() {
 
   async function searchAddress(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    const value = address.trim();
-    if (!value) {
+    const query = parseZoneAddress(address, partido, localidad);
+    setError('');
+    setCandidates(null);
+    if (query === null) {
       setMessageScope('address');
-      setSearchMessage('Ingresá una dirección con calle y altura.');
+      setSearchMessage('Ingresá la calle y la altura, seguidas de una coma y el partido.');
       return;
     }
     const request = scope.begin('outage-resolve');
     setResolving(true);
-    setError('');
-    setCandidates(null);
     setSearchMessage('');
     try {
-      const data = await outagesApi.resolve(value, {
-        ...(partido ? { partido } : {}),
-        ...(localidad ? { localidad } : {}),
-      }, request.signal);
+      const data = await outagesApi.resolve(query.address, query.hint, request.signal);
       if (!request.isCurrent()) return;
       if (data.status === 'resolved') {
         applyZone(data.zone);
@@ -188,11 +181,6 @@ export function OutagesPanel() {
   const localidadOptions = (selectedArea?.localidades ?? []).filter(
     option => option.localidad !== null && option.localidad !== undefined,
   );
-  const filter = normalize(areaFilter);
-  const visibleAreas = partidoAreas.filter(area => area.partido === partido || !filter ||
-    normalize(area.partido).includes(filter) ||
-    area.localidades.some(option => option.localidad !== null &&
-      option.localidad !== undefined && normalize(option.localidad).includes(filter)));
 
   return <div className="space-y-6">
     {error && errorScope === 'query' && <Alert>{error}</Alert>}
@@ -208,16 +196,6 @@ export function OutagesPanel() {
         {areasError && <Alert>{areasError}</Alert>}
         {areasLoading && <p role="status" className="text-sm text-muted-foreground">Cargando zonas disponibles…</p>}
 
-        <div className="space-y-2">
-          <Label htmlFor="outage-filter">Buscar zona</Label>
-          <Input id="outage-filter" className="bg-card" autoComplete="off" value={areaFilter}
-            placeholder="Partido o localidad" aria-describedby="outage-filter-help"
-            onChange={event => setAreaFilter(event.target.value)} />
-          <p id="outage-filter-help" className="text-sm text-muted-foreground">
-            Filtrá la lista de partidos y localidades.
-          </p>
-        </div>
-
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="outage-partido">Partido</Label>
@@ -229,7 +207,7 @@ export function OutagesPanel() {
               setSearchMessage('');
             }}>
               <option value="">Elegí un partido</option>
-              {visibleAreas.map(area => <option key={area.partido} value={area.partido}>{area.partido}</option>)}
+              {partidoAreas.map(area => <option key={area.partido} value={area.partido}>{area.partido}</option>)}
             </select>
           </div>
           <div className="space-y-2">
@@ -269,18 +247,18 @@ export function OutagesPanel() {
     <Card>
       <CardHeader>
         <CardTitle>Buscar por dirección</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Resolvé la zona a partir de una calle y altura.
+        <p id="outage-address-format" className="text-sm text-muted-foreground">
+          Ingresá calle y altura, una coma y el partido.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <form aria-label="Buscar por dirección" className="space-y-3"
           onSubmit={event => { void searchAddress(event); }}>
           <div className="space-y-2">
-            <Label htmlFor="outage-address">Dirección (calle y altura)</Label>
+            <Label htmlFor="outage-address">Dirección</Label>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
               <Input id="outage-address" className="min-w-0 bg-card" autoComplete="off" value={address}
-                placeholder="Ej.: Calchaquí 100" aria-describedby="outage-address-privacy"
+                placeholder="Ej.: Moreno 857, Lanús" aria-describedby="outage-address-format outage-address-privacy"
                 onChange={event => setAddress(event.target.value)} />
               <Button type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto" disabled={resolving}>
                 {resolving ? 'Buscando…' : 'Buscar dirección'}
@@ -288,8 +266,8 @@ export function OutagesPanel() {
             </div>
           </div>
           <p id="outage-address-privacy" className="text-sm text-muted-foreground">
-            La dirección y tu ubicación se envían solo al backend de Energía Sur para resolver la zona.
-            No se guardan en el navegador ni se envían al ENRE.
+            Energía Sur consulta GeoRef para resolver la zona a partir de tu dirección o ubicación.
+            La aplicación no guarda esos datos ni los envía al ENRE.
           </p>
         </form>
 

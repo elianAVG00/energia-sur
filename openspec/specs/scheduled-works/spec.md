@@ -197,8 +197,14 @@ The system SHALL expose a public "Trabajos" view inside the shared shell with la
 
 - **GIVEN** a visitor opens the "Trabajos" view
 - **WHEN** the view renders
-- **THEN** a "Consultar trabajos" card exposes the zone filter, partido, optional localidad, "Consultar trabajos" and "Usar mi ubicación"
-- **AND** a "Buscar por dirección" card exposes the address field, "Buscar dirección", the privacy note and any candidate zones
+- **THEN** a "Consultar trabajos" card exposes partido, optional localidad, "Consultar trabajos" and "Usar mi ubicación" without a separate text filter
+- **AND** a "Buscar por dirección" card instructs the visitor to enter street and number followed by a comma and the partido, and exposes the address field, "Buscar dirección", the privacy note and any candidate zones
+
+#### Scenario: An explicitly entered partido scopes the address lookup
+
+- **GIVEN** a visitor has selected a partido and localidad in the "Consultar trabajos" card
+- **WHEN** they enter a street and number followed by a comma and a different catalog partido in the address field
+- **THEN** the system resolves the street and number through GeoRef within the entered partido and queries scheduled works for the resolved zone
 
 #### Scenario: Unpublished dates and reasons stay explicit
 

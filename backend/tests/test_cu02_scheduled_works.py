@@ -18,8 +18,17 @@ from starlette.types import Message, Scope
 
 from app.db import DatabaseUnavailable
 from app.enre_client import FetchedFeed
+from app.enre_parser import parse_feed
 from app.main import app
-from app.models import ScheduledFetchRun, ScheduledSnapshot, ScheduledWork
+from app.models import (
+    OutageFetchRun,
+    OutageReport,
+    OutageSnapshot,
+    ScheduledFetchRun,
+    ScheduledSnapshot,
+    ScheduledWork,
+)
+from app.outage_store import _store_snapshot as _store_outage_snapshot
 from app.scheduled_api import _state
 from app.scheduled_parser import (
     ScheduledParseError,
@@ -35,6 +44,7 @@ from app.scheduled_store import (
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
+OUTAGE_FEED = (FIXTURES / "enre_data_eds_redacted.js").read_text(encoding="utf-8")
 FEED = (FIXTURES / "enre_data_eds_scheduled.js").read_text(encoding="utf-8")
 DATED = (FIXTURES / "enre_data_eds_scheduled_dated.js").read_text(encoding="utf-8")
 EMPTY = """var data = {empresa: 'EDESUR', ultimaActualizacion: '--:--',
@@ -228,10 +238,16 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(refresh_once(), "ok")
         with patch("app.scheduled_store.parse_scheduled",
                    side_effect=ScheduledParseError("bad")):
-            self.assertEqual(refresh_once(), "parse_error")
+            with patch("app.scheduled_store.fetch_feed", return_value=FetchedFeed(
+                text=FEED, last_modified=now, status=200,
+            )):
+                self.assertEqual(refresh_once(), "parse_error")
         with patch("app.scheduled_store.parse_scheduled",
                    side_effect=ScheduledSchemaError("bad")):
-            self.assertEqual(refresh_once(), "schema_error")
+            with patch("app.scheduled_store.fetch_feed", return_value=FetchedFeed(
+                text=FEED, last_modified=now, status=200,
+            )):
+                self.assertEqual(refresh_once(), "schema_error")
         with Session(self.engine) as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(ScheduledSnapshot)), 2)
             outcomes = list(db.scalars(select(ScheduledFetchRun.outcome)))
@@ -382,11 +398,45 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(payload["works"]), 1)
         self.assertEqual(payload["works"][0]["localidad"], "GLEW")
 
+    async def test_verified_party_alias_matches_preserved_enre_labels(self) -> None:
+        alias_feed = FEED.replace(
+            "partido: 'ALMIRANTE BROWN',localidad: 'GLEW'",
+            "partido: 'PTE PERON',localidad: 'GUERNICA'",
+        )
+        alias_feed = alias_feed.replace(
+            "partido: 'PTE PERON',localidad: 'GUERNICA',"
+            "subestacion_alimentador: '277-GLEW / R:277-1-16 / 277-1-16',"
+            "usuarios: '2742',normalizacion: 'Sin datos'",
+            "partido: 'PTE PERON',localidad: 'GUERNICA',"
+            "subestacion_alimentador: '277-GLEW / R:277-1-16 / 277-1-16',"
+            "usuarios: '2742',normalizacion: 'Sin datos'},"
+            "{partido: 'CAÑUELAS',localidad: 'GUERNICA',"
+            "subestacion_alimentador: 'fixture',usuarios: '1',"
+            "normalizacion: 'Sin datos'",
+        )
+        self.assertNotEqual(alias_feed, FEED)
+        parsed_rows = {
+            (row.partido, row.localidad)
+            for row in parse_scheduled(alias_feed).rows
+        }
+        self.assertIn(("PTE PERON", "GUERNICA"), parsed_rows)
+        self.assertIn(("CAÑUELAS", "GUERNICA"), parsed_rows)
+        self._seed(datetime.now(UTC) - timedelta(minutes=2), alias_feed)
+        status, body = await self._get("/scheduled-works", {
+            "partido": "Presidente Perón", "localidad": "Guernica",
+        })
+        self.assertEqual(status, 200)
+        payload = json.loads(body)
+        self.assertEqual(payload["state"], "works_reported")
+        self.assertEqual(len(payload["works"]), 1)
+        self.assertEqual(payload["works"][0]["partido"], "PTE PERON")
+        self.assertEqual(payload["works"][0]["localidad"], "GUERNICA")
+
     async def test_no_works_only_with_fresh_covered_snapshot(self) -> None:
         self._seed(datetime.now(UTC) - timedelta(minutes=2))
-        status, body = await self._get("/scheduled-works", {
-            "partido": "BERAZATEGUI", "localidad": "BERAZATEGUI",
-        })
+        status, body = await self._get(
+            "/scheduled-works", {"partido": "BERAZATEGUI"},
+        )
         self.assertEqual(status, 200)
         payload = json.loads(body)
         self.assertEqual(payload["state"], "no_works")
@@ -434,9 +484,9 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
                                      http_status=None, detail_code="Timeout",
                                      content_sha256=None))
             db.commit()
-        status, body = await self._get("/scheduled-works", {
-            "partido": "BERAZATEGUI", "localidad": "BERAZATEGUI",
-        })
+        status, body = await self._get(
+            "/scheduled-works", {"partido": "BERAZATEGUI"},
+        )
         self.assertEqual(status, 200)
         payload = json.loads(body)
         self.assertEqual(payload["source_status"], "degraded")
@@ -481,18 +531,38 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_areas_list_is_catalog_only(self) -> None:
         self._seed(datetime.now(UTC) - timedelta(minutes=2))
+        outage_checked_at = datetime.now(UTC)
+        with Session(self.engine) as db:
+            db.execute(delete(OutageReport))
+            db.execute(delete(OutageSnapshot))
+            db.execute(delete(OutageFetchRun))
+            _store_outage_snapshot(
+                db,
+                parse_feed(OUTAGE_FEED),
+                outage_checked_at,
+                "d" * 64,
+                outage_checked_at,
+            )
+            db.commit()
+            outage_parties = set(db.scalars(select(OutageReport.partido)))
+            scheduled_parties = set(db.scalars(select(ScheduledWork.partido)))
+        self.assertNotEqual(outage_parties, scheduled_parties)
+
         status, body = await self._get("/scheduled-works/areas")
         self.assertEqual(status, 200)
         payload = json.loads(body)
         self.assertIsNotNone(payload["coverage_version"])
         partidos = {area["partido"]: area for area in payload["areas"]}
-        self.assertIn("ALMIRANTE BROWN", partidos)
-        glew = [row for row in partidos["ALMIRANTE BROWN"]["localidades"]
-                if row["localidad"] == "GLEW"]
+        self.assertIn("Almirante Brown", partidos)
+        glew = [row for row in partidos["Almirante Brown"]["localidades"]
+                if row["localidad"] == "Glew"]
         self.assertEqual(len(glew), 1)
         self.assertNotIn("reported", glew[0])
         self.assertEqual(glew[0]["coverage"], "coverage_unverified")
         self.assertEqual(len(partidos), 12)
+        status, outage_body = await self._get("/outages/areas")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(outage_body)["areas"], payload["areas"])
 
 
 @unittest.skipUnless(

@@ -143,7 +143,7 @@ test('CU02 controls share the same token-defined visual language', async ({ page
   await openWorks(page);
 
   const styles = await page.evaluate(() => {
-    const input = document.querySelector('#scheduled-filter') as HTMLElement;
+    const input = document.querySelector('#scheduled-address') as HTMLElement;
     const select = document.querySelector('#scheduled-partido') as HTMLElement;
     const card = document.querySelector('[data-slot="card"]') as HTMLElement;
     const button = document.querySelector('main button[type="button"]') as HTMLElement;

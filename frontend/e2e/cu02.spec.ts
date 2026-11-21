@@ -118,6 +118,7 @@ test('visitor sees reported works without dates, motives or direct ENRE access',
   await mockApi(page);
   await openWorks(page);
   await expect(page.getByRole('heading', { name: 'Trabajos programados' })).toBeVisible();
+  await expect(page.getByLabel('Buscar zona', { exact: true })).toHaveCount(0);
   await page.getByLabel('Partido', { exact: true }).selectOption('ALMIRANTE BROWN');
   await page.getByLabel('Localidad (opcional)', { exact: true }).selectOption('GLEW');
   await page.getByRole('button', { name: 'Consultar trabajos' }).click();
@@ -177,13 +178,41 @@ test('ambiguous address shows candidates and posts without CSRF', async ({ page 
     onResolve: (value, headers) => { body = value; csrf = headers['x-csrf-token']; },
   });
   await openWorks(page);
-  await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calchaqui 100');
+  await page.getByLabel('Dirección', { exact: true }).fill('calchaqui 100');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
   await expect(page.getByText('La dirección es ambigua. Elegí una de las zonas encontradas.')).toBeVisible();
   await page.getByRole('button', { name: /ALMIRANTE BROWN · GLEW/ }).click();
   await expect(page.getByRole('heading', { name: 'Trabajos informados' })).toBeVisible();
   expect(body).toEqual({ address: 'calchaqui 100' });
   expect(csrf).toBeUndefined();
+});
+
+test('the written partido takes priority and works are queried for the resolved zone', async ({ page }) => {
+  let body: unknown;
+  await mockApi(page, {
+    resolve: {
+      status: 'resolved',
+      zone: {
+        partido: 'LANÚS', localidad: 'LANÚS OESTE',
+        granularity: 'localidad', coverage: 'coverage_unverified',
+      },
+    },
+    onResolve: value => { body = value; },
+  });
+  await openWorks(page);
+  await page.getByLabel('Partido', { exact: true }).selectOption('ALMIRANTE BROWN');
+  await page.getByLabel('Localidad (opcional)', { exact: true }).selectOption('GLEW');
+  const address = page.getByLabel('Dirección', { exact: true });
+  await expect(address).toHaveAccessibleDescription(/Ingresá calle y altura, una coma y el partido/);
+  await address.fill('Moreno 857, Lanus');
+  const query = page.waitForRequest(request => new URL(request.url()).pathname === '/api/scheduled-works');
+  await page.getByRole('button', { name: 'Buscar dirección' }).click();
+
+  const params = new URL((await query).url()).searchParams;
+  expect(body).toEqual({ address: 'Moreno 857', partido: 'Lanus' });
+  expect(params.get('partido')).toBe('LANÚS');
+  expect(params.get('localidad')).toBe('LANÚS OESTE');
+  await expect(page.getByText('Zona resuelta: LANÚS · LANÚS OESTE.')).toBeVisible();
 });
 
 test('consented browser location resolves a partido and degrades the search', async ({ page, context }) => {
@@ -288,9 +317,9 @@ test('empty address and address errors stay in the address card', async ({ page 
   await mockApi(page, { resolveStatus: 503 });
   await openWorks(page);
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
-  await expect(page.getByText('Ingresá una dirección con calle y altura.')).toBeVisible();
+  await expect(page.getByText('Ingresá la calle y la altura, seguidas de una coma y el partido.')).toBeVisible();
 
-  await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calchaqui 100');
+  await page.getByLabel('Dirección', { exact: true }).fill('calchaqui 100');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
   await expect(page.getByRole('alert')).toHaveText(/No se pudo resolver la dirección/);
   const addressCard = page.locator('section').filter({
@@ -339,7 +368,7 @@ test('denied geolocation explains the fallback without querying', async ({ page 
 test('address resolution reports the resolved zone in the address card', async ({ page }) => {
   await mockApi(page);
   await openWorks(page);
-  await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calchaqui 100');
+  await page.getByLabel('Dirección', { exact: true }).fill('calchaqui 100');
   await page.getByRole('button', { name: 'Buscar dirección' }).click();
   const addressCard = page.locator('section').filter({
     has: page.getByRole('heading', { name: 'Buscar por dirección' }),

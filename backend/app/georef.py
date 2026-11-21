@@ -182,19 +182,24 @@ def _dedupe(zones: list[Zone]) -> list[Zone]:
 def resolve_address(address: str, catalog: CoverageCatalog, known: KnownAreas, *,
                     partido_hint: str | None = None,
                     localidad_hint: str | None = None) -> list[Zone]:
-    """Resolve an address to zones, retrying without a leading 'Av.' prefix."""
+    """Resolve an address within the catalog partido when it is supplied."""
+    partido_id = catalog.partido_id(partido_hint) if partido_hint is not None else None
+    provinces = ["06"] if partido_id is not None else sorted(_SCOPED_PROVINCES)
     queries = [address]
     stripped = _AV_PREFIX.sub("", address).strip()
     if stripped and stripped.casefold() != address.casefold():
         queries.append(stripped)
     for query in queries:
         zones: list[Zone] = []
-        for province in sorted(_SCOPED_PROVINCES):
-            payload = _get("direcciones", {
+        for province in provinces:
+            params = {
                 "direccion": query,
                 "provincia": province,
                 "max": str(MAX_CANDIDATES),
-            })
+            }
+            if partido_id is not None:
+                params["departamento"] = partido_id
+            payload = _get("direcciones", params)
             for item in _items(payload.get("direcciones")):
                 zone = _zone_from_address(item, catalog, known)
                 if zone is not None and _matches(

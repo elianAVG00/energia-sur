@@ -130,7 +130,7 @@ for (const viewport of VIEWPORTS) {
     await expect(page.getByRole('heading', { name: 'Cortes eléctricos' })).toBeVisible();
 
     // Candidates are captured first so no previous result card is on screen.
-    await page.getByLabel('Dirección (calle y altura)', { exact: true }).fill('calchaqui 100');
+    await page.getByLabel('Dirección', { exact: true }).fill('calchaqui 100');
     await page.getByRole('button', { name: 'Buscar dirección' }).click();
     await expect(page.getByText('La dirección es ambigua. Elegí una de las zonas encontradas.')).toBeVisible();
     await expect(page.getByRole('button', { name: /QUILMES · QUILMES/ })).toBeVisible();
